@@ -31,7 +31,7 @@ au acum sensul din plan. Fiecare sarcină se face într-o rulare de pilot automa
 
 | ID | Sarcină | Comutator | Stare |
 |---|---|---|---|
-| P27 | Pagina după context: categoria de context (Dev, Browser, Meeting, Game, Media, Office) → pagină; alegerea manuală respectată 10 minute | `context-pages` | De făcut |
+| P27 | Pagina după context: în Setări, categoria de context (Dev, Browser, Meeting, Game, Media, Office, Creator) → pagină sau „—”; la deschidere notch-ul citește doar snapshot-ul motorului de context; alegerea manuală respectată 10 minute; paginile ascunse / șterse sărite; test de fum o dată (cu activity-manager oprit), cu contextul pus în motor (ADR 0008) | `context-pages` (Experimental, oprit) | Gata |
 | P20 | Quick Actions: 2–4 acțiuni sub pastilă, la hover, după context; reguli într-un tabel; cel mult o sugestie la 10 minute | `quick-actions` | De făcut |
 | P21 | Smart Clipboard: URL, JSON, culoare hex, email, IP, cale, JWT, telefon → chip-uri în widget-ul Clipboard | `smart-clipboard` | De făcut |
 | P23 | Raft drag & drop: spike click-through; referințe (max. 20); copiază calea, folder, zip, OCR, PNG/JPG | `shelf` | De făcut |
