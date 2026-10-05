@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>WinNotch</AssemblyName>
+    <RootNamespace>WinNotch</RootNamespace>
+    <Version>0.6.6</Version>
+    <!-- no code can be injected at start through DOTNET_STARTUP_HOOKS -->
+    <StartupHookSupport>false</StartupHookSupport>
+    <Product>WinNotch</Product>
+    <!-- Not part of the app: the private SDK copy that build.bat may download, and the build output -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);.dotnet\**;publish\**;tests\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Master volume + volume change events -->
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <!-- CPU / GPU / SSD temperatures (CPU needs admin rights) -->
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <!-- USB devices and monitor names (WMI) -->
+    <PackageReference Include="System.Management" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Browser extension (one entry per tab that plays sound); written to %AppData%\WinNotch\extension on start -->
+    <EmbeddedResource Include="extension\*.*" LogicalName="ext/%(Filename)%(Extension)" />
+    <!-- what this version brought: shown after an update and in the WinNotch window ("Noutăți") -->
+    <EmbeddedResource Include="RELEASE_NOTES.md" LogicalName="notes.md" />
+  </ItemGroup>
+
+</Project>

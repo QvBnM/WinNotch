@@ -1,0 +1,88 @@
+<Window x:Class="WinNotch.NotchWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WinNotch"
+        Width="820" Height="420" Left="-3000" Top="-3000" WindowStartupLocation="Manual"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True" ShowActivated="False"
+        FontFamily="{StaticResource UiFont}" Foreground="{DynamicResource InkBrush}"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display" TextOptions.TextHintingMode="Fixed" TextOptions.TextRenderingMode="Grayscale">
+
+    <Grid>
+        <Border x:Name="Pill" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0"
+                Width="200" Height="34" CornerRadius="17" Background="{DynamicResource NotchBrush}">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="PillShift"/>
+            </Border.RenderTransform>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="22" ShadowDepth="5" Direction="270" Opacity="0.45" Color="Black" RenderingBias="Performance"/>
+            </Border.Effect>
+
+            <Grid x:Name="Inner">
+
+                <!-- STANDBY: the items picked in Settings -->
+                <Grid x:Name="IdleLayer" Margin="11,0">
+                    <StackPanel x:Name="IdleLeft" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                    <StackPanel x:Name="IdleRight" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- SMALL: time and date, song progress underneath -->
+                <Grid x:Name="MiniLayer" Opacity="0">
+                    <StackPanel x:Name="MiniRow" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,2">
+                        <TextBlock x:Name="MiniTime" Text="--:--" FontFamily="{StaticResource MonoFont}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"/>
+                        <Ellipse Width="3" Height="3" Fill="{DynamicResource DimBrush}" Margin="8,0" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="MiniDate" Text="" FontSize="11" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
+                        <StackPanel x:Name="MiniExtra" Orientation="Horizontal" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <Grid x:Name="MiniProgress" Height="2" VerticalAlignment="Bottom" Margin="14,0,14,1" Visibility="Collapsed">
+                        <Border Background="{DynamicResource TrackBrush}" CornerRadius="1"/>
+                        <Border Background="{DynamicResource AccentBrush}" CornerRadius="1">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="MiniProgScale" ScaleX="0"/>
+                            </Border.RenderTransform>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <!-- LIVE ACTIVITY -->
+                <ContentControl x:Name="LiveLayer" Opacity="0" Margin="10,0,14,0" VerticalAlignment="Center" HorizontalContentAlignment="Stretch" IsHitTestVisible="False" Focusable="False">
+                    <ContentControl.LayoutTransform>
+                        <ScaleTransform x:Name="LiveScale"/>
+                    </ContentControl.LayoutTransform>
+                </ContentControl>
+
+                <!-- OPEN PANEL: width fixed, height depends on the tab -->
+                <Grid x:Name="ExpLayer" Width="720" Height="310" HorizontalAlignment="Center" VerticalAlignment="Top"
+                      Opacity="0" Visibility="Collapsed">
+                    <Grid.LayoutTransform>
+                        <ScaleTransform x:Name="ExpScale"/>
+                    </Grid.LayoutTransform>
+                    <Grid Margin="18,14,18,16">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="12"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <DockPanel Grid.Row="0" LastChildFill="False">
+                            <Border DockPanel.Dock="Left" Background="{DynamicResource SegBrush}" CornerRadius="10" Padding="3">
+                                <StackPanel x:Name="TabBar" Orientation="Horizontal"/>
+                            </Border>
+                            <StackPanel x:Name="HeaderRight" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="SettingsBtn" Style="{StaticResource IconButton}" Width="26" Height="26" Click="SettingsBtn_Click" ToolTip="Setări" Margin="0,0,8,0">
+                                    <TextBlock Style="{StaticResource Icon}" FontSize="12" Foreground="{DynamicResource MutedBrush}" Text="&#xE713;"/>
+                                </Button>
+                                <TextBlock x:Name="HeaderClock" FontFamily="{StaticResource MonoFont}" FontSize="12" Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center" Text="--:--"/>
+                            </StackPanel>
+                        </DockPanel>
+
+                        <ContentControl x:Name="PaneHost" Grid.Row="2" Focusable="False"/>
+                        <!-- edit mode: gallery, page menu, "standard page" notice -->
+                        <Grid x:Name="OverlayHost" Grid.Row="0" Grid.RowSpan="3" Panel.ZIndex="20"/>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

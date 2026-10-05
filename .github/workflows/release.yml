@@ -1,0 +1,62 @@
+# Builds, tests, signs and publishes WinNotch when a version tag (v0.6.6, …) is pushed.
+# The app updates itself only from these releases, and only if the signature matches its built-in public key.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: The tag must match the version in WinNotch.csproj
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          [xml]$p = Get-Content WinNotch.csproj
+          $v = ($p.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
+          if ($v -ne $tag) { throw "WinNotch.csproj are versiunea $v, dar tag-ul e $tag" }
+          "VERSION=$tag" >> $env:GITHUB_ENV
+
+      - name: Tests (app)
+        run: dotnet run --project tests/WinNotch.Tests.csproj -c Release
+
+      - name: Tests (extension)
+        run: |
+          node tests/extension/ext.test.js
+          node tests/extension/content.test.js
+          node --test tests/extension/controls.test.js
+
+      - name: Build
+        run: dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out
+
+      - name: Sign
+        shell: pwsh
+        env:
+          RELEASE_KEY: ${{ secrets.WINNOTCH_RELEASE_KEY }}
+        run: |
+          if (-not $env:RELEASE_KEY) { throw "Lipsește secretul WINNOTCH_RELEASE_KEY" }
+          $exe = "out/WinNotch.exe"
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $key = [System.Security.Cryptography.ECDsa]::Create()
+          $read = 0
+          $key.ImportPkcs8PrivateKey([Convert]::FromBase64String($env:RELEASE_KEY), [ref]$read)
+          $msg = [System.Text.Encoding]::UTF8.GetBytes("WinNotch-release|$($env:VERSION)|$hash")
+          $sig = $key.SignData($msg, [System.Security.Cryptography.HashAlgorithmName]::SHA256)
+          [IO.File]::WriteAllText("out/WinNotch.exe.sig", [Convert]::ToBase64String($sig))
+          "SHA-256: $hash"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" out/WinNotch.exe out/WinNotch.exe.sig --title "WinNotch ${{ env.VERSION }}" --notes-file RELEASE_NOTES.md

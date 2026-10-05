@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Plain console app (no WPF, no NuGet packages): compiles the testable sources of WinNotch next to the tests. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <NoWarn>CS0162</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Tests.cs" />
+    <Compile Include="..\Services\BrowserBridge.cs" />
+    <Compile Include="..\Services\NetService.cs" />
+    <Compile Include="..\Services\NetSafety.cs" />
+    <Compile Include="..\Services\Launcher.cs" />
+    <Compile Include="..\Services\Shell.cs" />
+    <Compile Include="..\Services\CalendarService.cs" />
+    <Compile Include="..\Widgets\Model.cs" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzEj9/k5o5dbxgjCWkqihp3yTbsQ8Cct3fm73xjFAkdWEdFtgztSgtcMBiSC3ETTMzysXw6FYC1j0zusl5XA3q9hldo/sLMzzZUqSWSuguOok80RR4dH0RDqaNankDY/0kLNEs6OHs8LJ/6B/sVgV0AG0m8xRdWjHCwBg1hiSGq2T4OvJ3Z8akIVZx3sSlvohEOCjT6BCBmjyyh/mbQRB0O7P6cZTFlzP9lWe3Oiv061Ub3hcjO3KZ24SAtj8IQaq9FE4QuxvAMRGwzE+7KjuteZkl4LMP/1qlP6yFV9SOd7xxtv964IBuJet7rw7AAlvJKSVRu0ndNZid4RFBleJDwIDAQAB",
+  "name": "WinNotch - tab-uri cu sunet",
+  "version": "1.6",
+  "description": "Arata in WinNotch fiecare tab care reda sunet (YouTube, Reels, YouTube Music...) si il lasa sa fie oprit, pus pe pauza sau dat mai incet.",
+  "permissions": [
+    "scripting",
+    "alarms",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "128": "icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "main.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ]
+}
