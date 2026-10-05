@@ -8,7 +8,7 @@ using Microsoft.Win32;
 namespace WinNotch
 {
     /// <summary>User settings, saved as JSON in %AppData%\WinNotch\settings.json.</summary>
-    public sealed class AppSettings
+    public sealed partial class AppSettings
     {
         /// <summary>Standby items in display order (max 5). Ids: see <see cref="Widgets"/>.</summary>
         public List<string> Standby { get; set; } = new List<string> { "music", "clock", "weather" };
@@ -121,6 +121,7 @@ namespace WinNotch
                         s.Shelf ??= new List<string>();
                         s.Workspaces ??= new List<Services.Workspace>();
                         s.PinnedClips ??= new List<string>();
+                        s.NormalizeFeatures();
                         return s;
                     }
                 }

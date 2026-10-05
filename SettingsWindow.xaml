@@ -207,6 +207,16 @@
                         </Grid>
                     </StackPanel>
                 </Border>
+
+                <Border Style="{StaticResource Section}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource H}" Text="Funcții noi (experimental)"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Funcții încă în lucru. Le pornești sau le oprești aici, fără repornire. Una care dă erori repetate se oprește singură."/>
+                        <TextBlock x:Name="SafeModeNote" Style="{StaticResource Hint}" Foreground="#B04A00" Visibility="Collapsed"
+                                   Text="Mod sigur: WinNotch a pornit cu --safe-mode, așa că funcțiile Experimental și Beta sunt oprite până la următoarea pornire normală. Alegerile de aici se păstrează."/>
+                        <StackPanel x:Name="FeatureRows"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

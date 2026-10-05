@@ -18,5 +18,9 @@
     <Compile Include="..\Services\Shell.cs" />
     <Compile Include="..\Services\CalendarService.cs" />
     <Compile Include="..\Widgets\Model.cs" />
+    <Compile Include="..\Core\Flags\FeatureCatalog.cs" />
+    <Compile Include="..\Core\Flags\FeatureFlags.cs" />
+    <Compile Include="..\Core\Flags\FeatureSettings.cs" />
+    <Compile Include="..\Core\Diagnostics\HealthLog.cs" />
   </ItemGroup>
 </Project>

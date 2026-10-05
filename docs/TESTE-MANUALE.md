@@ -26,3 +26,15 @@ Notează pentru fiecare: ✓ / ✗ și, la ✗, ce ai văzut (și ultimele rând
 ## Verificări per funcție
 
 Fiecare sarcină din `docs/ROADMAP.md` adaugă aici o secțiune `### PNN — nume` cu verificările ei (pași și rezultat așteptat).
+
+### P10 — Comutatoare pentru funcțiile noi (feature flags)
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P10.1 | Secțiunea din Setări | Fereastra WinNotch → Setări → derulează până jos. | Secțiunea „Funcții noi (experimental)” are „Funcție de test” cu descrierea și eticheta portocalie „Experimental”, nebifată. |
+| P10.2 | Pornire și oprire fără repornire | Bifează „Funcție de test” → „Salvează”. Apoi debifeaz-o → „Salvează”. | „✓ Salvat” de fiecare dată; nicio repornire, nicio eroare în log; restul setărilor neschimbate. |
+| P10.3 | Se păstrează după repornire | Bifează „Funcție de test” → „Salvează”, ieși din WinNotch și pornește-l din nou. | E tot bifată. În `settings.json` apare `"Features": { "demo-flag": true }`; notița și calendarul rămân criptate (`dpapi:`). |
+| P10.4 | Setări vechi | Pornește cu un `settings.json` de la 0.6.6 (fără `Features`). | Pornește normal, toate setările vechi sunt la locul lor, „Funcție de test” e nebifată. |
+| P10.5 | Mod sigur | Cu „Funcție de test” bifată, ieși și pornește `WinNotch.exe --safe-mode`. | În log: „Pornit în mod sigur…”. În Setări apare nota portocalie despre modul sigur, iar bifa rămâne (alegerea e păstrată). La o pornire normală funcția e din nou pornită. |
+| P10.6 | Renunță | Schimbă bifa, apoi „Renunță”. | Bifa revine la valoarea salvată; nimic nu se schimbă. |
+| P10.7 | Rezumat de sănătate | Lasă WinNotch pornit peste 6 ore, apoi deschide `%AppData%\WinNotch\log.txt`. | Un rând „Sănătate (6 h): RAM … MB · CPU mediu …% · erori pe funcții: fără erori”, fără titluri, căi sau adrese. |

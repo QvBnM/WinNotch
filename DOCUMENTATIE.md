@@ -69,6 +69,8 @@ Documentul descrie tot ce e implementat în cod până la versiunea 0.6.6: pagin
 | `SettingsWindow.xaml(.cs)` | Setările (afișate ca pagină în fereastra WinNotch) |
 | `TrayIcon.cs` | Iconița de lângă ceas |
 | `AppSettings.cs` | Setări, salvare criptată, pornire cu Windows |
+| `Core/Flags/*` | Comutatoarele funcțiilor noi: catalogul (`FeatureCatalog.cs`), starea, modul sigur și oprirea automată (`FeatureFlags.cs`), cheia `Features` din setări (`FeatureSettings.cs`) |
+| `Core/Diagnostics/HealthLog.cs` | Rezumatul de sănătate din log, la fiecare 6 ore |
 | `Services/*` | Media, audio, temperaturi, rețea, vreme, versuri, calendar, dispozitive, confidențialitate, ferestre, lansator, capturi/OCR/RAM, extensie |
 | `extension/` | Extensia de browser (Chrome, Edge, Brave, Opera, Vivaldi) |
 | `build.bat`, `run.bat`, `tools/get-sdk.ps1` | Build, pornire, descărcarea SDK-ului |
@@ -325,6 +327,15 @@ Setările sunt pagina „Setări” din fereastra WinNotch (o singură fereastr�
 | Spații de lucru | Redenumire și ștergere |
 | Culoare accent | Culoarea temei (implicit), Chihlimbar, Verde, Albastru, Roz, Mov, Alb |
 | Vremea | Orașul, latitudinea și longitudinea |
+| Funcții noi (experimental) | Un comutator pentru fiecare funcție nouă din catalog, cu numele, o descriere de un rând și eticheta de stadiu (**Experimental**, **Beta**, **Stabil**); se aplică la „Salvează”, fără repornire. Dacă o funcție a fost oprită automat, apare și motivul |
+
+**Funcții noi și comutatoare (feature flags, din 0.7)**
+- Fiecare funcție nouă e declarată într-un singur loc, `Core/Flags/FeatureCatalog.cs` (ID, nume, descriere, stadiu, valoare implicită) și e oprită implicit până la versiunea în care e anunțată. Prima intrare e „Funcție de test” (`demo-flag`, Experimental, oprită), care nu face nimic vizibil.
+- Starea se salvează în `settings.json`, în cheia `Features` (ID → pornit/oprit). Se păstrează doar ce diferă de valoarea implicită; un fișier mai vechi, fără `Features`, înseamnă „toate la valoarea implicită”. Cheile funcțiilor necunoscute (de exemplu dintr-o versiune mai nouă) rămân neatinse.
+- Funcțiile pornesc și se opresc pe loc: ascultă evenimentul `Changed` al `FeatureFlags`, care se declanșează o singură dată la fiecare schimbare reală.
+- **Oprire automată:** o funcție care prinde 3 erori în 10 minute se oprește singură; motivul apare în log și în Setări. O pornești din nou din Setări.
+- **Mod sigur:** `WinNotch.exe --safe-mode` pornește cu toate funcțiile Experimental și Beta oprite, fără să schimbe ce e salvat (Setări arată în continuare alegerile tale, cu o notă despre modul sigur). La următoarea pornire normală revin cum erau.
+- **Rezumat de sănătate:** la fiecare 6 ore, un rând în `log.txt`: memoria WinNotch (MB), procesorul folosit în medie de WinNotch în acest interval și numărul de erori prinse pe fiecare funcție. Fără date personale: în log ajunge doar tipul erorii, nu mesajul ei.
 
 **Pornirea cu Windows:** o intrare în „Run” din registru, cu drepturi normale. WinNotch nu mai pornește niciodată ca administrator (până la 0.6.4 exista o sarcină de logare elevată; instalarea serviciului de temperatură o șterge).
 
@@ -396,8 +407,8 @@ Trei audituri (`AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md` — ultimul, de securitate
 Detaliile sunt în `AUDIT.md`. Pe scurt:
 - **Compilare** cu API-ul real WPF: 0 erori, 0 avertismente.
 - **Două revizii independente,** una pentru bug-uri și performanță, una pentru securitate: 20 de probleme găsite, 18 reparate, 2 acceptate cu motivare.
-- **102 teste automate, toate trec,** incluse în proiect și rulabile cu `tests\run-tests.bat`:
-  - 79 pentru aplicație: autentificarea reciprocă a extensiei, refuzul vechiului token în clar, închiderea conexiunilor neautentificate, copertele (doar PNG/JPEG/WebP, ≤ 300 KB), limitarea duratelor, calendarul ostil (20.000 de evenimente procesate sub 3 s), plus: serverul extensiei și autentificarea, nume de site-uri, protecția adreselor, verdictul de viteză, calculatorul, calendarul, **grila de widget-uri** (locuri libere, limite, mutare cu rearanjare, pagină plină, 2000 de mutări aleatoare fără suprapuneri);
+- **125 de teste automate, toate trec,** incluse în proiect și rulabile cu `tests\run-tests.bat`:
+  - 102 pentru aplicație (din care 23 pentru comutatoarele funcțiilor noi: setări vechi, salvare și recitire, `Changed` o singură dată, oprire automată, mod sigur, rezumatul de sănătate): autentificarea reciprocă a extensiei, refuzul vechiului token în clar, închiderea conexiunilor neautentificate, copertele (doar PNG/JPEG/WebP, ≤ 300 KB), limitarea duratelor, calendarul ostil (20.000 de evenimente procesate sub 3 s), plus: serverul extensiei și autentificarea, nume de site-uri, protecția adreselor, verdictul de viteză, calculatorul, calendarul, **grila de widget-uri** (locuri libere, limite, mutare cu rearanjare, pagină plină, 2000 de mutări aleatoare fără suprapuneri);
   - 23 pentru extensie, rulate cu un Chrome simulat, inclusiv butoanele următoarea/anterioara și refuzul unui server fals.
 - **Revizii independente pentru 0.6** (pagini, editor, drag & drop, teme): 13 probleme găsite, toate reparate.
 - **Al doilea audit** (`AUDIT-2.md`): 38 de probleme găsite pe 5 dimensiuni, toate reparate.

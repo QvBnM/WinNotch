@@ -52,4 +52,15 @@ Versiunile 0.7 → 1.0 sunt construite pe pași (ID-uri P00, P10, P11… în `do
   `docs/TESTE-MANUALE.md` (verificările noi) și, dacă e o decizie de arhitectură, scrie un ADR (`docs/adr/`, după `0000-template.md`).
 - **Definition of Done:** build fără avertismente noi, toate testele trec (C# și extensie), documentația e actualizată,
   iar lista de verificări manuale noi e scrisă în `docs/TESTE-MANUALE.md`.
+- **Cum declari o funcție nouă (feature flag):**
+  1. Adaugă o intrare în `Core/Flags/FeatureCatalog.cs`: `new FeatureInfo("id-functie", "Nume în română", "Descriere de un rând.",
+     FeatureStage.Experimental, false)`. ID-ul e cu litere mici și liniuțe și nu se mai schimbă după publicare (e cheia din
+     `settings.json` → `Features`). Setări îi face singur comutatorul.
+  2. În funcție: pornește doar dacă `FeatureFlags.Current.IsEnabled(id)`; abonează-te la `FeatureFlags.Current.Changed` și
+     pornește/oprește-te când primești ID-ul tău (handler-ul poate veni de pe alt fir: UI doar prin Dispatcher); dezabonează-te la închidere.
+  3. Erorile prinse în funcție merg în `FeatureFlags.Current.ReportError(id, ex)` (3 în 10 minute o opresc automat); pentru
+     o problemă sigură (ex. un API nedocumentat lipsă) apelează direct `Disable(id, "motiv")`. Nu pune mesajul erorii în log.
+  4. `--safe-mode` tratează Experimental și Beta ca oprite: o funcție nu ocolește niciodată `IsEnabled`.
+  5. La anunț: schimbă `Stage` (Beta/Stable) și, dacă e cazul, `DefaultOn = true`. Adaugă teste în `tests/Tests.cs` și
+     verificările manuale în `docs/TESTE-MANUALE.md`.
 - CI (`.github/workflows/ci.yml`) rulează build-ul și testele la fiecare pull request și push pe alte ramuri decât `main`.
