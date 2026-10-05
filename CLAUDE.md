@@ -73,4 +73,16 @@ Versiunile 0.7 → 1.0 sunt construite pe pași (ID-uri P00, P10, P11… în `do
   `StartupCoordinator` (ordinea pașilor la pornire: mutex, notă, schimbarea fișierelor, repornirea);
   `App.xaml.cs` (`StartGuarded`, `StartupHost`) și `NotchWindow.Updates.cs` doar leagă aceste piese. Orice ieșire curată nouă din aplicație
   trebuie să apeleze `App.Guard.MarkCleanExit()`, altfel se numără ca închidere bruscă. Vezi `docs/adr/0002-revenire-automata.md`.
+- **Cum adaugi o acțiune** (orice capabilitate nouă din P12+ se expune și ca acțiune, pe lângă butonul ei):
+  1. Alege un id `zonă.verb` (litere mici, cifre, cratime, un punct; ex. `audio.mute-mic`), care nu se mai schimbă după publicare.
+  2. Descrie-o într-un `ActionDescriptor` (sau `UndoableAction` dacă se poate anula): `Title` în română, `Aliases` în română
+     și engleză, `Category`, `Icon` (glif din fontul existent), `Parameters` tipizați, `Safety` (Confirm pentru ce nu se poate
+     anula ușor), `FeatureId` dacă ține de un comutator, `RequiresUiThread` dacă atinge ferestre, clipboard sau shell-ul.
+  3. Logica stă în serviciul sau în `Features/<Nume>/`; acțiunea doar o apelează (prin o interfață, ca în `IBuiltInHost`, ca să
+     fie testată fără WPF). Liste care se schimbă → un `IActionProvider` cu `Changed`.
+  4. Înregistrează-o o singură dată la pornire (`BuiltInActions.Register` sau metoda de înregistrare a funcției, apelată din
+     `App.RegisterActions`). Nu deschide `LocalApi` decât pentru acțiuni sigure și doar dacă e cerut explicit.
+  5. Adaugă teste (id unic, titlu, alias, apelul corect, disponibilitate, parametri) și rândul ei în lista din DOCUMENTATIE.md.
+  Pornește acțiunile doar prin `ActionRegistry.Current.InvokeAsync` (verificările nu se ocolesc) și nu pune în log valorile parametrilor.
+  Pentru Confirm/Dangerous, întreabă utilizatorul și abia apoi apelează cu `confirmed: true`; fără el, registrul refuză.
 - CI (`.github/workflows/ci.yml`) rulează build-ul și testele la fiecare pull request și push pe alte ramuri decât `main`.

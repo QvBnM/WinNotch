@@ -62,3 +62,9 @@ Fișierele de test se creează în `%AppData%\WinNotch\` (Win+R → `%AppData%\W
 | P01.6 | „Ieșire” nu se numără | Pornește și închide WinNotch din meniul iconiței („Ieșire”) de 4 ori la rând, în mai puțin de 5 minute; la fel cu repornirea Windows. | Pornește normal de fiecare dată: niciun mod sigur, nicio revenire. |
 | P01.7 | Măsurători de bază | Ieși din WinNotch, apoi `powershell -ExecutionPolicy Bypass -File tools\measure-perf.ps1`. Opțional: creează `perf.flag` și deschide notch-ul cu hover. | După ~11 minute apare `docs\perf\baseline-<versiune>.md` cu media și maximul pentru Working Set, Private Bytes și CPU%. Cu `perf.flag`: în log „Perf: hover → primul cadru al deschiderii: N ms” (include întârzierea la hover din Setări). |
 | P01.8 | Pornire eșuată la jumătate | (Doar pentru dezvoltare) un build cu o excepție aruncată intenționat în constructorul notch-ului. | Procesul se închide (nu rămâne în Task Manager fără notch); în log „Pornirea a eșuat”; a doua pornire nu spune „WinNotch rulează deja”. |
+
+### P11 — Action Registry (fără schimbări vizibile)
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P11.1 | Pornește normal, fără regresii | Instalează 0.6.10, pornește WinNotch, apoi parcurge lista scurtă de regresie R1–R15. Deschide `%AppData%\WinNotch\log.txt`. | Totul merge ca în 0.6.9 (butoanele din Unelte, Dispozitive, media, volum, capturi, spații de lucru). În log nu apare „Acțiuni: înregistrarea a eșuat” și nici rânduri „Acțiune …” (încă nu pornește nimeni acțiunile). |

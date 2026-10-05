@@ -1,6 +1,6 @@
 # WinNotch — documentație completă
 
-Versiune: **0.6.9**. Ultima actualizare: 5 octombrie 2026.
+Versiune: **0.6.10**. Ultima actualizare: 5 octombrie 2026.
 
 WinNotch este un „Dynamic Island” pentru Windows 10 și 11: o pastilă neagră în partea de sus a ecranului.
 - **Cât e închisă,** arată informații scurte.
@@ -8,7 +8,7 @@ WinNotch este un „Dynamic Island” pentru Windows 10 și 11: o pastilă neagr
 - **Când se întâmplă ceva** (volum, piesă nouă, baterie, temperatură, memorie plină), afișează alerte scurte.
 - **Se personalizează** cu pagini proprii din widget-uri (ca pe iPhone) și cu teme întunecate, luminoase sau automate.
 
-Documentul descrie tot ce e implementat în cod până la versiunea 0.6.9: paginile din widget-uri, editarea în notch, fereastra WinNotch (pagini, teme, setări) și temele sunt în secțiunea 16.
+Documentul descrie tot ce e implementat în cod până la versiunea 0.6.10: paginile din widget-uri, editarea în notch, fereastra WinNotch (pagini, teme, setări) și temele sunt în secțiunea 16.
 
 ---
 
@@ -70,6 +70,8 @@ Documentul descrie tot ce e implementat în cod până la versiunea 0.6.9: pagin
 | `TrayIcon.cs` | Iconița de lângă ceas |
 | `AppSettings.cs` | Setări, salvare criptată, pornire cu Windows |
 | `Core/Update/*` | Logica actualizărilor, fără WPF: compararea versiunilor (`AppVersion.cs`), alegerea versiunii de oferit și canalul beta (`ReleaseFeed.cs`), pornirea monitorizată și decizia mod sigur / revenire (`StartupGuard.cs`), `startup.json` / `rollback.json` (`StartupStore.cs`), schimbarea fișierelor la revenire (`Rollback.cs`), ordinea pașilor la pornire (`StartupCoordinator.cs`) |
+| `Core/Actions/*` | Registrul de acțiuni, fără WPF: descrierea unei acțiuni, parametrii și siguranța (`ActionDescriptor.cs`), anularea (`IUndoableAction.cs`), firul de interfață (`IUiDispatcher.cs`), înregistrarea, căutarea și pornirea cu toate verificările (`ActionRegistry.cs`) |
+| `Features/Actions/*` | Acțiunile incluse: lista (`BuiltInActions.cs`, cu spațiile de lucru și stick-urile USB ca liste dinamice), legătura cu aplicația (`IBuiltInHost.cs`, `AppActionHost.cs`) |
 | `Core/Flags/*` | Comutatoarele funcțiilor noi: catalogul (`FeatureCatalog.cs`), starea, modul sigur și oprirea automată (`FeatureFlags.cs`), cheia `Features` din setări (`FeatureSettings.cs`) |
 | `Core/Diagnostics/HealthLog.cs`, `PerfProbe.cs` | Rezumatul de sănătate din log, la fiecare 6 ore; măsurarea opțională a deschiderii (`perf.flag`) |
 | `tools/measure-perf.ps1`, `docs/perf/` | Măsurătorile de bază (memorie, CPU la repaus, 10 minute) și rezultatele lor, pe versiuni |
@@ -81,6 +83,31 @@ Documentul descrie tot ce e implementat în cod până la versiunea 0.6.9: pagin
 | `CLAUDE.md` | Ghid pentru asistenții AI care lucrează la cod (structură, publicare, reguli de securitate, reguli pentru dezvoltarea 0.7+) |
 | `docs/ROADMAP.md`, `docs/adr/`, `docs/TESTE-MANUALE.md` | Planul versiunilor 0.7 → 1.0, deciziile de arhitectură (ADR), verificările manuale (lista scurtă de regresie și verificările per funcție) |
 | `.github/workflows/ci.yml`, `.github/ISSUE_TEMPLATE/bug.yml`, `.github/pull_request_template.md` | Build și teste la fiecare pull request și push pe alte ramuri decât `main`; formularul de bug; șablonul de pull request |
+
+### Acțiuni (infrastructură, din 0.6.10)
+
+Tot ce poate face WinNotch e și o **acțiune** cu un id stabil, în formatul `zonă.verb` (de exemplu `audio.mute-mic`), într-un singur registru (`Core/Actions/ActionRegistry.cs`). Pe el se vor construi Command Bar (P14), Quick Actions, Workflows, API-ul local și Undo Center. **În 0.6.10 nu se schimbă nimic vizibil:** butoanele și panourile merg ca înainte, iar acțiunile nu sunt încă pornite de nimic.
+
+- **Căutare** fără diacritice și fără majuscule („muta” găsește „Mută / pornește microfonul”), după titlu, cuvinte-cheie în română și engleză și categorie. Ordinea: potrivire exactă, început de cuvânt, în interiorul cuvântului, litere în ordine; la egalitate, cele folosite recent (ultimele 50, doar în memorie, nesalvate).
+- **Verificări înainte de pornire:** acțiunea există; cine o pornește are voie (interfața, Command Bar, Quick Actions, Workflows; API-ul local doar pentru acțiunile sigure și doar dacă acțiunea o permite explicit); e disponibilă acum (de exemplu „Scoate stick-ul” doar dacă e conectat); comutatorul funcției e pornit; parametrii sunt valizi (procent 0–100, valori dintr-o listă, text cu lungime maximă). Fiecare acțiune are 10 secunde (cât timp nu cere altceva), iar ce atinge ferestrele rulează pe firul interfeței.
+- **Niciodată o eroare spre apelant:** o excepție devine un rezultat „nu a reușit” și se numără la funcția ei (comutatorul o poate opri automat).
+- **Siguranță:** fiecare acțiune e Sigură, Cu confirmare (scoaterea unui stick USB) sau Periculoasă (niciuna acum). Una cu confirmare sau periculoasă pornește doar dacă cel care o cere confirmă că te-a întrebat; altfel e refuzată. Implicit, Workflows nu le pot porni (n-au pe cine întreba). O cerere deja anulată nu pornește nimic, iar o acțiune care a așteptat prea mult după interfață nu mai pornește deloc.
+- **Liste dinamice** (spații de lucru, stick-uri USB): citite la prima folosire și păstrate până când cine le folosește (Command Bar) cere reîmprospătarea; o eroare trecătoare la citire nu rămâne ținută minte.
+- **Log:** doar id-ul, cine a pornit-o și rezultatul; niciodată valorile parametrilor.
+- **Anulare:** volumul, sunetul și microfonul pot fi readuse la starea de dinainte (pregătire pentru Undo Center).
+
+| Id | Acțiune | Siguranță |
+|---|---|---|
+| `audio.volume-set` | Setează volumul (0–100%), cu anulare | Sigură |
+| `audio.mute` | Oprește / pornește sunetul, cu anulare | Sigură |
+| `audio.mute-mic` | Mută / pornește microfonul (în toate aplicațiile), cu anulare | Sigură |
+| `media.play-pause`, `media.next`, `media.previous` | Redă / pauză, piesa următoare, anterioară (doar când se redă ceva) | Sigură |
+| `tools.screenshot`, `tools.screenshot-area`, `tools.ocr`, `tools.free-ram` | Captură ecran, captură zonă, text din ecran, eliberează RAM | Sigură |
+| `window.topmost`, `window.next-monitor`, `window.half`, `window.mini` | Fereastra activă: deasupra, pe celălalt monitor (doar cu 2 monitoare), jumătate stânga / dreapta (alternativ, ca butonul), mică în colț | Sigură |
+| `workspace.open-<nume>` | Deschide spațiul de lucru (câte una pentru fiecare spațiu salvat) | Sigură |
+| `device.eject-<literă>` | Scoate stick-ul USB (câte una pentru fiecare unitate detașabilă) | Cu confirmare |
+| `settings.bluetooth`, `settings.sound`, `settings.display`, `settings.wifi`, `settings.update` | Setările Windows: Bluetooth, Sunet, Ecran, Wi-Fi, Windows Update | Sigură |
+| `winnotch.open`, `winnotch.settings`, `winnotch.speed-test` | Deschide notch-ul, setările WinNotch, testul de viteză | Sigură |
 
 ---
 
@@ -425,8 +452,8 @@ Trei audituri (`AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md` — ultimul, de securitate
 Detaliile sunt în `AUDIT.md`. Pe scurt:
 - **Compilare** cu API-ul real WPF: 0 erori, 0 avertismente.
 - **Două revizii independente,** una pentru bug-uri și performanță, una pentru securitate: 20 de probleme găsite, 18 reparate, 2 acceptate cu motivare.
-- **185 de teste automate, toate trec,** incluse în proiect și rulabile cu `tests\run-tests.bat`:
-  - 162 pentru aplicație (din care 54 pentru actualizări: ordinea versiunilor, inclusiv cu sufixe de test, canalul beta, versiunile refuzate, lista de la GitHub, pornirea monitorizată pe toate ramurile — mod sigur, revenire doar după modul sigur automat și recent, blocarea buclelor între versiuni, sănătos după 10 minute chiar și cu somn sau ceas schimbat, oprirea Windows anulată, `startup.json` lipsă, corupt sau ciudat, ordinea pașilor (mutex, notă, schimbarea fișierelor) și eșecul la jumătatea schimbării; și 29 pentru comutatoarele funcțiilor noi: setări vechi, salvare și recitire, `Changed` o singură dată, abonați care dau erori, oprire automată care nu e anulată de „Salvează”, mod sigur, rezumatul de sănătate): autentificarea reciprocă a extensiei, refuzul vechiului token în clar, închiderea conexiunilor neautentificate, copertele (doar PNG/JPEG/WebP, ≤ 300 KB), limitarea duratelor, calendarul ostil (20.000 de evenimente procesate sub 3 s), plus: serverul extensiei și autentificarea, nume de site-uri, protecția adreselor, verdictul de viteză, calculatorul, calendarul, **grila de widget-uri** (locuri libere, limite, mutare cu rearanjare, pagină plină, 2000 de mutări aleatoare fără suprapuneri);
+- **233 de teste automate, toate trec,** incluse în proiect și rulabile cu `tests\run-tests.bat`:
+  - 210 pentru aplicație (din care 48 pentru acțiuni: id-uri, căutare fără diacritice și ordinea rezultatelor, cine are voie să pornească o acțiune, confirmarea obligatorie, cereri deja anulate, disponibilitate, comutatoare, parametri, erori, timp maxim și anulare, firul interfeței, liste dinamice, jurnal fără valori, toate acțiunile incluse; 54 pentru actualizări: ordinea versiunilor, inclusiv cu sufixe de test, canalul beta, versiunile refuzate, lista de la GitHub, pornirea monitorizată pe toate ramurile — mod sigur, revenire doar după modul sigur automat și recent, blocarea buclelor între versiuni, sănătos după 10 minute chiar și cu somn sau ceas schimbat, oprirea Windows anulată, `startup.json` lipsă, corupt sau ciudat, ordinea pașilor (mutex, notă, schimbarea fișierelor) și eșecul la jumătatea schimbării; și 29 pentru comutatoarele funcțiilor noi: setări vechi, salvare și recitire, `Changed` o singură dată, abonați care dau erori, oprire automată care nu e anulată de „Salvează”, mod sigur, rezumatul de sănătate): autentificarea reciprocă a extensiei, refuzul vechiului token în clar, închiderea conexiunilor neautentificate, copertele (doar PNG/JPEG/WebP, ≤ 300 KB), limitarea duratelor, calendarul ostil (20.000 de evenimente procesate sub 3 s), plus: serverul extensiei și autentificarea, nume de site-uri, protecția adreselor, verdictul de viteză, calculatorul, calendarul, **grila de widget-uri** (locuri libere, limite, mutare cu rearanjare, pagină plină, 2000 de mutări aleatoare fără suprapuneri);
   - 23 pentru extensie, rulate cu un Chrome simulat, inclusiv butoanele următoarea/anterioara și refuzul unui server fals.
 - **Revizii independente pentru 0.6** (pagini, editor, drag & drop, teme): 13 probleme găsite, toate reparate.
 - **Al doilea audit** (`AUDIT-2.md`): 38 de probleme găsite pe 5 dimensiuni, toate reparate.
@@ -511,6 +538,7 @@ Detaliile sunt în `AUDIT.md`. Pe scurt:
 | 0.5.2 | Descărcarea SDK-ului arată pașii, progresul și timpul rămas |
 | 0.5.4 | SDK-ul descărcat de `build.bat` e păstrat o singură dată pentru contul tău și folosit de toate versiunile (nu mai întreabă la fiecare arhivă nouă) |
 | 0.6.0 | Widget-uri pe grilă 6×4, pagini proprii (goale sau copiate), paginile standard cu ascundere și duplicare, editare în notch (drag, resize, galerie, manager de pagini), fereastra Editor cu inspector, widget-uri personalizate, teme (întunecat/luminos/automat, 6 teme, culori proprii, colțuri, transparență, teme salvate); notch-ul se dă la o parte peste ferestre maximizate; alerta de piesă nouă nu se mai repetă la YouTube și nu apare când sursa e fereastra din față; alerta de volum doar la schimbări reale; next/previous în browser prin handler-ele media ale paginii (extensia 1.5); widget-uri ca pe iPhone (tragi din galerie la mărimea implicită, click pentru toate mărimile, click pe widget pentru redimensionare); o singură fereastră pentru pagini, teme și setări; ochi pe tab-uri în editare; colțuri rotunjite peste tot și widget-ul Muzică aliniat ca pagina Acasă; fereastra notch-ului din nou mică (animații fluide), crește doar cât e deschisă galeria; alertă de memorie cu cine consumă și „Optimizează” |
+| 0.6.10 | Pregătire internă pentru Command Bar: registrul de acțiuni (căutare, verificări, anulare), cu toate capabilitățile existente ca acțiuni; nimic schimbat vizibil |
 | 0.6.9 | Protecție la o versiune stricată: după 3 închideri bruște în 5 minute repornește în modul sigur, apoi revine singur la versiunea anterioară (cel mult o dată la 30 de minute); versiunea anterioară e păstrată până când cea nouă rulează 10 minute fără erori; versiunile refuzate nu mai sunt propuse; canal beta pentru versiunile de test; compararea corectă a versiunilor (inclusiv 0.6.10 și sufixe -rc); măsurători de performanță (`tools/measure-perf.ps1`) |
 | 0.6.8 | „Caută actualizări” în meniul iconiței; o versiune găsită manual e oferită în notch și cu verificarea automată oprită |
 | 0.6.7 | Secțiunea „Funcții noi (experimental)” în Setări (comutatoare pentru funcțiile noi, oprire automată după erori repetate), modul sigur `--safe-mode`, rezumatul de sănătate în log la 6 ore |

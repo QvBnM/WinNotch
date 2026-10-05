@@ -395,6 +395,9 @@ namespace WinNotch
             Fade(Pill, 1, 160);
         }
 
+        /// <summary>The notch is open (actions use it to open it only when needed).</summary>
+        internal bool IsOpen => _mode == Mode.Expanded;
+
         public void ToggleByHotkey()
         {
             if (_mode == Mode.Expanded) { Collapse(); return; }
