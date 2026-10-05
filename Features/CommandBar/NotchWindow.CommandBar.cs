@@ -198,6 +198,7 @@ namespace WinNotch
             UpdateCommandResults();                        // the recent actions; lays the bar out (ApplyMode)
             ApplyHidden();
             EnableTyping(_cmdBox);                         // the launcher's way: the notch takes the keyboard, Collapse gives it back
+            if (!IsActive) Native.ForceForeground(_hwnd);  // Windows refused Activate (no click, as with the launcher): the way OpenEditor brings a window up
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (_cmdOpen && _cmdBox != null) { _cmdBox.Focus(); Keyboard.Focus(_cmdBox); }

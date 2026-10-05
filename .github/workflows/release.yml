@@ -48,6 +48,7 @@ jobs:
 
       # P02: the exe that gets signed and published is first started with --smoke and driven like in ci.yml, so a push
       # straight to main can't publish a version that fails the smoke tests. P13: twice, "activity-manager" off and on.
+      # P14: both runs also check the Command Bar, as in ci.yml.
       - name: Smoke tests (activity-manager off)
         if: env.NEW == 'true'
         timeout-minutes: 8

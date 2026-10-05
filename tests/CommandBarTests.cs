@@ -284,10 +284,10 @@ namespace WinNotch
                   Count(notch, "CommandBar") == 5 && Count(notch, "CommandBarHotkeyId") == 1);
             string open = Norm(NoComments(MethodBody(part, "private void OpenCommandBar()")));
             string close = Norm(NoComments(MethodBody(part, "private void CloseCommandBar()")));
-            Check("CB33", "Focus: aceeași cale ca lansatorul (EnableTyping la deschidere, Collapse → StopTyping → LastForeground la închidere); niciun SetForegroundWindow propriu",
+            Check("CB33", "Focus: aceeași cale ca lansatorul (EnableTyping la deschidere, Collapse → StopTyping → LastForeground la închidere); ForceForeground doar dacă Windows refuză Activate; niciun SetForegroundWindow propriu",
                   open.Contains("RememberForegroundForCommandBar();") && open.Contains("EnableTyping(_cmdBox);") && open.Contains("_mode = Mode.Expanded;") &&
                   open.Contains("ActionRegistry.Current?.Refresh();") && close.Contains("if (_mode == Mode.Expanded) Collapse();") &&
-                  !part.Contains("SetForegroundWindow") && !part.Contains("ForceForeground") && !part.Contains("SetNoActivate") &&
+                  !part.Contains("SetForegroundWindow") && Count(partN, "ForceForeground") == 1 && open.Contains("EnableTyping(_cmdBox); if (!IsActive) Native.ForceForeground(_hwnd);") && !part.Contains("SetNoActivate") &&
                   partN.Contains("Deactivated += OnCommandBarDeactivated;") && partN.Contains("Deactivated -= OnCommandBarDeactivated;"));
             string shortcut = Norm(NoComments(MethodBody(part, "private void OnCommandBarShortcut()")));
             Check("CB34", "Scurtătura trece prin regula pură (ecran complet citit ca motorul de context); comanda de test intră pe aceeași cale",
