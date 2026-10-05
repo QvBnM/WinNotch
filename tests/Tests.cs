@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic; using System.IO; using System.Linq; using System.Net; using System.Net.Sockets;
-using System.Text; using System.Threading; using System.Text.Json; using WinNotch.Services; using WinNotch.Widgets; using WinNotch.Core.Flags; using WinNotch.Core.Diagnostics;
+using System.Text; using System.Threading; using System.Text.Json; using WinNotch.Services; using WinNotch.Widgets; using WinNotch.Core.Flags; using WinNotch.Core.Diagnostics; using WinNotch.Core.Update;
 namespace WinNotch
 {
     public static class App { public static void Log(string s) { } public static bool IsAdmin => false; }
@@ -325,6 +325,7 @@ namespace WinNotch
             }
 
             FeatureFlagTests();
+            UpdateTests();
 
             Console.WriteLine(string.Join("\n", lines));
             Console.WriteLine($"\nTOTAL {pass + fail}: {pass} PASS, {fail} FAIL");
@@ -456,6 +457,175 @@ namespace WinNotch
             Check("F22", "CPU mediu: 1 s de procesor în 10 s pe 4 nuclee = 2,5%", Math.Abs(HealthLog.Percent(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10), 4) - 2.5) < 0.001);
             string written = null; HealthLog.Start(l => written = l); string now6 = HealthLog.WriteNow(); HealthLog.Stop();
             Check("F23", "Rezumatul real se scrie în log", written != null && written == now6 && written.StartsWith("Sănătate (6 h): RAM "), written);
+        }
+
+        sealed class MemStore : WinNotch.Core.Update.IStartupStore
+        {
+            public string Json;          // what startup.json would hold (round-tripped like the real file)
+            public WinNotch.Core.Update.RollbackNote Note;
+            public int Saves;
+            public WinNotch.Core.Update.StartupState Load() => Json == null ? null : JsonSerializer.Deserialize<WinNotch.Core.Update.StartupState>(Json);
+            public void Save(WinNotch.Core.Update.StartupState s) { Json = JsonSerializer.Serialize(s); Saves++; }
+            public WinNotch.Core.Update.RollbackNote TakeRollbackNote() { var n = Note; Note = null; return n; }
+            public void WriteRollbackNote(WinNotch.Core.Update.RollbackNote n) => Note = n;
+        }
+
+        /// <summary>P01: version order, release choice (beta channel, refused versions), crash guard, rollback files.</summary>
+        static void UpdateTests()
+        {
+            AppVersion V(string s) { AppVersion.TryParse(s, out var v); return v; }
+
+            // ---- versions
+            Check("AV1", "0.6.10 > 0.6.9 (pe numere, nu pe text)", V("0.6.10") > V("0.6.9"));
+            Check("AV2", "0.10.0 > 0.9.9 și 1.0.0 > 0.11.0", V("0.10.0") > V("0.9.9") && V("1.0.0") > V("0.11.0"));
+            Check("AV3", "0.7.0 > 0.7.0-rc.2 > 0.7.0-rc.1", V("0.7.0") > V("0.7.0-rc.2") && V("0.7.0-rc.2") > V("0.7.0-rc.1") && V("0.7.0-rc.10") > V("0.7.0-rc.2"));
+            Check("AV4", "v0.6.9, 0.6.9.0 și 0.6.9+abc sunt aceeași versiune; ToString = textul semnat", V("v0.6.9") == V("0.6.9") && V("0.6.9.0") == V("0.6.9") && V("0.6.9+abc") == V("0.6.9") && V("v0.7.0-rc.1").ToString() == "0.7.0-rc.1" && V("0.6.9.0").ToString() == "0.6.9");
+            bool noThrow = true; int bad = 0;
+            foreach (var t in new[] { null, "", "abc", "1..2", "1.2.3.4.5", "-1.0.0", "1.0.0-", "1.0.0-rc..1", "1.0.0-rc!", "99999999999.0.0", "1.x.0", " ", "v" })
+                try { if (!AppVersion.TryParse(t, out _)) bad++; } catch { noThrow = false; }
+            Check("AV5", "Text invalid: refuzat, fără excepție", noThrow && bad == 13, "bad=" + bad);
+
+            // ---- which release is offered
+            UpdateInfo R(string v, bool pre = false) => new UpdateInfo { Version = V(v), PreRelease = pre, ExeUrl = "x", SigUrl = "y", Size = 1 };
+            var cur = V("0.6.9");
+            Check("AV6", "Aceeași versiune nu se propune", ReleaseFeed.Pick(new[] { R("0.6.9") }, cur, false) == null);
+            Check("AV7", "Versiune mai veche: refuzată", ReleaseFeed.Pick(new[] { R("0.6.8"), R("0.6.1") }, cur, true) == null);
+            Check("AV8", "Mai nouă: propusă, cea mai nouă dintre ele", ReleaseFeed.Pick(new[] { R("0.6.10"), R("0.6.11"), R("0.6.8") }, cur, false)?.Version == V("0.6.11"));
+            var withPre = new[] { R("0.6.10"), R("0.7.0-rc.1", true) };
+            Check("RF1", "Canal beta oprit: pre-release ignorat", ReleaseFeed.Pick(withPre, cur, false)?.Version == V("0.6.10"));
+            Check("RF2", "Canal beta pornit: pre-release propus", ReleaseFeed.Pick(withPre, cur, true)?.Version == V("0.7.0-rc.1"));
+            Check("RF3", "Pe un rc, versiunea finală e propusă și cu beta oprit", ReleaseFeed.Pick(new[] { R("0.7.0") }, V("0.7.0-rc.2"), false)?.Version == V("0.7.0"));
+            Func<AppVersion, bool> refused = v => v == V("0.6.10");
+            Check("RF4", "Versiunea refuzată nu mai e propusă", ReleaseFeed.Pick(new[] { R("0.6.10") }, cur, false, refused) == null);
+            Check("RF5", "O versiune mai nouă decât cea refuzată e propusă", ReleaseFeed.Pick(new[] { R("0.6.10"), R("0.6.11") }, cur, false, refused)?.Version == V("0.6.11"));
+            string repo = "QvBnM/winnotch", dl = "https://github.com/" + repo + "/releases/download/";
+            string Rel(string tag, bool pre, string host = null, bool draft = false) =>
+                "{\"tag_name\":\"" + tag + "\",\"prerelease\":" + (pre ? "true" : "false") + ",\"draft\":" + (draft ? "true" : "false") + ",\"body\":\"## Nou\\n- x\",\"assets\":[" +
+                "{\"name\":\"WinNotch.exe\",\"size\":1000,\"browser_download_url\":\"" + (host ?? dl) + tag + "/WinNotch.exe\"}," +
+                "{\"name\":\"WinNotch.exe.sig\",\"size\":88,\"browser_download_url\":\"" + (host ?? dl) + tag + "/WinNotch.exe.sig\"}]}";
+            var feed = ReleaseFeed.Parse("[" + Rel("v0.7.0-rc.1", true) + "," + Rel("v0.6.10", false) + "," + Rel("v0.8.0", false, draft: true) + "," + Rel("v0.9.0", false, "https://evil.example/") + "," + Rel("vX", false) + "]", repo, 300L << 20);
+            Check("RF6", "Lista GitHub: ciorne, tag-uri invalide și fișiere de pe alt site sunt ignorate", feed.Count == 2 && feed.Any(f => f.PreRelease && f.Version == V("0.7.0-rc.1")), "count=" + feed.Count);
+            Check("RF7", "Lista GitHub cu beta oprit → 0.6.10, cu beta pornit → 0.7.0-rc.1",
+                  ReleaseFeed.Pick(feed, cur, false)?.Version == V("0.6.10") && ReleaseFeed.Pick(feed, cur, true)?.Version == V("0.7.0-rc.1"));
+            var single = ReleaseFeed.Parse(Rel("v0.6.10", false), repo, 300L << 20);
+            Check("RF8", "„latest” (un singur release) se citește la fel; JSON stricat = nimic, fără excepție",
+                  single.Count == 1 && single[0].Notes.Contains("Nou") && ReleaseFeed.Parse("{nu e json", repo, 1).Count == 0 && ReleaseFeed.Parse(null, repo, 1).Count == 0);
+            var pre2 = ReleaseFeed.Parse(Rel("v0.7.0-rc.2", false), repo, 300L << 20);
+            Check("RF9", "Un tag cu sufix e pre-release chiar dacă GitHub nu îl marchează așa", pre2.Count == 1 && pre2[0].PreRelease && ReleaseFeed.Pick(pre2, cur, false) == null);
+
+            // ---- the crash guard
+            var t0 = new DateTime(2026, 10, 5, 12, 0, 0, DateTimeKind.Utc);
+            var now = t0;
+            var me = V("0.6.9");
+            StartupGuard G(MemStore st) => new StartupGuard(st, me, () => now);
+            StartupAction Crash(MemStore st, bool old = true, bool safe = false, int minutes = 1) { var a = G(st).Begin(safe, old); now = now.AddMinutes(minutes); return a; }
+
+            var s1 = new MemStore();
+            var a1 = Crash(s1); var a2 = Crash(s1); var a3 = Crash(s1);
+            Check("SG1", "2 închideri bruște = nimic (pornire normală)", a1 == StartupAction.Normal && a2 == StartupAction.Normal && a3 == StartupAction.Normal);
+            var a4 = G(s1).Begin(false, true);
+            Check("SG2", "3 închideri bruște în 5 minute → repornire în modul sigur", a4 == StartupAction.RestartInSafeMode);
+            var safeRun = G(s1); var a5 = safeRun.Begin(true, true);
+            Check("SG3", "Repornirea cu --safe-mode rulează în modul sigur (fără o nouă repornire)", a5 == StartupAction.SafeMode && safeRun.InSafeMode);
+            now = now.AddMinutes(1);
+            var a6 = G(s1).Begin(false, true);
+            Check("SG4", "Încă o închidere bruscă în modul sigur → revenire la versiunea anterioară", a6 == StartupAction.Rollback);
+
+            now = t0; var s2 = new MemStore();
+            Crash(s2, minutes: 8); Crash(s2, minutes: 8); Crash(s2, minutes: 8);
+            Check("SG5", "3 închideri bruște rare (în 20 de minute) = nimic", G(s2).Begin(false, true) == StartupAction.Normal);
+
+            now = t0; var s3 = new MemStore();
+            for (int i = 0; i < 5; i++) { var g = G(s3); g.Begin(false, true); now = now.AddSeconds(30); g.MarkCleanExit(); }
+            Check("SG6", "„Ieșire” / oprirea Windows / repornirea pentru actualizare nu se numără", G(s3).Begin(false, true) == StartupAction.Normal);
+
+            now = t0; var s4 = new MemStore();
+            Crash(s4); Crash(s4);
+            var hg = G(s4); hg.Begin(false, true);
+            now = now.AddMinutes(9);
+            bool notYet = !hg.CheckHealthy() && !hg.OldExeMayBeDeleted;
+            hg.NoteError();                                   // an unhandled error: the 10 minutes start again
+            now = now.AddMinutes(9);
+            bool stillNot = !hg.CheckHealthy();
+            now = now.AddMinutes(2);
+            bool healthy = hg.CheckHealthy() && hg.OldExeMayBeDeleted && !hg.CheckHealthy();
+            Check("SG7", "10 minute fără erori → sănătoasă: abia acum se poate șterge WinNotch.old.exe (o eroare reia numărătoarea)", notYet && stillNot && healthy);
+            var stAfter = JsonSerializer.Deserialize<StartupState>(s4.Json);
+            Check("SG8", "Sănătoasă: contorul de închideri bruște se golește", stAfter.Healthy && stAfter.Starts.Count <= 1);
+            hg.MarkCleanExit();
+            Check("SG8b", "Sănătoasă, apoi oprită curat: pornirea următoare e normală", G(s4).Begin(false, true) == StartupAction.Normal);
+
+            now = t0; var s5 = new MemStore();
+            Crash(s5); Crash(s5); Crash(s5);
+            G(s5).Begin(false, false);                        // → restart in safe mode
+            G(s5).Begin(true, false); now = now.AddMinutes(1);
+            Check("SG9", "WinNotch.old.exe lipsă: fără revenire, rămâne în modul sigur", G(s5).Begin(false, false) == StartupAction.SafeMode);
+
+            now = t0; var s6 = new MemStore();
+            Crash(s6); Crash(s6); Crash(s6);
+            G(s6).Begin(false, true); G(s6).Begin(true, true); now = now.AddMinutes(1);
+            var rb = G(s6);
+            bool first = rb.Begin(false, true) == StartupAction.Rollback;
+            rb.RolledBack("test");
+            // the restored exe crashes the same way (same version string here): a second rollback within 30 minutes is blocked
+            now = now.AddMinutes(1);
+            Crash(s6); Crash(s6); Crash(s6);
+            G(s6).Begin(false, true); G(s6).Begin(true, true); now = now.AddMinutes(1);
+            var second = G(s6).Begin(false, true);
+            Check("SG10", "A doua revenire în 30 de minute e blocată (rămâne în modul sigur)", first && second == StartupAction.SafeMode);
+            now = now.AddMinutes(31);
+            var s6b = new MemStore { Json = s6.Json };
+            var st6 = JsonSerializer.Deserialize<StartupState>(s6b.Json); st6.Running = true; st6.SafeMode = true; s6b.Json = JsonSerializer.Serialize(st6);
+            Check("SG11", "După 30 de minute, o nouă revenire e din nou posibilă", G(s6b).Begin(false, true) == StartupAction.Rollback);
+
+            // the restored version reads the note: message once, refused version not offered, a newer one is
+            now = t0; var s7 = new MemStore { Note = new RollbackNote { Refused = "0.7.0", Reason = "x", At = t0 } };
+            var older = new StartupGuard(s7, V("0.6.9"), () => now);
+            older.Begin(false, false);
+            var again = new StartupGuard(s7, V("0.6.9"), () => now); again.Begin(false, false);
+            Check("SG12", "După revenire: mesajul „Am revenit la 0.6.9: 0.7.0 se închidea”, o singură dată",
+                  older.RollbackMessage == "Am revenit la 0.6.9: 0.7.0 se închidea" && s7.Note == null && again.RollbackMessage == null);
+            Check("SG13", "Versiunea refuzată nu mai e propusă, dar una mai nouă da",
+                  older.IsRefused(V("0.7.0")) && ReleaseFeed.Pick(new[] { R("0.7.0") }, V("0.6.9"), false, older.IsRefused) == null &&
+                  ReleaseFeed.Pick(new[] { R("0.7.0"), R("0.7.1") }, V("0.6.9"), false, older.IsRefused)?.Version == V("0.7.1"));
+            var s8 = new MemStore { Note = new RollbackNote { Refused = "0.6.9" } };
+            var same = new StartupGuard(s8, V("0.6.9"), () => now); same.Begin(false, false);
+            Check("SG14", "O notă veche despre versiunea instalată acum (reinstalată între timp) e ignorată", same.RollbackMessage == null && !same.IsRefused(V("0.6.9")));
+            var s9 = new MemStore(); var rg = new StartupGuard(s9, V("0.7.0"), () => now); rg.Begin(false, true); rg.RolledBack("motiv");
+            Check("SG15", "Revenirea scrie rollback.json (versiunea refuzată + motivul) și ține minte versiunea",
+                  s9.Note?.Refused == "0.7.0" && s9.Note.Reason == "motiv" && rg.IsRefused(V("0.7.0")));
+            var s10 = new MemStore(); var ng = new StartupGuard(s10, V("0.7.1"), () => now);
+            s10.Json = JsonSerializer.Serialize(new StartupState { Version = "0.7.0", Running = true, SafeMode = true, Starts = new List<DateTime> { now, now, now }, Refused = new List<string> { "0.7.0" } });
+            Check("SG16", "O versiune nouă începe cu contorul gol, dar păstrează lista refuzată", ng.Begin(false, true) == StartupAction.Normal && ng.IsRefused(V("0.7.0")));
+
+            // ---- startup.json on disk
+            string folder = Path.Combine(TestFolder, "startup");
+            Directory.CreateDirectory(folder);
+            var fs = new FileStartupStore(folder);
+            var fg = new StartupGuard(fs, V("0.6.9"), () => now);
+            bool missingOk = fg.Begin(false, true) == StartupAction.Normal && File.Exists(fs.StatePath);
+            File.WriteAllText(fs.StatePath, "{ nu e json");
+            bool corruptOk; try { corruptOk = new StartupGuard(fs, V("0.6.9"), () => now).Begin(false, true) == StartupAction.Normal; } catch { corruptOk = false; }
+            File.WriteAllText(fs.StatePath, "null");
+            bool nullOk; try { nullOk = new StartupGuard(fs, V("0.6.9"), () => now).Begin(false, true) == StartupAction.Normal; } catch { nullOk = false; }
+            Check("ST1", "startup.json lipsă, corupt sau „null” = stare implicită, fără excepție", missingOk && corruptOk && nullOk);
+            var w = new StartupGuard(fs, V("0.6.9"), () => now); w.Begin(false, true); w.RolledBack("r");
+            Check("ST2", "Scriere atomică: fără fișier .tmp rămas; rollback.json citit o dată și șters",
+                  !File.Exists(fs.StatePath + ".tmp") && File.Exists(fs.NotePath) && fs.TakeRollbackNote()?.Refused == "0.6.9" && !File.Exists(fs.NotePath) && fs.TakeRollbackNote() == null);
+
+            // ---- the file swap
+            string dir = Path.Combine(TestFolder, "rollback");
+            if (Directory.Exists(dir)) Directory.Delete(dir, true);
+            Directory.CreateDirectory(dir);
+            string exe = Path.Combine(dir, "WinNotch.exe");
+            File.WriteAllText(exe, "nou"); File.WriteAllText(Rollback.OldPath(exe), "vechi");
+            bool released = false;
+            bool sw = Rollback.Swap(exe, () => released = true, null);
+            Check("RB1", "Revenire: WinNotch.exe → WinNotch.rejected.exe, WinNotch.old.exe → WinNotch.exe",
+                  sw && released && File.ReadAllText(exe) == "vechi" && File.ReadAllText(Rollback.RejectedPath(exe)) == "nou" && !File.Exists(Rollback.OldPath(exe)));
+            string logged = null;
+            bool sw2 = Rollback.Swap(exe, () => released = false, l => logged = l);
+            Check("RB2", "WinNotch.old.exe lipsă: nimic schimbat, doar un rând în log", !sw2 && released && File.ReadAllText(exe) == "vechi" && logged != null);
         }
 
         static bool SafeCalc(string q) { try { Launcher.Calculate(q); return true; } catch { return false; } }

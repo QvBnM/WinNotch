@@ -8,7 +8,7 @@ Stări: **De făcut** · **În lucru** · **Gata**. Regulile de lucru sunt în `
 | ID | Sarcină | Stare |
 |---|---|---|
 | P00 | Reguli pentru agenți, roadmap, ADR, teste manuale, șabloane GitHub, CI | Gata |
-| P01 | Revenire automată la versiunea anterioară și pornire în mod sigur (`--safe-mode`) | De făcut |
+| P01 | Revenire automată la versiunea anterioară și pornire în mod sigur (`--safe-mode`), compararea versiunilor, canal beta, măsurători de bază | Gata |
 
 ## 0.7 — Fundația
 

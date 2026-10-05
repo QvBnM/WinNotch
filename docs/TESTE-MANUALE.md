@@ -47,3 +47,17 @@ Fiecare sarcină din `docs/ROADMAP.md` adaugă aici o secțiune `### PNN — num
 | U1 | Din meniul iconiței, la zi | Click dreapta pe iconiță › „Caută actualizări”, cu ultima versiune instalată. | În notch: „Ai ultima versiune (0.6.8).” |
 | U2 | Din meniul iconiței, versiune nouă | La fel, cu o versiune mai veche instalată. | Oferta „WinNotch X e gata” apare imediat, chiar dacă ai apăsat „Mai târziu” înainte. |
 | U3 | Cu verificarea automată oprită | Debifează „Caută singur versiuni noi”, „Salvează”, apoi „Caută actualizări” (sau „Caută acum” în Setări) cu o versiune mai veche. | Oferta apare în notch; fără apăsarea ta, WinNotch nu mai caută singur. |
+
+### P01 — Revenire automată, mod sigur, canal beta
+
+Fișierele de test se creează în `%AppData%\WinNotch\` (Win+R → `%AppData%\WinNotch`). Pentru P01.2–P01.4 ai nevoie de o instalare actualizată din notch (să existe `WinNotch.old.exe` lângă `WinNotch.exe`).
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P01.1 | Canal beta | Setări › Comportament: „Canal beta (versiuni de test)” oprit → „Caută acum”. Apoi pornit → „Caută acum” (cu un pre-release mai nou publicat pe GitHub). | Oprit: doar versiunile finale (pre-release-ul nu apare). Pornit: pre-release-ul e oferit în notch, cu notele lui. |
+| P01.2 | Crash-test → mod sigur → revenire | Creează fișierul gol `crash-test.flag`. Pornește WinNotch de 3 ori (se închide singur după 5 s de fiecare dată), apoi a 4-a oară. | A 4-a pornire repornește singură în modul sigur (în log: „repornesc în modul sigur”, apoi „Pornit în mod sigur”). Modul sigur se închide și el după 5 s → la pornirea următoare WinNotch revine la versiunea anterioară: lângă exe apare `WinNotch.rejected.exe`, `WinNotch.old.exe` dispare, iar `WinNotch.exe` e versiunea veche. **Șterge `crash-test.flag` înainte de pornirea versiunii restaurate.** |
+| P01.3 | Mesajul după revenire | După P01.2 (versiunea restaurată e 0.6.9 sau mai nouă), lasă WinNotch să pornească. | O singură dată, în notch: „Am revenit la <versiune>: <versiunea refuzată> se închidea”. La pornirea următoare nu mai apare. Cu revenire la 0.6.8 sau mai veche, mesajul nu apare (limitare documentată). |
+| P01.4 | `WinNotch.old.exe` păstrat 10 minute | Actualizează din notch la o versiune nouă; uită-te în folderul exe-ului imediat, apoi după 11 minute de rulare normală. | Imediat: `WinNotch.old.exe` e acolo. După 10 minute fără erori: șters (și `WinNotch.rejected.exe`, dacă era). |
+| P01.5 | Versiunea refuzată nu mai e oferită | După P01.2–P01.3: „Caută acum” / „Caută actualizări”. | Versiunea refuzată nu e oferită („Ai ultima versiune”). Când apare pe GitHub una mai nouă decât ea, aceea e oferită. |
+| P01.6 | „Ieșire” nu se numără | Pornește și închide WinNotch din meniul iconiței („Ieșire”) de 4 ori la rând, în mai puțin de 5 minute; la fel cu repornirea Windows. | Pornește normal de fiecare dată: niciun mod sigur, nicio revenire. |
+| P01.7 | Măsurători de bază | Ieși din WinNotch, apoi `powershell -ExecutionPolicy Bypass -File tools\measure-perf.ps1`. Opțional: creează `perf.flag` și deschide notch-ul cu hover. | După ~11 minute apare `docs\perf\baseline-<versiune>.md` cu media și maximul pentru Working Set, Private Bytes și CPU%. Cu `perf.flag`: în log „Perf: hover → primul cadru al deschiderii: N ms”. |

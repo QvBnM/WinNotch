@@ -63,8 +63,14 @@ jobs:
           [IO.File]::WriteAllText("out/WinNotch.exe.sig", [Convert]::ToBase64String($sig))
           "SHA-256: $hash"
 
+      # a version with "-" (0.7.0-rc.1) is a pre-release: only the beta channel offers it
       - name: Publish the release
         if: env.NEW == 'true'
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "v${{ env.VERSION }}" out/WinNotch.exe out/WinNotch.exe.sig --target "${{ github.sha }}" --title "WinNotch ${{ env.VERSION }}" --notes-file RELEASE_NOTES.md
+        run: |
+          $extra = @()
+          if ($env:VERSION -like '*-*') { $extra += '--prerelease' }
+          gh release create "v$($env:VERSION)" out/WinNotch.exe out/WinNotch.exe.sig --target "${{ github.sha }}" --title "WinNotch $($env:VERSION)" --notes-file RELEASE_NOTES.md @extra
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
