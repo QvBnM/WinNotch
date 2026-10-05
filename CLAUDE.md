@@ -11,6 +11,8 @@ correct diacritics (ă â î ș ț). Code comments are in English.
   (pages, themes, settings, news); `Widgets/` — widget grid 6×4, catalog, gallery; `Panes/` — standard pages;
   `Services/` — media, audio, browser bridge, temperatures (SYSTEM helper), updater, calendar, etc.
 - `tests/` — C# tests (`dotnet run --project tests/WinNotch.Tests.csproj`) and extension tests (`node tests/extension/*.test.js`).
+  `tests/WinNotch.Smoke/` — smoke tests (FlaUI) that CI runs on the published exe with `--smoke` (Windows only; see
+  `docs/adr/0005-teste-de-fum.md`). A change to the tray menu texts, the notch's modes or the hotkey must keep them green.
 
 ## Releasing a new version (automatic updates)
 1. Bump `<Version>` in `WinNotch.csproj` (e.g. 0.6.6 → 0.6.7).

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Smoke tests (P02): start the published WinNotch.exe in smoke mode and drive it through UI Automation (FlaUI).
+       Run in CI (windows-latest) after the build; see .github/workflows/ci.yml. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
+    <Compile Include="SmokeProgram.cs" />
+    <!-- the same status format and file names as the app -->
+    <Compile Include="..\..\Features\Smoke\SmokeMode.cs" />
+  </ItemGroup>
+</Project>

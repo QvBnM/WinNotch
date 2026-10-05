@@ -42,6 +42,7 @@ namespace WinNotch
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+            Features.Smoke.SmokeMode.Init(e.Args);            // first: in smoke mode the data folder is a separate one
             DispatcherUnhandledException += (s, ex) => { Log("Eroare neprevăzută: " + ex.Exception); ex.Handled = true; Guard?.NoteError(); };
             string mode = e.Args.Length > 0 ? e.Args[0] : "";
 
@@ -72,6 +73,7 @@ namespace WinNotch
             catch (AbandonedMutexException) { first = true; }
             if (!first)
             {
+                if (Features.Smoke.SmokeMode.On) { Log("Test de fum: WinNotch rulează deja."); Shutdown(3); return; }
                 MessageBox.Show("WinNotch rulează deja. Îl găsești în zona de notificări, lângă ceas.", "WinNotch",
                     MessageBoxButton.OK, MessageBoxImage.Information);
                 Shutdown();
@@ -98,6 +100,13 @@ namespace WinNotch
         private void StartApp(bool safeMode)
         {
             Settings = AppSettings.Load();
+            if (Features.Smoke.SmokeMode.On)
+            {
+                // smoke tests (own folder, see SmokeMode): no update checks, no temperature service
+                Settings.AutoUpdate = false;
+                Settings.Temperatures = false;
+                Log("Test de fum: pornit (fără actualizări, fără serviciul de temperatură).");
+            }
             // feature switches; --safe-mode runs without the Experimental and Beta ones (nothing saved changes)
             if (safeMode) Log("Pornit în mod sigur: funcțiile Experimental și Beta sunt oprite.");
             Core.Flags.FeatureFlags.Current = new Core.Flags.FeatureFlags(Settings.Features, safeMode: safeMode,
@@ -109,6 +118,7 @@ namespace WinNotch
             if (JustUpdated) Services.Updater.CleanUp();
             _notch = new NotchWindow(Settings);
             _notch.Show();
+            if (Features.Smoke.SmokeMode.On) _notch.StartSmoke();
             _tray = new TrayIcon(this);
             RegisterActions();
             Features.Context.ContextStartup.Start(_notch, Log);       // what the user is doing now (P12); off with its switch

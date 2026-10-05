@@ -30,4 +30,24 @@ jobs:
           node --test tests/extension/controls.test.js
 
       - name: Build
-        run: dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out
+        run: dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
+
+      # P02: the published exe, started with --smoke and driven through UI Automation (tests/WinNotch.Smoke)
+      - name: Smoke tests
+        timeout-minutes: 8
+        run: dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- publish\WinNotch.exe smoke-artifacts
+
+      - name: Smoke artifacts (log and screenshot)
+        if: failure()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force smoke-artifacts | Out-Null
+          $log = Join-Path $env:APPDATA 'WinNotch\smoke\log.txt'
+          if ((Test-Path $log) -and -not (Test-Path smoke-artifacts\log.txt)) { Copy-Item $log smoke-artifacts\log.txt }
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-artifacts
+          path: smoke-artifacts
+          if-no-files-found: ignore

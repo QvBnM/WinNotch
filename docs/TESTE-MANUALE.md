@@ -88,3 +88,14 @@ Motorul nu are interfață: verificările se fac în `%AppData%\WinNotch\log.txt
 | P12.10 | Google Meet doar în cameră (R1) | Deschide meet.google.com (pagina de start), apoi caută „google meet” pe Google; apoi intră într-o cameră (`abc-defg-hij`). | Pe pagina de start și în căutare: nicio „întâlnire Meet”. În cameră: „întâlnire Meet”. |
 | P12.11 | Video doar de la aplicația din față (R1) | Pornește muzica în Spotify, apoi pune o pagină fără video în Chrome pe F11. Apoi pornește un video YouTube în Chrome pe tot ecranul. | Primul caz: „ecran complet Other”. Al doilea: „ecran complet Video”. |
 | P12.12 | Camera prin notificări (R1) | Notch închis. Pornește camera (aplicația Cameră sau o ședință), apoi oprește-o. Uită-te în log după „camera nu poate fi urmărită”. | Fără acel rând în log: schimbarea camerei apare în câteva secunde și cu notch-ul închis (de exemplu „întâlnire Teams” când doar camera e pornită de Teams). Cu rândul în log: camera e verificată doar cu notch-ul deschis, la 10 s. CPU în standby ca în P12.8. |
+
+### P02 — Teste de fum (CI)
+
+Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai jos sunt pentru rularea locală și pentru siguranța modului `--smoke`.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 9 rânduri PASS și „TEST DE FUM: 9 PASS, 0 FAIL”; WinNotch se închide singur. |
+| P02.2 | Setările tale nu sunt atinse | După P02.1, compară `%AppData%\WinNotch\settings.json` și `log.txt` cu cele dinainte. | Neschimbate; testul a scris doar în `%AppData%\WinNotch\smoke\`. |
+| P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
+| P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
