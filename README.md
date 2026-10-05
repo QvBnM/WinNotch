@@ -16,6 +16,10 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.14
+
+- „Manager de activități” în Setări › Funcții noi (experimental, oprit implicit): alertele din notch trec printr-un singur loc; arată la fel ca până acum.
+
 ## Noutăți în 0.6.13
 
 - Testele automate de pornire rulează acum chiar pe fișierul care ți se trimite, înainte de semnare; nimic nu se schimbă la ce vezi.
