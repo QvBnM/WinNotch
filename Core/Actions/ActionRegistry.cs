@@ -78,6 +78,8 @@ namespace WinNotch.Core.Actions
             if (a == null) throw new ArgumentNullException(nameof(a));
             if (!IsValidId(a.Id)) throw new ArgumentException("Id invalid (format „zonă.verb”): " + a.Id);
             if (string.IsNullOrWhiteSpace(a.Title)) throw new ArgumentException("Acțiune fără titlu: " + a.Id);
+            if (a.Timeout is TimeSpan t && (t <= TimeSpan.Zero || t.TotalMilliseconds > int.MaxValue))
+                throw new ArgumentException("Timp maxim invalid (trebuie să fie pozitiv): " + a.Id);
             if ((a.AllowedInvokers & ActionInvoker.LocalApi) != 0 && a.Safety != ActionSafety.Safe)
                 throw new ArgumentException("Doar acțiunile sigure pot fi pornite din API-ul local: " + a.Id);
             var names = a.Parameters.Select(p => p?.Name).ToList();
@@ -85,19 +87,23 @@ namespace WinNotch.Core.Actions
                 throw new ArgumentException("Parametri fără nume sau dubli: " + a.Id);
         }
 
-        /// <summary>Provider actions, read once and kept until a refresh. Bad or duplicate ones are skipped (and logged).</summary>
+        /// <summary>
+        /// Provider actions, read once and kept until a refresh. Bad or duplicate ones are skipped (and logged). If a
+        /// provider failed, the list isn't kept: it is read again next time (a passing error doesn't stick).
+        /// </summary>
         private List<ActionDescriptor> Dynamic()
         {
             lock (_lock)
             {
                 if (_dynamic != null) return _dynamic;
                 var list = new List<ActionDescriptor>();
+                bool failed = false;
                 var seen = new HashSet<string>(_static.Keys, StringComparer.Ordinal);
                 foreach (var p in _providers)
                 {
                     IEnumerable<ActionDescriptor> items;
                     try { items = p.GetActions()?.ToList() ?? new List<ActionDescriptor>(); }
-                    catch (Exception ex) { _log?.Invoke("Acțiuni: o listă dinamică nu a putut fi citită: " + ex.GetType().Name); continue; }
+                    catch (Exception ex) { failed = true; _log?.Invoke("Acțiuni: o listă dinamică nu a putut fi citită: " + ex.GetType().Name); continue; }
                     foreach (var a in items)
                     {
                         try { Check(a); }
@@ -106,7 +112,7 @@ namespace WinNotch.Core.Actions
                         list.Add(a);
                     }
                 }
-                _dynamic = list;
+                if (!failed) _dynamic = list;
                 return list;
             }
         }
@@ -209,16 +215,19 @@ namespace WinNotch.Core.Actions
 
         /// <summary>
         /// Runs an action after checking: it exists, the caller may start it, it is available, its feature is on and the
-        /// parameters are valid. Runs on the UI thread if it needs to, with a timeout (10 s by default). Never throws.
+        /// parameters are valid. An action that needs confirmation (Confirm, Dangerous) runs only with
+        /// <paramref name="confirmed"/> = true: the caller asked the user. Runs on the UI thread if it needs to, with a
+        /// timeout (10 s by default); a token that is already cancelled stops it before it starts. Never throws.
         /// </summary>
-        public async Task<ActionResult> InvokeAsync(string id, IReadOnlyDictionary<string, string> args, ActionInvoker invoker, CancellationToken ct = default)
+        public async Task<ActionResult> InvokeAsync(string id, IReadOnlyDictionary<string, string> args, ActionInvoker invoker,
+                                                    CancellationToken ct = default, bool confirmed = false)
         {
             ActionResult result;
             ActionDescriptor a = null;
             try
             {
                 a = Get(id);
-                result = await Run(a, args, invoker, ct).ConfigureAwait(false);
+                result = await Run(a, args, invoker, ct, confirmed).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -235,12 +244,13 @@ namespace WinNotch.Core.Actions
             return result;
         }
 
-        private async Task<ActionResult> Run(ActionDescriptor a, IReadOnlyDictionary<string, string> raw, ActionInvoker invoker, CancellationToken ct)
+        private async Task<ActionResult> Run(ActionDescriptor a, IReadOnlyDictionary<string, string> raw, ActionInvoker invoker, CancellationToken ct, bool confirmed)
         {
             if (a == null) return ActionResult.Failed("Acțiunea nu există.");
             if (invoker == ActionInvoker.None || (a.AllowedInvokers & invoker) != invoker) return ActionResult.Failed("Acțiunea nu poate fi pornită de aici.");
             if (!FeatureOn(a)) return ActionResult.Failed("Funcția e oprită (Setări › Funcții noi).");
             if (!Available(a)) return ActionResult.Failed(a.UnavailableMessage ?? "Acțiunea nu e disponibilă acum.");
+            if (a.Safety != ActionSafety.Safe && !confirmed) return ActionResult.Failed("Acțiunea cere confirmare.");
 
             // parameters: every one known, required ones present, each value valid
             var values = new Dictionary<string, object>(StringComparer.Ordinal);
@@ -259,18 +269,23 @@ namespace WinNotch.Core.Actions
             }
             var args = new ActionArgs(values);
 
+            if (ct.IsCancellationRequested) return ActionResult.Failed("Anulat.");
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(a.Timeout ?? DefaultTimeout);
+            var token = cts.Token;          // taken now: work queued on the UI thread may start after cts is disposed
             Task<ActionResult> work;
             try
             {
-                work = a.RequiresUiThread ? _ui.InvokeAsync(() => a.ExecuteAsync(args, cts.Token)) : a.ExecuteAsync(args, cts.Token);
+                // cancelled (timeout or caller) while waiting for the UI thread: never starts
+                work = a.RequiresUiThread
+                    ? _ui.InvokeAsync(() => token.IsCancellationRequested ? Task.FromResult(ActionResult.Failed("Anulat.")) : a.ExecuteAsync(args, token))
+                    : a.ExecuteAsync(args, token);
             }
             catch (Exception ex) { Report(a, ex); return ActionResult.Failed("Acțiunea nu a reușit."); }
             if (work == null) return ActionResult.Failed("Acțiunea nu a reușit.");
 
             var stop = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            using (cts.Token.Register(() => stop.TrySetResult(true)))
+            using (token.Register(() => stop.TrySetResult(true)))
             {
                 var first = await Task.WhenAny(work, stop.Task).ConfigureAwait(false);
                 if (first != work)

@@ -84,4 +84,5 @@ Versiunile 0.7 → 1.0 sunt construite pe pași (ID-uri P00, P10, P11… în `do
      `App.RegisterActions`). Nu deschide `LocalApi` decât pentru acțiuni sigure și doar dacă e cerut explicit.
   5. Adaugă teste (id unic, titlu, alias, apelul corect, disponibilitate, parametri) și rândul ei în lista din DOCUMENTATIE.md.
   Pornește acțiunile doar prin `ActionRegistry.Current.InvokeAsync` (verificările nu se ocolesc) și nu pune în log valorile parametrilor.
+  Pentru Confirm/Dangerous, întreabă utilizatorul și abia apoi apelează cu `confirmed: true`; fără el, registrul refuză.
 - CI (`.github/workflows/ci.yml`) rulează build-ul și testele la fiecare pull request și push pe alte ramuri decât `main`.

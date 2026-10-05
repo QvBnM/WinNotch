@@ -19,8 +19,13 @@ din `NotchWindow`, fără un nume comun, fără verificări comune și fără un
 - **Toate verificările stau în registru,** nu în apelanți: existența, cine are voie, disponibilitatea, comutatorul funcției
   (`FeatureId`), parametrii tipizați (Int, Percent, Enum, Text cu lungime maximă), timpul maxim (10 s implicit), firul
   interfeței (`IUiDispatcher`). `InvokeAsync` nu aruncă niciodată; o excepție devine `Failed` și `FeatureFlags.ReportError`.
+  Un token deja anulat nu pornește nimic, iar o acțiune pusă la coadă pe firul UI nu mai pornește dacă între timp a expirat.
+  `Timeout` trebuie să fie pozitiv (verificat la înregistrare); `Aliases`/`Parameters` null devin liste goale.
 - **Reguli de siguranță pentru apelanți:**
-  - `Safety`: Safe / Confirm / Dangerous. Apelantul (Command Bar, Quick Actions) cere confirmare pentru Confirm și Dangerous.
+  - `Safety`: Safe / Confirm / Dangerous. Registrul **impune** confirmarea: o acțiune Confirm sau Dangerous rulează doar cu
+    `InvokeAsync(..., confirmed: true)`, pe care apelantul îl dă numai după ce a întrebat utilizatorul. Implicit, acțiunile
+    Confirm/Dangerous nu sunt permise pentru `Workflow` (n-are pe cine întreba); un workflow le poate primi doar explicit și
+    tot cu `confirmed: true` (confirmarea dată la crearea workflow-ului).
   - `AllowedInvokers` implicit: UI, CommandBar, QuickAction, Workflow. **API-ul local (`LocalApi`) nu are acces implicit:**
     o acțiune trebuie să-l ceară explicit, iar registrul refuză la înregistrare orice acțiune ne-sigură care îl cere.
   - Jurnalul conține doar id-ul, apelantul și rezultatul, niciodată valorile parametrilor (pot fi texte personale).

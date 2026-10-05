@@ -125,13 +125,24 @@ namespace WinNotch.Core.Actions
         /// <summary>Romanian, as the user sees it.</summary>
         public string Title { get; }
         /// <summary>Other words that find it, Romanian and English ("mute", "mut", "taie microfonul").</summary>
-        public IReadOnlyList<string> Aliases { get; init; } = Array.Empty<string>();
+        public IReadOnlyList<string> Aliases { get => _aliases; init => _aliases = value ?? Array.Empty<string>(); }
+        private readonly IReadOnlyList<string> _aliases = Array.Empty<string>();
         public string Category { get; init; } = "";
         /// <summary>A glyph from the icon font already used by the app (Segoe Fluent Icons / MDL2).</summary>
         public string Icon { get; init; } = "";
-        public IReadOnlyList<ActionParameter> Parameters { get; init; } = Array.Empty<ActionParameter>();
+        public IReadOnlyList<ActionParameter> Parameters { get => _parameters; init => _parameters = value ?? Array.Empty<ActionParameter>(); }
+        private readonly IReadOnlyList<ActionParameter> _parameters = Array.Empty<ActionParameter>();
         public ActionSafety Safety { get; init; } = ActionSafety.Safe;
-        public ActionInvoker AllowedInvokers { get; init; } = ActionInvoker.Default;
+        /// <summary>
+        /// Who may start it. Unless set, <see cref="ActionInvoker.Default"/>; for an action that needs confirmation
+        /// (Confirm, Dangerous) the default leaves out Workflow, which has nobody to ask.
+        /// </summary>
+        public ActionInvoker AllowedInvokers
+        {
+            get => _invokers ?? (Safety == ActionSafety.Safe ? ActionInvoker.Default : ActionInvoker.Default & ~ActionInvoker.Workflow);
+            init => _invokers = value;
+        }
+        private readonly ActionInvoker? _invokers;
         /// <summary>The feature flag that must be on (null = always on).</summary>
         public string FeatureId { get; init; }
         /// <summary>Must run on the UI thread (it touches windows, the clipboard, COM shell objects).</summary>

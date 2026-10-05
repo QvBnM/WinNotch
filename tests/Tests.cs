@@ -736,6 +736,33 @@ namespace WinNotch
             Check("RB3", "Eșec la jumătatea schimbării: WinNotch.exe rămâne versiunea curentă", !sw3 && File.Exists(exe) && File.ReadAllText(exe) == "curent");
         }
 
+        /// <summary>Queues the UI work instead of running it (as when the UI thread is busy); <see cref="RunQueued"/> runs it later.</summary>
+        sealed class LateUiDispatcher : IUiDispatcher
+        {
+            private Func<System.Threading.Tasks.Task<ActionResult>> _queued;
+            public System.Threading.Tasks.Task<ActionResult> InvokeAsync(Func<System.Threading.Tasks.Task<ActionResult>> work) { _queued = work; return new System.Threading.Tasks.TaskCompletionSource<ActionResult>().Task; }
+            public ActionResult RunQueued() => _queued?.Invoke().GetAwaiter().GetResult();
+        }
+
+        sealed class ThrowingUiDispatcher : IUiDispatcher
+        {
+            public System.Threading.Tasks.Task<ActionResult> InvokeAsync(Func<System.Threading.Tasks.Task<ActionResult>> work) => throw new InvalidOperationException("dispatcher oprit");
+        }
+
+        /// <summary>A provider that can fail once, like a device scan that hits a passing error.</summary>
+        sealed class FlakyProvider : IActionProvider
+        {
+            public bool FailNext; public int Reads; public string Id = "x.dyn";
+            public event Action Changed;
+            public void Invalidate() => Changed?.Invoke();
+            public IEnumerable<ActionDescriptor> GetActions()
+            {
+                Reads++;
+                if (FailNext) { FailNext = false; throw new System.IO.IOException(); }
+                return new[] { new ActionDescriptor(Id, "Dinamică", (a, ct) => ActionResult.OkTask()) };
+            }
+        }
+
         /// <summary>Records what the built-in actions call (no Windows, no WPF).</summary>
         sealed class FakeBuiltInHost : IBuiltInHost
         {
@@ -771,8 +798,8 @@ namespace WinNotch
         /// <summary>P11: the action registry (search, checks, timeouts, UI thread, providers, log) and the built-in actions.</summary>
         static void ActionTests()
         {
-            ActionResult Run(ActionRegistry r, string id, Dictionary<string, string> args = null, ActionInvoker inv = ActionInvoker.CommandBar, CancellationToken ct = default) =>
-                r.InvokeAsync(id, args, inv, ct).GetAwaiter().GetResult();
+            ActionResult Run(ActionRegistry r, string id, Dictionary<string, string> args = null, ActionInvoker inv = ActionInvoker.CommandBar, CancellationToken ct = default, bool confirmed = false) =>
+                r.InvokeAsync(id, args, inv, ct, confirmed).GetAwaiter().GetResult();
             ActionDescriptor A(string id, string title, string[] aliases = null, string cat = "", Func<bool> avail = null) =>
                 new ActionDescriptor(id, title, (a, ct) => ActionResult.OkTask("ok"), avail) { Aliases = aliases ?? Array.Empty<string>(), Category = cat };
 
@@ -917,6 +944,65 @@ namespace WinNotch
             bool survives; try { survives = Run(r, "tools.screenshot").Success; } catch { survives = false; }
             Check("AR28", "Un abonat la ActionInvoked care dă eroare nu strică invocarea", survives);
 
+            // ---- R1 fixes: cancelled token, dispatcher, null task, provider errors, bad timeout, null aliases, confirmation
+            int ran = 0;
+            var rc = new ActionRegistry(ui: new InlineUiDispatcher());
+            rc.Register(new ActionDescriptor("x.count", "Numără", (a, ct) => { ran++; return ActionResult.OkTask(); }));
+            rc.Register(new ActionDescriptor("x.count-ui", "Numără pe UI", (a, ct) => { ran++; return ActionResult.OkTask(); }) { RequiresUiThread = true });
+            using (var done = new CancellationTokenSource())
+            {
+                done.Cancel();
+                var c1 = Run(rc, "x.count", ct: done.Token); var c2 = Run(rc, "x.count-ui", ct: done.Token);
+                Check("AR29", "Token deja anulat → Failed „Anulat.”, acțiunea nu rulează (nici pe UI)", !c1.Success && !c2.Success && c1.Message == "Anulat." && ran == 0);
+            }
+            var lateUi = new LateUiDispatcher();
+            var rl = new ActionRegistry(ui: lateUi);
+            rl.Register(new ActionDescriptor("x.late", "Târzie", (a, ct) => { ran++; return ActionResult.OkTask(); }) { RequiresUiThread = true, Timeout = TimeSpan.FromMilliseconds(50) });
+            var late = Run(rl, "x.late");
+            bool lateNoThrow = true; ActionResult lateRun = null;
+            try { lateRun = lateUi.RunQueued(); } catch { lateNoThrow = false; }
+            Check("AR30", "Timeout cât acțiunea aștepta firul UI: Failed, iar când UI-ul ajunge la ea, nu mai pornește", !late.Success && lateNoThrow && ran == 0 && lateRun != null && !lateRun.Success);
+            var rthrow = new ActionRegistry(ui: new ThrowingUiDispatcher());
+            rthrow.Register(new ActionDescriptor("x.ui2", "Pe UI", (a, ct) => ActionResult.OkTask()) { RequiresUiThread = true });
+            var rn = new ActionRegistry();
+            rn.Register(new ActionDescriptor("x.null-task", "Task null", (a, ct) => null));
+            rn.Register(new ActionDescriptor("x.null-result", "Rezultat null", (a, ct) => System.Threading.Tasks.Task.FromResult<ActionResult>(null)));
+            bool noThrow2 = true; ActionResult d1 = null, d2 = null, d3 = null;
+            try { d1 = Run(rthrow, "x.ui2"); d2 = Run(rn, "x.null-task"); d3 = Run(rn, "x.null-result"); } catch { noThrow2 = false; }
+            Check("AR31", "Dispatcher care aruncă, task null sau rezultat null → Failed, fără excepție", noThrow2 && !d1.Success && !d2.Success && !d3.Success);
+            var flaky = new FlakyProvider();
+            var rpv = new ActionRegistry();
+            rpv.RegisterProvider(flaky);
+            flaky.FailNext = true;
+            bool firstEmpty = rpv.Get("x.dyn") == null;
+            bool secondOk = rpv.Get("x.dyn") != null;                 // the error wasn't kept in the cache
+            int reads = flaky.Reads;
+            rpv.Get("x.dyn");
+            bool cachedNow = flaky.Reads == reads;
+            flaky.Id = "x.dyn2"; flaky.Invalidate();
+            Check("AR32", "Provider care aruncă o dată: rezultatul gol nu rămâne în cache; după succes e păstrat, iar Invalidate îl golește",
+                  firstEmpty && secondOk && cachedNow && rpv.Get("x.dyn2") != null && rpv.Get("x.dyn") == null);
+            bool zero = false, neg = false, huge = false;
+            try { rn.Register(new ActionDescriptor("x.t0", "T", (a, ct) => ActionResult.OkTask()) { Timeout = TimeSpan.Zero }); } catch (ArgumentException) { zero = true; }
+            try { rn.Register(new ActionDescriptor("x.t1", "T", (a, ct) => ActionResult.OkTask()) { Timeout = TimeSpan.FromSeconds(-1) }); } catch (ArgumentException) { neg = true; }
+            try { rn.Register(new ActionDescriptor("x.t2", "T", (a, ct) => ActionResult.OkTask()) { Timeout = TimeSpan.FromDays(100) }); } catch (ArgumentException) { huge = true; }
+            Check("AR33", "Timeout zero, negativ sau uriaș → refuzat la înregistrare", zero && neg && huge && rn.Get("x.t0") == null);
+            rn.Register(new ActionDescriptor("x.no-alias", "Fără aliasuri", (a, ct) => ActionResult.OkTask()) { Aliases = null, Parameters = null });
+            bool searchOk; try { searchOk = rn.Search("alias", ActionInvoker.CommandBar).Any(a => a.Id == "x.no-alias") && Run(rn, "x.no-alias").Success; } catch { searchOk = false; }
+            Check("AR34", "Aliases sau Parameters null → liste goale; căutarea și pornirea merg", searchOk && rn.Get("x.no-alias").Aliases.Count == 0);
+            int ejected = 0;
+            var rcf = new ActionRegistry();
+            rcf.Register(new ActionDescriptor("x.confirm", "Cu confirmare", (a, ct) => { ejected++; return ActionResult.OkTask(); }) { Safety = ActionSafety.Confirm });
+            var noYes = Run(rcf, "x.confirm");
+            var wf = Run(rcf, "x.confirm", inv: ActionInvoker.Workflow, confirmed: true);
+            var yes = Run(rcf, "x.confirm", confirmed: true);
+            Check("AR35", "Confirm fără confirmare → Failed și nu rulează; Workflow nu are voie implicit; cu confirmed=true rulează",
+                  !noYes.Success && noYes.Message.Contains("confirmare") && !wf.Success && yes.Success && ejected == 1 &&
+                  (rcf.Get("x.confirm").AllowedInvokers & ActionInvoker.Workflow) == 0);
+            rcf.Register(new ActionDescriptor("x.confirm-wf", "Cu confirmare, workflow", (a, ct) => ActionResult.OkTask()) { Safety = ActionSafety.Confirm, AllowedInvokers = ActionInvoker.Workflow });
+            Check("AR36", "Workflow poate fi permis explicit unei acțiuni cu confirmare, dar tot cere confirmed=true",
+                  !Run(rcf, "x.confirm-wf", inv: ActionInvoker.Workflow).Success && Run(rcf, "x.confirm-wf", inv: ActionInvoker.Workflow, confirmed: true).Success);
+
             // ---- built-in actions
             var bh = new FakeBuiltInHost { Drives = new List<DriveItem> { new DriveItem { Root = "E:\\", Name = "SanDisk" } } };
             var rb = new ActionRegistry();
@@ -931,6 +1017,7 @@ namespace WinNotch
             Check("BA2", "Lista completă: audio, media, unelte, fereastră, spații, dispozitive, setări Windows, WinNotch", expected.All(id => rb.Get(id) != null), string.Join(",", expected.Where(id => rb.Get(id) == null)));
             Check("BA3", "Scoaterea USB cere confirmare; nimic periculos; nimic deschis API-ului local",
                   rb.Get("device.eject-e").Safety == ActionSafety.Confirm && all.Count(a => a.Safety != ActionSafety.Safe) == 1 &&
+                  (rb.Get("device.eject-e").AllowedInvokers & ActionInvoker.Workflow) == 0 && (rb.Get("audio.mute").AllowedInvokers & ActionInvoker.Workflow) != 0 &&
                   all.All(a => a.Safety != ActionSafety.Dangerous && (a.AllowedInvokers & ActionInvoker.LocalApi) == 0));
             Check("BA4", "Titlurile sunt în română (diacritice corecte, fără ş/ţ cu sedilă)", all.All(a => !a.Title.Contains('ş') && !a.Title.Contains('ţ')) && all.Count(a => a.Title.Any(ch => "ăâîșț".Contains(char.ToLowerInvariant(ch)))) >= 10);
             var vol = Run(rb, "audio.volume-set", new Dictionary<string, string> { ["valoare"] = "70" });
@@ -943,11 +1030,12 @@ namespace WinNotch
             bh.HasMedia = false; bh.HasTargetWindow = true; bh.MonitorCount = 1;
             Check("BA7", "Disponibilitate: media fără sursă și „monitorul 2” cu un singur monitor → Failed cu mesaj",
                   !Run(rb, "media.next").Success && Run(rb, "media.next").Message.Length > 0 && !Run(rb, "window.next-monitor").Success && Run(rb, "window.mini").Success);
-            Run(rb, "settings.wifi"); Run(rb, "device.eject-e"); Run(rb, "winnotch.speed-test");
+            bool ejectNeedsYes = !Run(rb, "device.eject-e").Success && !bh.Calls.Contains("eject E:\\");
+            Run(rb, "settings.wifi"); Run(rb, "device.eject-e", confirmed: true); Run(rb, "winnotch.speed-test");
             Check("BA8", "Acțiunile apelează serviciile existente (setări prin ms-settings, Eject pe rădăcina unității)",
-                  bh.Calls.Contains("uri ms-settings:network-wifi") && bh.Calls.Contains("eject E:\\") && bh.Calls.Contains("speed") && bh.Calls.Contains("win Mini"));
+                  ejectNeedsYes && bh.Calls.Contains("uri ms-settings:network-wifi") && bh.Calls.Contains("eject E:\\") && bh.Calls.Contains("speed") && bh.Calls.Contains("win Mini"));
             bh.Drives.Clear();
-            Check("BA9", "Stick scos între timp: „Scoate” devine indisponibilă", !Run(rb, "device.eject-e").Success);
+            Check("BA9", "Stick scos între timp: „Scoate” devine indisponibilă", !Run(rb, "device.eject-e", confirmed: true).Success);
             Check("BA10", "Căutare reală: „muta” → microfonul, „wifi” → setările Wi-Fi, „poza ecran” → captura",
                   rb.Search("muta", ActionInvoker.CommandBar).Any(a => a.Id == "audio.mute-mic") && rb.Search("wifi", ActionInvoker.CommandBar).First().Id == "settings.wifi" &&
                   rb.Search("poza ecran", ActionInvoker.CommandBar).First().Id == "tools.screenshot");
