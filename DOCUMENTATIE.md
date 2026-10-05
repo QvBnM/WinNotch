@@ -1,6 +1,6 @@
 # WinNotch — documentație completă
 
-Versiune: **0.6.6**. Ultima actualizare: 5 octombrie 2026.
+Versiune: **0.6.7**. Ultima actualizare: 5 octombrie 2026.
 
 WinNotch este un „Dynamic Island” pentru Windows 10 și 11: o pastilă neagră în partea de sus a ecranului.
 - **Cât e închisă,** arată informații scurte.
@@ -8,7 +8,7 @@ WinNotch este un „Dynamic Island” pentru Windows 10 și 11: o pastilă neagr
 - **Când se întâmplă ceva** (volum, piesă nouă, baterie, temperatură, memorie plină), afișează alerte scurte.
 - **Se personalizează** cu pagini proprii din widget-uri (ca pe iPhone) și cu teme întunecate, luminoase sau automate.
 
-Documentul descrie tot ce e implementat în cod până la versiunea 0.6.6: paginile din widget-uri, editarea în notch, fereastra WinNotch (pagini, teme, setări) și temele sunt în secțiunea 16.
+Documentul descrie tot ce e implementat în cod până la versiunea 0.6.7: paginile din widget-uri, editarea în notch, fereastra WinNotch (pagini, teme, setări) și temele sunt în secțiunea 16.
 
 ---
 
@@ -489,6 +489,7 @@ Detaliile sunt în `AUDIT.md`. Pe scurt:
 | 0.5.2 | Descărcarea SDK-ului arată pașii, progresul și timpul rămas |
 | 0.5.4 | SDK-ul descărcat de `build.bat` e păstrat o singură dată pentru contul tău și folosit de toate versiunile (nu mai întreabă la fiecare arhivă nouă) |
 | 0.6.0 | Widget-uri pe grilă 6×4, pagini proprii (goale sau copiate), paginile standard cu ascundere și duplicare, editare în notch (drag, resize, galerie, manager de pagini), fereastra Editor cu inspector, widget-uri personalizate, teme (întunecat/luminos/automat, 6 teme, culori proprii, colțuri, transparență, teme salvate); notch-ul se dă la o parte peste ferestre maximizate; alerta de piesă nouă nu se mai repetă la YouTube și nu apare când sursa e fereastra din față; alerta de volum doar la schimbări reale; next/previous în browser prin handler-ele media ale paginii (extensia 1.5); widget-uri ca pe iPhone (tragi din galerie la mărimea implicită, click pentru toate mărimile, click pe widget pentru redimensionare); o singură fereastră pentru pagini, teme și setări; ochi pe tab-uri în editare; colțuri rotunjite peste tot și widget-ul Muzică aliniat ca pagina Acasă; fereastra notch-ului din nou mică (animații fluide), crește doar cât e deschisă galeria; alertă de memorie cu cine consumă și „Optimizează” |
+| 0.6.7 | Secțiunea „Funcții noi (experimental)” în Setări (comutatoare pentru funcțiile noi, oprire automată după erori repetate), modul sigur `--safe-mode`, rezumatul de sănătate în log la 6 ore |
 | 0.6.6 | Actualizări automate din GitHub Releases: construite și testate de GitHub Actions, semnate cu cheia WinNotch și verificate înainte de instalare; ofertă în notch (Actualizează / Mai târziu), progres, repornire; alerte pentru serviciul de temperatură și extensia de reîncărcat |
 | 0.6.5 | Remedierea auditului de securitate 3: WinNotch nu mai rulează ca administrator (temperatura procesorului vine dintr-un serviciu SYSTEM read-only), exe blocat cât rulează, startup hooks dezactivate, lansări doar prin Explorer, autentificare reciprocă extensie–aplicație fără token pe rețea, coperte descărcate de browser, limite pentru pagini, calendar și conexiuni, căi de rețea refuzate (extensia 1.6) |
 | 0.6.4 | Fereastra WinNotch se deschide centrată pe monitorul cu mouse-ul, lată (94%) și complet vizibilă. În editare se vede toată grila 6×4; cât tragi sau redimensionezi, celelalte widget-uri se mută live unde ar ajunge (fantoma devine roșie unde nu încape). Arcul de redimensionare apare doar dacă widget-ul are loc de altă mărime. Galeria are „Toate” și arată fiecare widget ca previzualizare live |
