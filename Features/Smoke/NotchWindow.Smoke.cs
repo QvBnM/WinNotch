@@ -27,9 +27,12 @@ namespace WinNotch
             _smokeTimer.Start();
         }
 
-        /// <summary>Mode and pill size, read by the smoke test from the window's ItemStatus.</summary>
-        private void UpdateSmokeStatus() =>
-            AutomationProperties.SetItemStatus(this, SmokeMode.Status(_mode.ToString(), Pill.ActualWidth, Pill.ActualHeight));
+        /// <summary>Mode, pill size and what the Activity Manager shows (split, group, peek), read by the smoke test from the window's ItemStatus.</summary>
+        private void UpdateSmokeStatus()
+        {
+            var (split, group, peek) = ActivitySmokeFields();
+            AutomationProperties.SetItemStatus(this, SmokeMode.Status(_mode.ToString(), Pill.ActualWidth, Pill.ActualHeight, split, group, peek));
+        }
 
         /// <summary>Reads smoke-commands.txt from the smoke folder, deletes it, runs the valid lines in order.</summary>
         private void RunSmokeCommands()
@@ -71,7 +74,58 @@ namespace WinNotch
                     flags.Set(c.Argument, on);
                     App.Log("Test de fum: funcția „" + c.Argument + "” " + (on ? "pornită" : "oprită") + ".");
                     break;
+                case SmokeCommandKind.PersistentActivity:
+                case SmokeCommandKind.BurstActivity:
+                case SmokeCommandKind.LowActivity:
+                    if (!_activityOn || _activity == null) { App.Log("Test de fum: managerul de activități e oprit; comanda e ignorată."); break; }
+                    var r = SmokeActivity(c);
+                    App.Log("Test de fum: activitate de test (" + c.Kind + " " + c.Number + "): " + r + ".");
+                    break;
+                case SmokeCommandKind.DismissActivities:
+                    _ = SmokeDismissActivities();
+                    break;
             }
+            UpdateSmokeStatus();
+        }
+
+        /// <summary>Test activities: persistent n (split pill with two), a burst of n alerts („N noutăți”), a Low one (peek).</summary>
+        private Core.Activity.PostResult SmokeActivity(SmokeCommand c)
+        {
+            switch (c.Kind)
+            {
+                case SmokeCommandKind.PersistentActivity:
+                    return _activity.Post(new Core.Activity.Activity
+                    {
+                        Id = "smoke-persistent-" + c.Number, Persistent = true, Title = "Activitate de test " + c.Number, Glyph = c.Number == 1 ? Ui.GMusic : Ui.GClock,
+                    });
+                case SmokeCommandKind.BurstActivity:
+                    var last = Core.Activity.PostResult.Dropped;
+                    for (int i = 1; i <= c.Number; i++)
+                        last = _activity.Post(new Core.Activity.Activity
+                        {
+                            Id = "smoke-burst-" + i, Duration = TimeSpan.FromSeconds(3), Width = 300, Height = 40,
+                            Payload = LiveRow(LiveIcon(Features.Context.ContextActions.GInfo, CWhite), "Alertă de test " + i, null, null),
+                        });
+                    return last;
+                default:
+                    return _activity.Post(new Core.Activity.Activity
+                    {
+                        Id = "smoke-low", Priority = Core.Activity.ActivityPriority.Low, Title = "Activitate discretă de test", Duration = TimeSpan.FromSeconds(2),
+                    });
+            }
+        }
+
+        /// <summary>"dismiss-activities": through the action, like the Command Bar will (unavailable with the switch off).</summary>
+        private async System.Threading.Tasks.Task SmokeDismissActivities()
+        {
+            var reg = Core.Actions.ActionRegistry.Current;
+            if (reg == null) { App.Log("Test de fum: registrul de acțiuni lipsește."); return; }
+            try
+            {
+                var r = await reg.InvokeAsync(Features.Activity.ActivityActions.DismissAllId, null, Core.Actions.ActionInvoker.UI);
+                App.Log("Test de fum: " + Features.Activity.ActivityActions.DismissAllId + " → " + (r.Success ? "făcut" : "indisponibil") + ".");
+            }
+            catch (Exception ex) { App.Log("Test de fum: comanda a dat eroare: " + ex.GetType().Name); }
             UpdateSmokeStatus();
         }
 

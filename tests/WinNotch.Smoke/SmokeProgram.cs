@@ -22,8 +22,11 @@ namespace WinNotch.Smoke
     /// Smoke tests (P02): the real, published WinNotch.exe started with --smoke and driven through UI Automation, the way a
     /// user would: notch window visible, alive for 30 s, alerts change the pill's size, a feature switch, Win+Alt+N, the
     /// WinNotch window from the tray menu, a clean "Ieșire" (exit code 0) and a log without exceptions.
-    /// Usage: WinNotch.Smoke [path\to\WinNotch.exe] [artifacts folder]. Exit code 0 = all passed. On a failure: a screenshot
-    /// and log.txt in the artifacts folder.
+    /// Usage: WinNotch.Smoke [path\to\WinNotch.exe] [artifacts folder] [--activity-manager=on|off]. Exit code 0 = all passed.
+    /// With --activity-manager=on (P13) the "activity-manager" switch is turned on first and every check runs with the alerts
+    /// going through the Activity Manager, plus the split pill, „N noutăți” and the peek; off (the default), the same checks
+    /// on the old path and the Activity Manager's test commands must be refused. log.txt is copied to the artifacts folder
+    /// after every run; on a failure also a screenshot and the notch's state.
     /// </summary>
     public static class SmokeProgram
     {
@@ -34,14 +37,24 @@ namespace WinNotch.Smoke
         private static string _dataDir, _log;
         private static readonly Stopwatch _clock = new Stopwatch();
         private static int _pass;
+        private static bool _activityOn;
+        private const string ActivityFeature = "activity-manager";
 
         private sealed class SmokeFailure : Exception { public SmokeFailure(string m) : base(m) { } }
 
         public static int Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
-            string exe = Path.GetFullPath(args.Length > 0 ? args[0] : Path.Combine("publish", "WinNotch.exe"));
-            string outDir = Path.GetFullPath(args.Length > 1 ? args[1] : "smoke-artifacts");
+            var pos = args.Where(a => !a.StartsWith("--", StringComparison.Ordinal)).ToArray();
+            foreach (var a in args.Where(a => a.StartsWith("--", StringComparison.Ordinal)))
+            {
+                if (a == "--activity-manager=on") _activityOn = true;
+                else if (a == "--activity-manager=off") _activityOn = false;
+                else { Console.WriteLine("Argument necunoscut: " + a); return 2; }
+            }
+            string exe = Path.GetFullPath(pos.Length > 0 ? pos[0] : Path.Combine("publish", "WinNotch.exe"));
+            string outDir = Path.GetFullPath(pos.Length > 1 ? pos[1] : "smoke-artifacts");
+            Console.WriteLine("Test de fum, cu „" + ActivityFeature + "” " + (_activityOn ? "pornit" : "oprit") + ".");
             _dataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WinNotch", SmokeMode.FolderName);
             _log = Path.Combine(_dataDir, "log.txt");
             string step = "pregătire";
@@ -55,22 +68,27 @@ namespace WinNotch.Smoke
                 _app = Process.Start(new ProcessStartInfo(exe, SmokeMode.Arg) { UseShellExecute = false, WorkingDirectory = Path.GetDirectoryName(exe) });
 
                 Run(step = "Fereastra notch există și e vizibilă", NotchVisible);
+                if (_activityOn) Run(step = "Comutatorul „activity-manager” pornit înainte de verificări", ActivityManagerOn);
                 Run(step = "Procesul trăiește 30 s", AliveFor30s);
                 Run(step = "Alertă de volum: pastila își schimbă mărimea și revine", () => AlertChangesPill("post-alert volume"));
                 Run(step = "Alertă de piesă: pastila își schimbă mărimea și revine", () => AlertChangesPill("post-alert track"));
                 Run(step = "Comutator de funcție: „context-engine” oprit și pornit din nou", ToggleFeature);
+                Run(step = _activityOn ? "Pastila împărțită: două activități persistente, apoi „activity.dismiss-all”" : "Fără Activity Manager: activitățile persistente sunt refuzate", SplitPill);
+                Run(step = _activityOn ? "„5 noutăți”: 5 alerte rapide se adună într-una" : "Fără Activity Manager: rafala de test e refuzată", Burst);
+                Run(step = _activityOn ? "Activitate Low: pastila se lărgește puțin 2 s („peek”)" : "Fără Activity Manager: activitatea Low e refuzată", Peek);
                 Run(step = "Win+Alt+N deschide și închide notch-ul", Hotkey);
                 Run(step = "Fereastra WinNotch se deschide din meniul iconiței", EditorFromTray);
                 Run(step = "„Ieșire” din meniul iconiței închide curat (cod 0)", ExitFromTray);
                 Run(step = "Nicio excepție în log.txt", LogClean);
-                Console.WriteLine($"\nTEST DE FUM: {_pass} PASS, 0 FAIL ({_clock.Elapsed.TotalSeconds:0} s)");
+                Console.WriteLine($"\nTEST DE FUM ({ActivityFeature} {(_activityOn ? "pornit" : "oprit")}): {_pass} PASS, 0 FAIL ({_clock.Elapsed.TotalSeconds:0} s)");
+                CopyLog(outDir);
                 return 0;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"FAIL  {step}: {(ex is SmokeFailure ? ex.Message : ex.ToString())}");
                 SaveArtifacts(outDir);
-                Console.WriteLine($"\nTEST DE FUM: {_pass} PASS, 1 FAIL. Artefacte: {outDir}");
+                Console.WriteLine($"\nTEST DE FUM ({ActivityFeature} {(_activityOn ? "pornit" : "oprit")}): {_pass} PASS, 1 FAIL. Artefacte: {outDir}");
                 return 1;
             }
             finally
@@ -117,6 +135,8 @@ namespace WinNotch.Smoke
         private sealed class Status
         {
             public string Mode; public int W, H; public string Raw;
+            /// <summary>P13: what the Activity Manager shows (0 when nothing of it).</summary>
+            public int Split, Group, Peek;
             public override string ToString() => Raw;
             public bool SameSize(Status o) => Math.Abs(W - o.W) <= 2 && Math.Abs(H - o.H) <= 2;
         }
@@ -124,7 +144,9 @@ namespace WinNotch.Smoke
         private static Status ReadStatus()
         {
             string raw = _notch.Properties.ItemStatus.ValueOrDefault ?? "";
-            return SmokeMode.TryParseStatus(raw, out var m, out int w, out int h) ? new Status { Mode = m, W = w, H = h, Raw = raw } : new Status { Mode = "", Raw = raw };
+            return SmokeMode.TryParseStatus(raw, out var m, out int w, out int h, out var x)
+                ? new Status { Mode = m, W = w, H = h, Raw = raw, Split = x["split"], Group = x["group"], Peek = x["peek"] }
+                : new Status { Mode = "", Raw = raw };
         }
 
         [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hwnd);
@@ -174,6 +196,76 @@ namespace WinNotch.Smoke
             WaitFor(() => LogCount("funcție necunoscută: nu-exista"), n => n > 0, TimeSpan.FromSeconds(10), "funcția necunoscută ignorată");
         }
 
+        // ------------------------------------------------------------------ P13: the Activity Manager
+
+        private static void ActivityManagerOn()
+        {
+            Command("toggle feature " + ActivityFeature);
+            WaitFor(() => LogCount("Activity Manager: pornit."), n => n > 0, TimeSpan.FromSeconds(10), "„Activity Manager: pornit.” în log");
+        }
+
+        /// <summary>Waits until the notch is in standby and settled; returns its status.</summary>
+        private static Status SettledIdle()
+        {
+            WaitFor(ReadStatus, s => s.Mode == "Idle", TimeSpan.FromSeconds(15), "notch-ul în standby");
+            Thread.Sleep(800);
+            return WaitFor(ReadStatus, s => s.Mode == "Idle", TimeSpan.FromSeconds(5), "notch-ul în standby");
+        }
+
+        /// <summary>Off: the command is refused (a log line, no fatal one) and the pill stays in standby, without activity fields.</summary>
+        private static void Refused(string command)
+        {
+            int before = LogCount("managerul de activități e oprit; comanda e ignorată");
+            Command(command);
+            WaitFor(() => LogCount("managerul de activități e oprit; comanda e ignorată"), n => n > before, TimeSpan.FromSeconds(10), "comanda „" + command + "” refuzată în log");
+            Thread.Sleep(1000);
+            var s = ReadStatus();
+            if (s.Mode != "Idle" || s.Split + s.Group + s.Peek != 0) Fail("Cu „" + ActivityFeature + "” oprit, „" + command + "” a schimbat pastila: " + s);
+        }
+
+        private static void SplitPill()
+        {
+            SettledIdle();
+            if (!_activityOn)
+            {
+                Refused("post-activity persistent 1");
+                Refused("post-activity persistent 2");
+                int before = LogCount("activity.dismiss-all → indisponibil");
+                Command("dismiss-activities");
+                WaitFor(() => LogCount("activity.dismiss-all → indisponibil"), n => n > before, TimeSpan.FromSeconds(10), "„activity.dismiss-all” indisponibilă în log");
+                return;
+            }
+            Command("post-activity persistent 1");
+            WaitFor(ReadStatus, s => s.Mode == "Live" && s.Split == 0, TimeSpan.FromSeconds(8), "o activitate persistentă (mode=Live, fără split)");
+            Command("post-activity persistent 2");
+            var split = WaitFor(ReadStatus, s => s.Mode == "Live" && s.Split == 1, TimeSpan.FromSeconds(8), "pastila împărțită (split=1)");
+            Thread.Sleep(5000);                                                   // persistent: still there after an alert would have ended
+            var still = ReadStatus();
+            if (still.Split != 1) Fail("Pastila împărțită a dispărut singură: " + still);
+            Command("dismiss-activities");
+            WaitFor(() => LogCount("activity.dismiss-all → făcut"), n => n > 0, TimeSpan.FromSeconds(10), "„activity.dismiss-all → făcut” în log");
+            WaitFor(ReadStatus, s => s.Mode == "Idle" && s.Split == 0, TimeSpan.FromSeconds(10), "standby după „activity.dismiss-all” (de la " + split + ")");
+        }
+
+        private static void Burst()
+        {
+            SettledIdle();
+            if (!_activityOn) { Refused("post-activity burst 5"); return; }
+            Command("post-activity burst 5");
+            var g = WaitFor(ReadStatus, s => s.Mode == "Live" && s.Group == 5, TimeSpan.FromSeconds(8), "„5 noutăți” (group=5)");
+            WaitFor(ReadStatus, s => s.Mode == "Idle" && s.Group == 0, TimeSpan.FromSeconds(15), "standby după „5 noutăți” (de la " + g + ")");
+        }
+
+        private static void Peek()
+        {
+            SettledIdle();
+            if (!_activityOn) { Refused("post-activity low"); return; }
+            Command("post-activity low");
+            var p = WaitFor(ReadStatus, s => s.Mode == "Live" && s.Peek == 1, TimeSpan.FromSeconds(8), "„peek” (peek=1)");
+            if (p.H > 40) Fail("„Peek” ar trebui să rămână cât pastila mică (înălțime ≤ 40): " + p);
+            WaitFor(ReadStatus, s => s.Mode == "Idle" && s.Peek == 0, TimeSpan.FromSeconds(10), "standby după „peek”");
+        }
+
         private static void Hotkey()
         {
             WaitFor(ReadStatus, s => s.Mode == "Idle", TimeSpan.FromSeconds(15), "notch-ul în standby");
@@ -218,18 +310,31 @@ namespace WinNotch.Smoke
             catch (JsonException) { Fail("startup.json nu poate fi citit după „Ieșire”."); }
         }
 
+        /// <summary>
+        /// Opens the tray menu and clicks <paramref name="name"/>. Exactly one retry: on the CI runner the menu sometimes
+        /// doesn't open on the second time (docs/PROGRESS.md); the reason is written to the console (and the run summary).
+        /// </summary>
         private static void ClickMenuItem(string name)
         {
+            const int attempts = 2;
             for (int attempt = 1; ; attempt++)
             {
                 OpenTrayMenu();
-                AutomationElement item = null;
+                AutomationElement item;
                 try
                 {
                     item = WaitFor(() => FindMenu()?.FindFirstDescendant(cf => cf.ByControlType(ControlType.MenuItem).And(cf.ByName(name))),
                                    i => i != null, TimeSpan.FromSeconds(5), "„" + name + "” în meniul iconiței");
                 }
-                catch (SmokeFailure) when (attempt < 3) { Keyboard.Type(VirtualKeyShort.ESCAPE); continue; }
+                catch (SmokeFailure ex) when (attempt < attempts)
+                {
+                    string why = "meniul iconiței nu a arătat „" + name + "” (încercarea " + attempt + "): " + ex.Message + "; reîncerc o singură dată.";
+                    Console.WriteLine("      (" + why + ")");
+                    if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true") Console.WriteLine("::warning::Test de fum: " + why);
+                    Keyboard.Type(VirtualKeyShort.ESCAPE);
+                    Thread.Sleep(500);
+                    continue;
+                }
                 item.Click();
                 return;
             }
@@ -336,6 +441,17 @@ namespace WinNotch.Smoke
             foreach (var l in lines.Where(l => l.Contains("Exception", StringComparison.Ordinal) && !bad.Contains(l)))
                 Console.WriteLine("      (în log, tratat: " + l + ")");
             if (bad.Count > 0) Fail("Excepții în log.txt:\n" + string.Join("\n", bad.Take(20)));
+        }
+
+        /// <summary>log.txt of this run, kept next to the other run's (each run has its own artifacts folder).</summary>
+        private static void CopyLog(string outDir)
+        {
+            try
+            {
+                Directory.CreateDirectory(outDir);
+                if (File.Exists(_log)) File.WriteAllLines(Path.Combine(outDir, "log.txt"), LogLines());
+            }
+            catch (Exception ex) { Console.WriteLine("log.txt nu a putut fi copiat: " + ex.GetType().Name); }
         }
 
         // ------------------------------------------------------------------ on failure

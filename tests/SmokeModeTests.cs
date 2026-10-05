@@ -44,6 +44,27 @@ namespace WinNotch
                           "12:00 Eroare în funcția „context-engine”: COMException" }.All(SmokeMode.IsFatalLogLine) &&
                   !SmokeMode.IsFatalLogLine("12:00 Temperaturi: COMException") && !SmokeMode.IsFatalLogLine("12:00 Test de fum: alertă de volum.") &&
                   !SmokeMode.IsFatalLogLine("") && !SmokeMode.IsFatalLogLine(null));
+
+            // P13: the Activity Manager's test commands and status fields
+            Check("SM7", "Comenzi P13: activitate persistentă 1–3, rafală de 1–10 alerte, activitate Low, închide activitățile",
+                  SmokeMode.Parse("post-activity persistent 1") is { Kind: SmokeCommandKind.PersistentActivity, Number: 1 } &&
+                  SmokeMode.Parse(" POST-ACTIVITY  persistent 3") is { Kind: SmokeCommandKind.PersistentActivity, Number: 3 } &&
+                  SmokeMode.Parse("post-activity burst 5") is { Kind: SmokeCommandKind.BurstActivity, Number: 5 } &&
+                  SmokeMode.Parse("post-activity burst 10") is { Kind: SmokeCommandKind.BurstActivity, Number: 10 } &&
+                  SmokeMode.Parse("post-activity low")?.Kind == SmokeCommandKind.LowActivity && SmokeMode.Parse("dismiss-activities")?.Kind == SmokeCommandKind.DismissActivities);
+            Check("SM8", "Comenzi P13 invalide ignorate: număr lipsă, 0, prea mare, negativ, cu semne, cuvinte în plus",
+                  new[] { "post-activity", "post-activity persistent", "post-activity persistent 0", "post-activity persistent 4", "post-activity burst 11",
+                          "post-activity burst -1", "post-activity burst 5x", "post-activity burst ５", "post-activity burst 0005", "post-activity low 2",
+                          "post-activity split 1", "dismiss-activities now", "dismiss activities" }.All(l => SmokeMode.Parse(l) == null));
+            bool e1 = SmokeMode.TryParseStatus(SmokeMode.Status("Live", 360, 40, split: 1), out var m1, out int w1, out _, out var x1);
+            bool e2 = SmokeMode.TryParseStatus(SmokeMode.Status("Live", 230, 40, group: 5), out _, out _, out _, out var x2);
+            bool e3 = SmokeMode.TryParseStatus(SmokeMode.Status("Live", 240, 34, peek: 1), out _, out _, out _, out var x3);
+            bool e4 = SmokeMode.TryParseStatus("mode=Idle;pill=180x32", out _, out _, out _, out var x4);
+            bool ext = e1 && e2 && e3 && e4;
+            Check("SM9", "Starea cu câmpurile P13: „;split=1”, „;group=5”, „;peek=1” se scriu și se citesc; fără ele, formatul vechi; câmpuri necunoscute → refuzat",
+                  ext && m1 == "Live" && w1 == 360 && x1["split"] == 1 && x1["group"] == 0 && x2["group"] == 5 && x3["peek"] == 1 && x4["split"] == 0 &&
+                  SmokeMode.Status("Live", 360, 40, 1, 0, 0) == "mode=Live;pill=360x40;split=1" && SmokeMode.Status("Live", 230, 40, group: 5) == "mode=Live;pill=230x40;group=5" &&
+                  !SmokeMode.TryParseStatus("mode=Live;pill=360x40;evil=1", out _, out _, out _) && SmokeMode.TryParseStatus("mode=Live;pill=360x40;split=1", out _, out _, out _));
         }
     }
 }

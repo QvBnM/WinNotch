@@ -32,21 +32,28 @@ jobs:
       - name: Build
         run: dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
-      # P02: the published exe, started with --smoke and driven through UI Automation (tests/WinNotch.Smoke)
-      - name: Smoke tests
+      # P02: the published exe, started with --smoke and driven through UI Automation (tests/WinNotch.Smoke).
+      # P13: the whole set twice, with the "activity-manager" switch off (the old alert path) and on (the Activity
+      # Manager, plus the split pill, „N noutăți” and the peek); each run keeps its own log in its own folder.
+      - name: Smoke tests (activity-manager off)
         timeout-minutes: 8
-        run: dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- publish\WinNotch.exe smoke-artifacts
+        run: dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- publish\WinNotch.exe smoke-artifacts\activity-manager-off --activity-manager=off
 
-      - name: Smoke artifacts (log and screenshot)
+      - name: Smoke tests (activity-manager on)
+        if: ${{ !cancelled() }}
+        timeout-minutes: 8
+        run: dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- publish\WinNotch.exe smoke-artifacts\activity-manager-on --activity-manager=on
+
+      - name: Smoke artifacts (last log, if a run could not copy it)
         if: failure()
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force smoke-artifacts | Out-Null
           $log = Join-Path $env:APPDATA 'WinNotch\smoke\log.txt'
-          if ((Test-Path $log) -and -not (Test-Path smoke-artifacts\log.txt)) { Copy-Item $log smoke-artifacts\log.txt }
+          if (Test-Path $log) { Copy-Item $log smoke-artifacts\last-run-log.txt }
 
       - uses: actions/upload-artifact@v4
-        if: failure()
+        if: ${{ !cancelled() }}
         with:
           name: smoke-artifacts
           path: smoke-artifacts
