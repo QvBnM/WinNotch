@@ -13,6 +13,7 @@
     <Compile Include="Tests.cs" />
     <Compile Include="ContextTests.cs" />
     <Compile Include="SmokeModeTests.cs" />
+    <Compile Include="AlertCharacterizationTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -44,5 +45,6 @@
     <Compile Include="..\Core\Context\CameraRefresh.cs" />
     <Compile Include="..\Features\Context\ContextActions.cs" />
     <Compile Include="..\Features\Smoke\SmokeMode.cs" />
+    <Compile Include="..\Features\Activity\LegacyAlerts.cs" />
   </ItemGroup>
 </Project>
