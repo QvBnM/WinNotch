@@ -407,6 +407,35 @@ namespace WinNotch
             f4.Set("exp", true);
             Check("F16", "Pornită din nou de utilizator după oprirea automată: motivul dispare", f4.IsEnabled("exp") && f4.DisabledReason("exp") == null);
 
+            // a handler that throws: logged, the others still run, Set and Disable don't throw (on a background thread it would end the app)
+            var logs6 = new List<string>();
+            var f6 = new FeatureFlags(new AppSettings().Features, cat, log: logs6.Add);
+            int after6 = 0;
+            f6.Changed += _ => throw new InvalidOperationException("C:\\Users\\ion\\x");
+            f6.Changed += _ => after6++;
+            bool threw6 = false;
+            try { f6.Set("exp", true); f6.Disable("exp", "test"); } catch { threw6 = true; }
+            Check("F24", "Un abonat la Changed care aruncă: nu oprește Set/Disable și nici ceilalți abonați", !threw6 && after6 == 2 && !f6.IsEnabled("exp"));
+            Check("F25", "Eroarea abonatului ajunge în log doar ca tip", logs6.Any(l => l.Contains("InvalidOperationException")) && !logs6.Any(l => l.Contains("Users")));
+            var t6 = new Thread(() => f6.Set("exp", true)); t6.Start(); t6.Join();
+            Check("F26", "Pe un fir de fundal, un abonat care aruncă nu oprește procesul", f6.IsEnabled("exp") && after6 == 3);
+
+            // Save in Settings re-applies only what you changed: a feature switched off automatically meanwhile stays off
+            var f7 = new FeatureFlags(new AppSettings().Features, cat);
+            f7.Set("exp", true);
+            var shown7 = new Dictionary<string, bool> { ["exp"] = true, ["beta"] = true, ["stable"] = true };   // the page, when built
+            f7.Disable("exp", "API lipsă");                                                                     // meanwhile, automatically
+            int ch7 = 0; f7.Changed += _ => ch7++;
+            f7.ApplyChoices(shown7, new Dictionary<string, bool> { ["exp"] = true, ["beta"] = false, ["stable"] = true });
+            Check("F27", "„Salvează” aplică doar ce ai schimbat: o funcție oprită automat între timp rămâne oprită, cu motivul",
+                  !f7.IsEnabled("exp") && f7.DisabledReason("exp") == "API lipsă" && !f7.IsEnabled("beta") && f7.IsEnabled("stable") && ch7 == 1);
+            f7.ApplyChoices(new Dictionary<string, bool> { ["exp"] = false }, new Dictionary<string, bool> { ["exp"] = true });
+            Check("F29", "Repornită de tine din Setări după oprirea automată: pornește și motivul dispare", f7.IsEnabled("exp") && f7.DisabledReason("exp") == null);
+            var f8 = new FeatureFlags(new AppSettings().Features, cat);
+            f8.Disable("exp", new string('x', 500) + "\nlinie");
+            Check("F28", "Motivul din Disable e limitat (120 de caractere, un singur rând)",
+                  f8.DisabledReason("exp").Length <= FeatureFlags.MaxReason + 1 && !f8.DisabledReason("exp").Contains('\n'));
+
             // safe mode
             var s5 = new AppSettings(); new FeatureFlags(s5.Features, cat).Set("exp", true);
             string before5 = JsonSerializer.Serialize(s5);

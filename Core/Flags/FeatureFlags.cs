@@ -9,7 +9,9 @@ namespace WinNotch.Core.Flags
     /// differ from the default are kept, so a feature turned on by default in a later version reaches everyone who never
     /// touched it. Safe mode (--safe-mode) treats Experimental and Beta features as off without changing what is saved.
     /// <para><see cref="Changed"/> fires once per change of the effective state, on the thread that made the change:
-    /// handlers that touch the UI go through the Dispatcher.</para>
+    /// handlers that touch the UI go through the Dispatcher. Handlers read <see cref="IsEnabled"/> instead of assuming
+    /// the direction (two changes from different threads can arrive in either order). A handler that throws is logged
+    /// and skipped.</para>
     /// </summary>
     public sealed class FeatureFlags
     {
@@ -81,20 +83,55 @@ namespace WinNotch.Core.Flags
         public void Set(string id, bool on)
         {
             if (Find(id) == null) { _log?.Invoke("Funcție necunoscută ignorată: " + id); return; }
-            Apply(id, on, out bool changed);
-            if (on) lock (_lock) { _disabledWhy.Remove(id); _errors.Remove(id); }
-            if (changed) Changed?.Invoke(id);
+            bool turnedOn = Apply(id, on, out bool changed) && on;
+            // switched on again by the user: a new chance, the automatic switch-off is forgotten
+            if (turnedOn) lock (_lock) { _disabledWhy.Remove(id); _errors.Remove(id); }
+            if (changed) Raise(id);
         }
 
-        /// <summary>Switches a feature off by itself (e.g. after repeated errors), writes the reason to the log and saves.</summary>
+        /// <summary>
+        /// "Salvează" in Settings: applies only the switches the user changed on the page (<paramref name="shown"/> = what
+        /// the page showed, <paramref name="chosen"/> = what it shows now), so a feature switched off automatically while
+        /// the page was open stays off.
+        /// </summary>
+        public void ApplyChoices(IReadOnlyDictionary<string, bool> shown, IReadOnlyDictionary<string, bool> chosen)
+        {
+            foreach (var (id, on) in chosen)
+                if (!shown.TryGetValue(id, out bool was) || was != on) Set(id, on);
+        }
+
+        /// <summary>Longest reason kept from <see cref="Disable"/> (log and Settings).</summary>
+        public const int MaxReason = 120;
+
+        /// <summary>
+        /// Switches a feature off by itself (e.g. after repeated errors), writes the reason to the log and saves. The
+        /// reason is a fixed text written by the feature, never an error message (it goes to the log).
+        /// </summary>
         public void Disable(string id, string reason)
         {
             if (Find(id) == null) return;
+            reason = (reason ?? "").Replace('\r', ' ').Replace('\n', ' ');
+            if (reason.Length > MaxReason) reason = reason.Substring(0, MaxReason) + "…";
             Apply(id, false, out bool changed);
-            lock (_lock) _disabledWhy[id] = reason ?? "";
+            lock (_lock) _disabledWhy[id] = reason;
             _log?.Invoke("Funcția „" + id + "” a fost oprită automat: " + reason);
-            try { _save?.Invoke(); } catch (Exception ex) { _log?.Invoke("Salvarea după oprirea automată: " + ex.Message); }
-            if (changed) Changed?.Invoke(id);
+            try { _save?.Invoke(); } catch (Exception ex) { _log?.Invoke("Salvarea după oprirea automată: " + ex.GetType().Name); }
+            if (changed) Raise(id);
+        }
+
+        /// <summary>
+        /// Calls each <see cref="Changed"/> handler on its own: one that throws can't stop the others, the caller (e.g. Save
+        /// in Settings) or, on a background thread, the whole app. Only the exception type is logged.
+        /// </summary>
+        private void Raise(string id)
+        {
+            var handlers = Changed;
+            if (handlers == null) return;
+            foreach (Action<string> h in handlers.GetInvocationList())
+            {
+                try { h(id); }
+                catch (Exception ex) { _log?.Invoke("Eroare la schimbarea funcției „" + id + "”: " + ex.GetType().Name); }
+            }
         }
 
         /// <summary>
@@ -121,13 +158,15 @@ namespace WinNotch.Core.Flags
             if (off && IsSaved(id)) Disable(id, MaxErrors + " erori în " + (int)ErrorWindow.TotalMinutes + " minute (ultima: " + type + ")");
         }
 
-        private void Apply(string id, bool on, out bool changed)
+        /// <summary>Stores the choice. Returns whether the saved choice changed; <paramref name="changed"/> = the effective state.</summary>
+        private bool Apply(string id, bool on, out bool changed)
         {
             lock (_lock)
             {
-                bool before = IsEnabled(id);
+                bool before = IsEnabled(id), savedBefore = IsSaved(id);
                 if (on == Find(id).DefaultOn) _store.Remove(id); else _store[id] = on;
                 changed = before != IsEnabled(id);
+                return savedBefore != on;
             }
         }
     }

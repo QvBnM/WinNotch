@@ -348,8 +348,10 @@ namespace WinNotch
             foreach (var (ws, nm) in _workspaces) ws.Name = string.IsNullOrWhiteSpace(nm) ? ws.Name : nm.Trim();
             _s.Workspaces = _workspaces.Select(x => x.Ws).ToList();
             var flags = Core.Flags.FeatureFlags.Current;
-            if (flags != null) foreach (var (id, on) in _features) flags.Set(id, on);      // features start or stop right away
+            // only the switches you changed here (one switched off automatically meanwhile stays off); they start or stop right away
+            flags?.ApplyChoices(_featuresShown, _features);
             _s.Save();
+            BuildFeatures();                    // the page stays open: current states and reasons
 
             bool start = StartBox.IsChecked == true;
             if (start != AppSettings.StartWithWindows) AppSettings.StartWithWindows = start;
@@ -358,7 +360,8 @@ namespace WinNotch
             Done();
         }
 
-        private readonly Dictionary<string, bool> _features = new Dictionary<string, bool>();
+        private readonly Dictionary<string, bool> _features = new Dictionary<string, bool>();          // what the switches show now
+        private readonly Dictionary<string, bool> _featuresShown = new Dictionary<string, bool>();     // what they showed when built
 
         /// <summary>One switch per entry of the feature catalog, with its stage; applied on "Salvează".</summary>
         private void BuildFeatures()
@@ -371,7 +374,7 @@ namespace WinNotch
             foreach (var f in flags.Catalog)
             {
                 string id = f.Id;
-                _features[id] = flags.IsSaved(id);
+                _features[id] = _featuresShown[id] = flags.IsSaved(id);
                 var (fg, bg) = f.Stage switch
                 {
                     Core.Flags.FeatureStage.Experimental => (Color.FromRgb(0xB0, 0x4A, 0x00), Color.FromRgb(0xFD, 0xEB, 0xD9)),

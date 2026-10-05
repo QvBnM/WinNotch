@@ -57,9 +57,12 @@ Versiunile 0.7 → 1.0 sunt construite pe pași (ID-uri P00, P10, P11… în `do
      FeatureStage.Experimental, false)`. ID-ul e cu litere mici și liniuțe și nu se mai schimbă după publicare (e cheia din
      `settings.json` → `Features`). Setări îi face singur comutatorul.
   2. În funcție: pornește doar dacă `FeatureFlags.Current.IsEnabled(id)`; abonează-te la `FeatureFlags.Current.Changed` și
-     pornește/oprește-te când primești ID-ul tău (handler-ul poate veni de pe alt fir: UI doar prin Dispatcher); dezabonează-te la închidere.
+     pornește/oprește-te când primești ID-ul tău, după `IsEnabled(id)` citit în handler (nu presupune direcția: două schimbări
+     de pe fire diferite pot sosi în orice ordine). Handler-ul poate veni de pe alt fir (UI doar prin Dispatcher); o excepție
+     din el e prinsă și scrisă în log, dar nu te baza pe asta. Dezabonează-te la închidere.
   3. Erorile prinse în funcție merg în `FeatureFlags.Current.ReportError(id, ex)` (3 în 10 minute o opresc automat); pentru
-     o problemă sigură (ex. un API nedocumentat lipsă) apelează direct `Disable(id, "motiv")`. Nu pune mesajul erorii în log.
+     o problemă sigură (ex. un API nedocumentat lipsă) apelează direct `Disable(id, "motiv")`. Motivul e un text fix scris de tine (max. 120 de caractere), niciodată
+     `ex.Message`: ajunge în log și în Setări.
   4. `--safe-mode` tratează Experimental și Beta ca oprite: o funcție nu ocolește niciodată `IsEnabled`.
   5. La anunț: schimbă `Stage` (Beta/Stable) și, dacă e cazul, `DefaultOn = true`. Adaugă teste în `tests/Tests.cs` și
      verificările manuale în `docs/TESTE-MANUALE.md`.

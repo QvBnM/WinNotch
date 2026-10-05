@@ -333,7 +333,7 @@ Setările sunt pagina „Setări” din fereastra WinNotch (o singură fereastr�
 - Fiecare funcție nouă e declarată într-un singur loc, `Core/Flags/FeatureCatalog.cs` (ID, nume, descriere, stadiu, valoare implicită) și e oprită implicit până la versiunea în care e anunțată. Prima intrare e „Funcție de test” (`demo-flag`, Experimental, oprită), care nu face nimic vizibil.
 - Starea se salvează în `settings.json`, în cheia `Features` (ID → pornit/oprit). Se păstrează doar ce diferă de valoarea implicită; un fișier mai vechi, fără `Features`, înseamnă „toate la valoarea implicită”. Cheile funcțiilor necunoscute (de exemplu dintr-o versiune mai nouă) rămân neatinse.
 - Funcțiile pornesc și se opresc pe loc: ascultă evenimentul `Changed` al `FeatureFlags`, care se declanșează o singură dată la fiecare schimbare reală.
-- **Oprire automată:** o funcție care prinde 3 erori în 10 minute se oprește singură; motivul apare în log și în Setări. O pornești din nou din Setări.
+- **Oprire automată:** o funcție care prinde 3 erori în 10 minute se oprește singură; motivul (cel mult 120 de caractere) apare în log și în Setări. „Salvează” aplică doar comutatoarele pe care le-ai schimbat, deci nu repornește din greșeală o funcție oprită automat cât pagina era deschisă. O pornești din nou bifând-o și apăsând „Salvează”.
 - **Mod sigur:** `WinNotch.exe --safe-mode` pornește cu toate funcțiile Experimental și Beta oprite, fără să schimbe ce e salvat (Setări arată în continuare alegerile tale, cu o notă despre modul sigur). La următoarea pornire normală revin cum erau.
 - **Rezumat de sănătate:** la fiecare 6 ore, un rând în `log.txt`: memoria WinNotch (MB), procesorul folosit în medie de WinNotch în acest interval și numărul de erori prinse pe fiecare funcție. Fără date personale: în log ajunge doar tipul erorii, nu mesajul ei.
 
@@ -365,7 +365,7 @@ Dublu-click pe iconiță deschide fereastra WinNotch pe pagina Setări.
 | Unde | Ce |
 |---|---|
 | `%AppData%\WinNotch\settings.json` | Toate setările, inclusiv paginile tale de widget-uri (`Pages`), paginile ascunse și temele. **Calendarul (link secret), notița și clipurile fixate sunt criptate** pentru contul tău de Windows (DPAPI). Salvarea se face printr-un fișier temporar, ca o închidere bruscă să nu strice fișierul |
-| `%AppData%\WinNotch\log.txt` | Erori și evenimente tehnice (fără texte din clipboard sau link-uri secrete); se golește la 512 KB |
+| `%AppData%\WinNotch\log.txt` | Erori și evenimente tehnice (fără texte din clipboard sau link-uri secrete), plus la 6 ore rezumatul de sănătate (RAM, CPU mediu, erori pe funcții); se golește la 512 KB |
 | `%AppData%\WinNotch\extension\` | Fișierele extensiei de browser |
 | `Imagini\Screenshots\` | Capturile |
 | `C:\Program Files\WinNotch\` | Serviciul de temperatură (doar dacă l-ai activat): exe-ul și folderul `runtime` |
@@ -407,8 +407,8 @@ Trei audituri (`AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md` — ultimul, de securitate
 Detaliile sunt în `AUDIT.md`. Pe scurt:
 - **Compilare** cu API-ul real WPF: 0 erori, 0 avertismente.
 - **Două revizii independente,** una pentru bug-uri și performanță, una pentru securitate: 20 de probleme găsite, 18 reparate, 2 acceptate cu motivare.
-- **125 de teste automate, toate trec,** incluse în proiect și rulabile cu `tests\run-tests.bat`:
-  - 102 pentru aplicație (din care 23 pentru comutatoarele funcțiilor noi: setări vechi, salvare și recitire, `Changed` o singură dată, oprire automată, mod sigur, rezumatul de sănătate): autentificarea reciprocă a extensiei, refuzul vechiului token în clar, închiderea conexiunilor neautentificate, copertele (doar PNG/JPEG/WebP, ≤ 300 KB), limitarea duratelor, calendarul ostil (20.000 de evenimente procesate sub 3 s), plus: serverul extensiei și autentificarea, nume de site-uri, protecția adreselor, verdictul de viteză, calculatorul, calendarul, **grila de widget-uri** (locuri libere, limite, mutare cu rearanjare, pagină plină, 2000 de mutări aleatoare fără suprapuneri);
+- **131 de teste automate, toate trec,** incluse în proiect și rulabile cu `tests\run-tests.bat`:
+  - 108 pentru aplicație (din care 29 pentru comutatoarele funcțiilor noi: setări vechi, salvare și recitire, `Changed` o singură dată, abonați care dau erori, oprire automată care nu e anulată de „Salvează”, mod sigur, rezumatul de sănătate): autentificarea reciprocă a extensiei, refuzul vechiului token în clar, închiderea conexiunilor neautentificate, copertele (doar PNG/JPEG/WebP, ≤ 300 KB), limitarea duratelor, calendarul ostil (20.000 de evenimente procesate sub 3 s), plus: serverul extensiei și autentificarea, nume de site-uri, protecția adreselor, verdictul de viteză, calculatorul, calendarul, **grila de widget-uri** (locuri libere, limite, mutare cu rearanjare, pagină plină, 2000 de mutări aleatoare fără suprapuneri);
   - 23 pentru extensie, rulate cu un Chrome simulat, inclusiv butoanele următoarea/anterioara și refuzul unui server fals.
 - **Revizii independente pentru 0.6** (pagini, editor, drag & drop, teme): 13 probleme găsite, toate reparate.
 - **Al doilea audit** (`AUDIT-2.md`): 38 de probleme găsite pe 5 dimensiuni, toate reparate.

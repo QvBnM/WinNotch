@@ -38,3 +38,4 @@ Fiecare sarcină din `docs/ROADMAP.md` adaugă aici o secțiune `### PNN — num
 | P10.5 | Mod sigur | Cu „Funcție de test” bifată, ieși și pornește `WinNotch.exe --safe-mode`. | În log: „Pornit în mod sigur…”. În Setări apare nota portocalie despre modul sigur, iar bifa rămâne (alegerea e păstrată). La o pornire normală funcția e din nou pornită. |
 | P10.6 | Renunță | Schimbă bifa, apoi „Renunță”. | Bifa revine la valoarea salvată; nimic nu se schimbă. |
 | P10.7 | Rezumat de sănătate | Lasă WinNotch pornit peste 6 ore, apoi deschide `%AppData%\WinNotch\log.txt`. | Un rând „Sănătate (6 h): RAM … MB · CPU mediu …% · erori pe funcții: fără erori”, fără titluri, căi sau adrese. |
+| P10.8 | Setări după salvare | Bifează „Funcție de test”, schimbă și orașul, apasă „Salvează”, apoi debifeaz-o și „Salvează” din nou fără să ieși din pagină. | De fiecare dată bifa arată starea reală, iar orașul rămâne salvat. |
