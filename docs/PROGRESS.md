@@ -25,3 +25,10 @@
 - **Teste:** 455 C# (39 noi, CB1–CB39) + 23 extensie + fum 15 (oprit) / 16 (pornit); scurtătura reală Win+Alt+Space a mers pe ambele drumuri (fără comanda de rezervă); regula ecranului complet doar în teste unitare.
 - **Abatere:** ramura `p14-command-bar` (nume ales de pilot); unită local în `main` cu `--no-ff`, fără versiune nouă.
 
+### P27 Pagina după context
+- **Făcut:** `Features/ContextPages` (regula pură cu ceas injectabil: categoria efectivă — întâlnire, apoi joc pe tot ecranul, apoi aplicația din față — → pagină; „—” = fără schimbare), citită doar la deschidere din `ContextEngine.Current.Snapshot` (fără surse noi, fără abonări, fără polling); Setări: 7 categorii (cu Creator) → pagină, implicit „—”; alegerea manuală (click pe tab, pagină nouă) respectată 10 minute; pagina ascunsă/ștearsă ignorată; comutatorul „context-pages” Experimental, oprit; acțiunea `settings.context-pages`; ADR 0008.
+- **Revizia R1:** aprobat cu reparații, 0 Critic/Major/Mediu, 5 Minore; reparate în 4a2a488: comenzile de test verifică singure `SmokeMode.On`, starea de fum arată categoria efectivă, pagina nouă = alegere manuală, numărul de verificări din documentație; rămas: două pagini cu același nume nu se deosebesc în lista din Setări.
+- **CI:** run 27 și run 28 verzi din prima; fumul P27 o singură dată (rularea cu activity-manager oprit; cealaltă scrie SKIP).
+- **Teste:** 490 C# (35 noi, CP1–CP28) + 23 extensie + fum 16 / 16 (+1 SKIP); fereastra de 10 minute și paginile ascunse doar în teste unitare.
+- **Abatere:** categoria „Creator” în plus față de PLAN (există în motor); alegerea manuală ținută în memorie (se pierde la repornire).
+
