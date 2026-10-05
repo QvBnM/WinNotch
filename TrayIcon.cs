@@ -17,6 +17,7 @@ namespace WinNotch
             var menu = new Forms.ContextMenuStrip();
             menu.Items.Add("Deschide notch-ul  (Win+Alt+N)", null, (s, e) => app.ToggleNotch());
             menu.Items.Add("Pagini, teme și setări…", null, (s, e) => app.OpenEditor());
+            menu.Items.Add("Caută actualizări", null, (s, e) => app.CheckUpdates());
             // CPU temperature through the small SYSTEM helper; WinNotch itself never needs to run as administrator
             if (!App.IsAdmin && !Services.TempHelper.Installed)
                 menu.Items.Add("Activează temperatura procesorului…", null, (s, e) => app.InstallTempHelper());

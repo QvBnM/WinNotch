@@ -138,6 +138,9 @@ namespace WinNotch
 
         public void ToggleNotch() => _notch?.ToggleByHotkey();
 
+        /// <summary>Tray menu: look for a new version now (also when automatic checks are off).</summary>
+        public void CheckUpdates() { if (_notch != null) _ = _notch.CheckUpdateFromMenu(); }
+
         /// <summary>
         /// One UAC prompt: installs the temperature helper (SYSTEM task from Program Files). WinNotch keeps running
         /// with normal rights and reads the CPU temperature from it.

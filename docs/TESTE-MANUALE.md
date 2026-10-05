@@ -20,7 +20,7 @@ Notează pentru fiecare: ✓ / ✗ și, la ✗, ce ai văzut (și ultimele rând
 | R11 | Schimbarea temei | Fereastra WinNotch → Teme → alege altă temă, apoi modul luminos/automat. | Notch-ul și fereastra își schimbă culorile pe loc, fără repornire; textul rămâne lizibil. |
 | R12 | Se ascunde peste un joc fullscreen | Pornește un joc sau un video pe tot ecranul (inclusiv borderless). Schimbă volumul. | Pastila se ascunde în sus; cu „Se ascunde, apare doar pentru alerte” doar alertele importante mai apar. Pe alt monitor liber notch-ul rămâne vizibil. |
 | R13 | Se dă la o parte peste o fereastră maximizată | Maximizează browserul; du mouse-ul peste pastilă și dă click pe „+” (tab nou). | Pastila e mică și dispare cât mouse-ul e peste ea; click-ul ajunge la browser. Notch-ul se deschide doar dacă împingi mouse-ul de tot sus. |
-| R14 | Actualizarea automată | Cu o versiune mai veche instalată: Setări → „Caută acum”. | Alerta „WinNotch X e gata” cu lista schimbărilor; „Actualizează” descarcă, verifică semnătura, repornește și arată „Actualizat la…”. „Mai târziu” amână. |
+| R14 | Actualizarea automată | Cu o versiune mai veche instalată: Setări → „Caută acum” sau meniul iconiței › „Caută actualizări”. | Alerta „WinNotch X e gata” cu lista schimbărilor; „Actualizează” descarcă, verifică semnătura, repornește și arată „Actualizat la…”. „Mai târziu” amână. |
 | R15 | Setările rămân după repornire | Schimbă poziția, standby-ul, accentul și notița; ieși din meniul iconiței și repornește WinNotch. | Toate valorile sunt la fel; notița și link-ul de calendar se văd (criptate în `settings.json`, nu în clar). |
 
 ## Verificări per funcție
@@ -39,3 +39,11 @@ Fiecare sarcină din `docs/ROADMAP.md` adaugă aici o secțiune `### PNN — num
 | P10.6 | Renunță | Schimbă bifa, apoi „Renunță”. | Bifa revine la valoarea salvată; nimic nu se schimbă. |
 | P10.7 | Rezumat de sănătate | Lasă WinNotch pornit peste 6 ore, apoi deschide `%AppData%\WinNotch\log.txt`. | Un rând „Sănătate (6 h): RAM … MB · CPU mediu …% · erori pe funcții: fără erori”, fără titluri, căi sau adrese. |
 | P10.8 | Setări după salvare | Bifează „Funcție de test”, schimbă și orașul, apasă „Salvează”, apoi debifeaz-o și „Salvează” din nou fără să ieși din pagină. | De fiecare dată bifa arată starea reală, iar orașul rămâne salvat. |
+
+### Caută actualizări (0.6.8)
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| U1 | Din meniul iconiței, la zi | Click dreapta pe iconiță › „Caută actualizări”, cu ultima versiune instalată. | În notch: „Ai ultima versiune (0.6.8).” |
+| U2 | Din meniul iconiței, versiune nouă | La fel, cu o versiune mai veche instalată. | Oferta „WinNotch X e gata” apare imediat, chiar dacă ai apăsat „Mai târziu” înainte. |
+| U3 | Cu verificarea automată oprită | Debifează „Caută singur versiuni noi”, „Salvează”, apoi „Caută actualizări” (sau „Caută acum” în Setări) cu o versiune mai veche. | Oferta apare în notch; fără apăsarea ta, WinNotch nu mai caută singur. |

@@ -16,6 +16,10 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.8
+
+- **„Caută actualizări”** în meniul iconiței de lângă ceas: verifici tu când vrei, chiar dacă ai oprit căutarea automată.
+
 ## Noutăți în 0.6.7
 
 - **Funcții noi (experimental):** o secțiune nouă în Setări de unde vei porni și opri funcțiile noi, fără repornire. Cele care dau erori repetate se opresc singure.

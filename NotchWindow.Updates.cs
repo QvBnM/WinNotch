@@ -25,8 +25,9 @@ namespace WinNotch
             if (App.JustUpdated && !_afterUpdateShown && _tick > 3 && _mode == Mode.Idle) { _afterUpdateShown = true; AfterUpdate(); return; }
             if (Bridge.OldExtensionSeen && !_oldExtShown && _mode == Mode.Idle && !_hidden) { _oldExtShown = true; ShowOldExtension(); return; }
 
-            if (!Updater.Configured || !S.AutoUpdate || _updating) return;
-            if (DateTime.Now >= _nextUpdateCheck)
+            if (!Updater.Configured || _updating) return;
+            // automatic checks only if wanted; a version found by "Caută actualizări" is offered either way
+            if (S.AutoUpdate && DateTime.Now >= _nextUpdateCheck)
             {
                 _nextUpdateCheck = DateTime.Now.AddHours(6);
                 _ = CheckUpdate();
@@ -52,6 +53,20 @@ namespace WinNotch
             _updateOffered = false;
             S.UpdateSnoozeUntil = DateTime.MinValue;
             return "Versiunea " + u.Version + " e disponibilă: o vezi în notch.";
+        }
+
+        /// <summary>"Caută actualizări" in the tray menu: checks now and answers in the notch (the offer, or "you're up to date").</summary>
+        internal async Task CheckUpdateFromMenu()
+        {
+            if (_updating) return;
+            string result;
+            try { result = await CheckUpdateNow(); }
+            catch (Exception ex) { App.Log("Căutarea actualizărilor: " + ex.GetType().Name); result = "Nu am putut căuta acum. Încearcă mai târziu."; }
+            if (_update != null && _update.Version > Updater.Current)
+            {
+                if (ShowUpdateOffer(_update)) _updateOffered = true;     // otherwise as soon as the notch is free
+            }
+            else ToolAlert("\uE73E", COk, result, null, 440);
         }
 
         /// <summary>What a version brought, one line per change, each with its kind (Nou / Îmbunătățit / Modificat / Reparat).</summary>
