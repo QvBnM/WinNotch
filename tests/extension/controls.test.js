@@ -1,7 +1,7 @@
 // next / previous inside the page: the page's media-key handlers first, visible buttons next, seeking last.
 const test = require("node:test"), assert = require("node:assert");
 const fs = require("fs"), vm = require("vm"), path = require("path");
-const src = fs.readFileSync(path.join(__dirname, "..", "..", "extension", "background.js"), "utf8");
+const src = fs.readFileSync(path.join(__dirname, "..", "..", "extension", "background.js"), "utf8").replace(/\r\n/g, "\n");   // Windows checkouts use CRLF
 const pick = name => src.slice(src.indexOf("function " + name + "("), src.indexOf("\n}\n", src.indexOf("function " + name + "(")) + 3);
 
 function page({ playing = true, time = 30, handlers = {}, buttons = {} }) {
