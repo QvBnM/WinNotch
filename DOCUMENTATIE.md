@@ -15,7 +15,7 @@ Documentul descrie tot ce e implementat în cod până la versiunea 0.6.6: pagin
 ## Cuprins
 
 1. Tehnologie și structură
-2. Instalare și build
+2. Instalare, build și dezvoltare
 3. Fereastra notch-ului: comportament general
 4. Standby: pastila închisă
 5. Alerte scurte (live activities)
@@ -73,13 +73,20 @@ Documentul descrie tot ce e implementat în cod până la versiunea 0.6.6: pagin
 | `extension/` | Extensia de browser (Chrome, Edge, Brave, Opera, Vivaldi) |
 | `build.bat`, `run.bat`, `tools/get-sdk.ps1` | Build, pornire, descărcarea SDK-ului |
 | `tests/` | Teste automate (C# și extensia) |
-| `README.md`, `AUDIT.md`, `AUDIT-2.md`, `DOCUMENTATIE.md` | Ghid scurt, cele două audituri, acest document |
+| `README.md`, `AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md`, `DOCUMENTATIE.md` | Ghid scurt, cele trei audituri, acest document |
+| `CLAUDE.md` | Ghid pentru asistenții AI care lucrează la cod (structură, publicare, reguli de securitate) |
 
 ---
 
-## 2. Instalare și build
+## 2. Instalare, build și dezvoltare
 
-1. Dezarhivezi folderul oriunde.
+**Instalare obișnuită:** descarci `WinNotch.exe` din https://github.com/QvBnM/WinNotch/releases și îl pornești (de oriunde). De acolo încolo se actualizează singur (vezi „Actualizări automate”).
+
+**Codul:** e public pe https://github.com/QvBnM/WinNotch. Se poate lucra la el din VS Code (Git: Clone + .NET 8 SDK + Node.js); asistenții AI (Claude Code etc.) citesc `CLAUDE.md`, care descrie structura, regulile de securitate și pașii de publicare. O versiune nouă = `<Version>` crescut în `WinNotch.csproj` + `RELEASE_NOTES.md` rescris + push pe `main`; restul îl face GitHub.
+
+**Build local (opțional):**
+
+1. Dezarhivezi sau clonezi folderul oriunde.
 2. Dublu-click pe **`build.bat`**.
    - **Verifică SDK-ul.** Îl caută întâi instalat în Windows, apoi în copia comună a contului tău (`%LOCALAPPDATA%\WinNotch\dotnet`). Dacă nu-l găsește, te întreabă o singură dată dacă să-l descarce. Cu „D”, ia ultima versiune .NET 8 SDK de pe serverul oficial Microsoft, o verifică cu SHA-512 și o pune în copia comună, fără instalare în Windows și fără drepturi de admin; toate versiunile WinNotch o folosesc de acum înainte. Pe ecran vezi pași numerotați și o bară cu MB, viteză și timp rămas. Dacă prima metodă eșuează, încearcă scriptul oficial Microsoft. Cu „N”, deschide pagina de descărcare.
    - **Închide WinNotch-ul care rulează,** ca să poată înlocui exe-ul (nu și serviciul de temperatură, care rulează separat ca SYSTEM). Dacă rula ca administrator, cere confirmarea Windows.
@@ -157,6 +164,9 @@ Notch-ul se transformă pentru câteva secunde și apoi revine.
 | Captură ecran / zonă | Miniatura capturii cu efect de bliț, rezoluția, butoanele „Deschide” și „Folder” |
 | Text din ecran | Miniatura zonei și „Citesc textul…”, apoi „Text copiat · N rânduri” cu începutul textului |
 | Eliberează RAM | Progres în timp real, apoi „Eliberat X GB · 62% → 48% folosit” |
+| Versiune nouă | „WinNotch 0.6.7 e gata” cu lista schimbărilor (Nou / Îmbunătățit / Modificat / Reparat) și „Actualizează” / „Mai târziu”; apoi progresul descărcării |
+| După actualizare | „Actualizat la WinNotch 0.6.7 — Ce e nou” cu aceeași listă; dacă e cazul, propunerea de a actualiza serviciul de temperatură |
+| Extensie veche | „Extensia din browser e veche: apasă ↻ în chrome://extensions”, cu „Copiază adresa” |
 
 Pe un monitor ocupat, doar alertele importante (baterie, temperatură, pauză, unelte) mai apar.
 
@@ -207,15 +217,15 @@ Pe un monitor ocupat, doar alertele importante (baterie, temperatură, pauză, u
 **Extensia de browser (Chrome, Edge, Brave, Opera, Vivaldi)**
 - **De ce e nevoie de ea:** Windows vede tot browserul ca o singură aplicație. Cu extensia, **fiecare tab** apare separat, cu numele site-ului (YouTube, YouTube Music, YouTube Shorts, Instagram Reels, TikTok, Twitch, Netflix, Spotify Web, SoundCloud…) și titlul curat (fără „(3)” și „- YouTube”).
 - **Play și pauză instant:** un script din pagină anunță imediat când un video sau audio pornește ori se oprește. Indicatorul de sunet al Chrome are 2–3 secunde întârziere.
-- **Datele fiecărui tab,** luate din pagină: titlu, artist, copertă și poziție. Pe YouTube, coperta implicită e miniatura video-ului.
-- **Comenzi din notch:** pauză și redare, volum pe tab (0–100%), mute pe tab, anterior/următor (YouTube, YouTube Music, Spotify Web), salt în piesă, „du-mă la tab”.
+- **Datele fiecărui tab,** luate din pagină: titlu, artist, copertă și poziție. Pe YouTube, coperta implicită e miniatura video-ului. **Copertele le descarcă extensia** (în browser, prin proxy-ul/VPN-ul lui) și le trimite ca imagine; WinNotch nu se conectează la site-uri.
+- **Comenzi din notch:** pauză și redare, volum pe tab (0–100%), mute pe tab, anterior/următor, salt în piesă, „du-mă la tab”. Anterior/următor folosesc comenzile pe care pagina le pregătește pentru tastele media ale tastaturii (video-ul sau piesa următoare pe YouTube, YouTube Music, Spotify, SoundCloud…); altfel butonul vizibil al player-ului, iar ca ultimă variantă un salt de 10 s. „Anterior” repornește piesa dacă a trecut de 3 s; apăsat din nou, trece la cea dinainte.
 - **Doar tab-uri cu sunet:** extensia trimite doar tab-urile care se aud sau au media pornită; celelalte tab-uri nu sunt trimise deloc.
 - **Instalare:**
   - în Setări → „Tab-uri din browser”, apeși „Deschide extensiile”; calea folderului se copiază automat;
   - pornești „Developer mode”, apoi „Load unpacked”.
   - Starea conexiunii se vede în Setări: „✓ Conectată: Chrome”.
 - **Fișierele extensiei** sunt incluse în exe și scrise la pornire în `%AppData%\WinNotch\extension`.
-- **Comunicare:** WebSocket local pe `127.0.0.1:47811`. Extensia are ID fix și doar ea e acceptată. Cât WinNotch e închis, se reconectează din ce în ce mai rar, până la o dată pe minut.
+- **Comunicare:** WebSocket local pe `127.0.0.1:47811`. Extensia are ID fix și doar ea e acceptată. WinNotch și extensia își dovedesc reciproc că știu codul secret din `token.json` (HMAC pe două numere aleatoare), fără ca acesta să fie trimis; până atunci extensia nu trimite și nu execută nimic. Cât WinNotch e închis, se reconectează din ce în ce mai rar, până la o dată pe minut. Versiunea curentă a extensiei: 1.6 (după o actualizare care o schimbă: ↻ în chrome://extensions).
 
 ---
 
