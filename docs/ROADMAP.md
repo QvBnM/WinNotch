@@ -19,7 +19,7 @@ iar jurnalul rulărilor în `docs/PROGRESS.md`.
 | P10 | Feature flags: comutatoare pentru funcțiile noi, mod sigur, secțiunea din Setări, rezumat de sănătate în log | Gata |
 | P11 | Action Registry: registru central de acțiuni (nume, iconiță, execuție) folosit de notch, scurtături și Command Bar | Gata |
 | P12 | Context Engine: ce faci acum (aplicația din față, media, întâlniri, rețea), publicat ca evenimente | Gata |
-| P13 | Activity Manager: activitățile live din notch (prioritate, coadă, durată), peste alertele existente | De făcut |
+| P13 | Activity Manager: activitățile live din notch (prioritate, coadă, durată), peste alertele existente; întâi testele de caracterizare ale celor 27 de alerte; „N noutăți”, pastilă împărțită, peek, `activity.dismiss-all`; teste de fum cu comutatorul oprit și pornit. În 0.6.14, comutatorul `activity-manager` Experimental, oprit implicit (ADR 0006) | Gata |
 | P14 | Command Bar: bară de comenzi din notch, peste Action Registry | De făcut |
 
 ## După 0.7 — planul suplu (`docs/PLAN.md`, aprobat 5 oct 2026)
