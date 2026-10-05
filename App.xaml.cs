@@ -83,8 +83,20 @@ namespace WinNotch
             // before any service: record this start; after repeated crashes, safe mode, then the previous version
             bool safeMode = StartGuarded(Array.IndexOf(e.Args, Core.Flags.FeatureFlags.SafeModeArg) >= 0);
             if (_handedOver) return;
-            SessionEnding += (s, ev) => Guard?.MarkCleanExit();       // Windows shutting down / signing out: not a crash
+            SessionEnding += (s, ev) => Guard?.MarkCleanExit(sessionEnding: true);       // Windows shutting down / signing out: not a crash
 
+            // a start that fails halfway must not leave a process without notch or icon (holding the single-instance
+            // lock and later declared healthy): it is logged and ends as a crash, so the guard counts it
+            try { StartApp(safeMode); }
+            catch (Exception ex)
+            {
+                Log("Pornirea a eșuat: " + ex);
+                Environment.Exit(1);
+            }
+        }
+
+        private void StartApp(bool safeMode)
+        {
             Settings = AppSettings.Load();
             // feature switches; --safe-mode runs without the Experimental and Beta ones (nothing saved changes)
             if (safeMode) Log("Pornit în mod sigur: funcțiile Experimental și Beta sunt oprite.");
@@ -98,6 +110,7 @@ namespace WinNotch
             _notch = new NotchWindow(Settings);
             _notch.Show();
             _tray = new TrayIcon(this);
+            StartHealthTimer();
         }
 
         /// <summary>Watches the starts of this version (crashes → safe mode → previous version). Null in the helper modes.</summary>
@@ -113,59 +126,77 @@ namespace WinNotch
         private Timer _healthTimer;
 
         /// <summary>
-        /// Records the start and acts on the decision (see StartupGuard). True when this run is in safe mode. When it
-        /// restarts in safe mode or rolls back, <see cref="_handedOver"/> is set and the app is shutting down.
+        /// Records the start and acts on the decision (StartupGuard; the order of the steps is in StartupCoordinator).
+        /// True when this run is in safe mode. When it restarts in safe mode or rolls back, <see cref="_handedOver"/> is
+        /// set and the app is shutting down.
         /// </summary>
         private bool StartGuarded(bool safeModeArg)
         {
             var guard = new Core.Update.StartupGuard(new Core.Update.FileStartupStore(AppSettings.Folder), Services.Updater.Current, log: Log);
             Guard = guard;
-            var action = guard.Begin(safeModeArg, Services.Updater.PreviousExists);
+            var outcome = Core.Update.StartupCoordinator.Run(guard, new StartupHost(), safeModeArg, Core.Flags.FeatureFlags.SafeModeArg);
             RollbackMessage = guard.RollbackMessage;
-            string me = Environment.ProcessPath, dir = Path.GetDirectoryName(me);
-
-            if (action == Core.Update.StartupAction.Rollback)
+            if (outcome == Core.Update.StartupOutcome.HandedOver || outcome == Core.Update.StartupOutcome.Quit)
             {
-                bool swapped = Core.Update.Rollback.Swap(me, () => { ReleaseOwnExe(); ReleaseSingleInstance(); }, Log);
-                if (swapped)
-                {
-                    guard.RolledBack("se închidea brusc, inclusiv în modul sigur");
-                    try { Process.Start(new ProcessStartInfo(me) { UseShellExecute = false, WorkingDirectory = dir }); }
-                    catch (Exception ex) { Log("Revenire: versiunea anterioară nu a pornit: " + ex.GetType().Name); }
-                    _handedOver = true;
-                    Shutdown();
-                    return false;
-                }
-                // nothing destructive happened: stay here, in safe mode
-                LockOwnExe();
-                if (_single == null) _single = new Mutex(true, "WinNotch.SingleInstance", out _);
-                guard.ContinueInSafeMode();
-                return true;
+                _handedOver = true;
+                Shutdown();
+                return false;
             }
-            if (action == Core.Update.StartupAction.RestartInSafeMode)
+            return outcome == Core.Update.StartupOutcome.ContinueSafe;
+        }
+
+        /// <summary>The real side of the startup steps: own exe lock, single-instance mutex, process start by full path.</summary>
+        private sealed class StartupHost : Core.Update.IStartupHost
+        {
+            public string ExePath => Environment.ProcessPath;
+
+            public bool PreviousExeValid() => Core.Update.StartupGuard.IsValidPrevious(Services.Updater.PreviousVersion(), Services.Updater.Current);
+
+            public void ReleaseExeLock() => ReleaseOwnExe();
+            public void LockExe() => LockOwnExe();
+            public void ReleaseMutex() => ReleaseSingleInstance();
+
+            public bool TakeMutex()
             {
                 try
                 {
-                    ReleaseSingleInstance();
-                    Process.Start(new ProcessStartInfo(me, Core.Flags.FeatureFlags.SafeModeArg) { UseShellExecute = false, WorkingDirectory = dir });
-                    _handedOver = true;
-                    Shutdown();
-                    return false;
-                }
-                catch (Exception ex)
-                {
-                    Log("Repornirea în modul sigur nu a reușit: " + ex.GetType().Name);
-                    _single = new Mutex(true, "WinNotch.SingleInstance", out _);
-                    guard.ContinueInSafeMode();
+                    var m = new Mutex(true, "WinNotch.SingleInstance", out bool created);
+                    if (!created) { m.Dispose(); return false; }
+                    _single = m;
                     return true;
                 }
+                catch { return false; }
             }
-            // 10 minutes without unhandled errors: healthy, and only now the previous exe goes
+
+            public bool Start(string exe, string args)
+            {
+                try
+                {
+                    var psi = args == null ? new ProcessStartInfo(exe) : new ProcessStartInfo(exe, args);
+                    psi.UseShellExecute = false;
+                    psi.WorkingDirectory = Path.GetDirectoryName(exe);
+                    Process.Start(psi);
+                    return true;
+                }
+                catch (Exception ex) { Log("Pornire: " + ex.GetType().Name); return false; }
+            }
+
+            public void Log(string message) => App.Log(message);
+        }
+
+        /// <summary>
+        /// Every minute: 10 minutes without unhandled errors make this version healthy, and only then the previous exe
+        /// goes. Started once the notch and the tray icon exist (a start that failed halfway is never "healthy").
+        /// </summary>
+        private void StartHealthTimer()
+        {
+            var guard = Guard;
+            if (guard == null) return;
             _healthTimer = new Timer(_ =>
             {
-                if (guard.CheckHealthy()) { _healthTimer?.Dispose(); Services.Updater.DeletePrevious(); }
+                try { if (guard.CheckHealthy()) Services.Updater.DeletePrevious(); }
+                catch (Exception ex) { Log("Pornire, verificarea sănătății: " + ex.GetType().Name); }
             }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
-            return action == Core.Update.StartupAction.SafeMode;
         }
 
         /// <summary>Manual test of the crash protection: with crash-test.flag in the settings folder, a crash 5 s after start.</summary>
@@ -248,6 +279,7 @@ namespace WinNotch
             try
             {
                 var psi = new ProcessStartInfo(Environment.ProcessPath) { UseShellExecute = true, Verb = "runas" };
+                Guard?.MarkCleanExit();           // before the new process records its own start
                 ReleaseSingleInstance();
                 Process.Start(psi);
                 ExitApp();
@@ -257,6 +289,7 @@ namespace WinNotch
                 // User pressed "No" on the UAC prompt: keep running as we are.
                 Log("Repornire ca administrator anulată: " + ex.Message);
                 _single = new Mutex(true, "WinNotch.SingleInstance", out _);
+                Guard?.Resume();
             }
         }
 

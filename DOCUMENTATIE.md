@@ -69,7 +69,7 @@ Documentul descrie tot ce e implementat în cod până la versiunea 0.6.9: pagin
 | `SettingsWindow.xaml(.cs)` | Setările (afișate ca pagină în fereastra WinNotch) |
 | `TrayIcon.cs` | Iconița de lângă ceas |
 | `AppSettings.cs` | Setări, salvare criptată, pornire cu Windows |
-| `Core/Update/*` | Logica actualizărilor, fără WPF: compararea versiunilor (`AppVersion.cs`), alegerea versiunii de oferit și canalul beta (`ReleaseFeed.cs`), pornirea monitorizată și decizia mod sigur / revenire (`StartupGuard.cs`), `startup.json` / `rollback.json` (`StartupStore.cs`), schimbarea fișierelor la revenire (`Rollback.cs`) |
+| `Core/Update/*` | Logica actualizărilor, fără WPF: compararea versiunilor (`AppVersion.cs`), alegerea versiunii de oferit și canalul beta (`ReleaseFeed.cs`), pornirea monitorizată și decizia mod sigur / revenire (`StartupGuard.cs`), `startup.json` / `rollback.json` (`StartupStore.cs`), schimbarea fișierelor la revenire (`Rollback.cs`), ordinea pașilor la pornire (`StartupCoordinator.cs`) |
 | `Core/Flags/*` | Comutatoarele funcțiilor noi: catalogul (`FeatureCatalog.cs`), starea, modul sigur și oprirea automată (`FeatureFlags.cs`), cheia `Features` din setări (`FeatureSettings.cs`) |
 | `Core/Diagnostics/HealthLog.cs`, `PerfProbe.cs` | Rezumatul de sănătate din log, la fiecare 6 ore; măsurarea opțională a deschiderii (`perf.flag`) |
 | `tools/measure-perf.ps1`, `docs/perf/` | Măsurătorile de bază (memorie, CPU la repaus, 10 minute) și rezultatele lor, pe versiuni |
@@ -115,12 +115,13 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
 - **Compararea versiunilor** se face pe numere, componentă cu componentă (0.6.10 e mai nouă decât 0.6.9, 1.0.0 decât 0.11.0). O versiune cu sufix de test e mai veche decât aceeași fără sufix: 0.7.0-rc.1 < 0.7.0-rc.2 < 0.7.0. Se propune doar o versiune strict mai nouă decât cea instalată.
 - **Canal beta:** oprit, WinNotch întreabă GitHub doar de ultima versiune finală (ca până acum). Pornit, ia în calcul și versiunile de test (pre-release) din ultimele 20 publicate. O versiune e publicată ca pre-release automat dacă `<Version>` conține „-” (de exemplu `0.7.0-rc.1`); semnarea și verificarea sunt aceleași.
 - **Protecție la o versiune stricată (pornire monitorizată):**
-  - la fiecare pornire, înaintea oricărui serviciu, WinNotch notează pornirea în `%AppData%\WinNotch\startup.json`; „Ieșire” din meniu, oprirea Windows și repornirea pentru actualizare o marchează ca închidere curată, care nu se numără;
+  - la fiecare pornire, înaintea oricărui serviciu, WinNotch notează pornirea în `%AppData%\WinNotch\startup.json`; „Ieșire” din meniu, oprirea Windows și repornirea pentru actualizare o marchează ca închidere curată, care nu se numără (dacă oprirea Windows e anulată de alt program, protecția se reia după 2 minute);
+  - o pornire care eșuează la jumătate (eroare înainte să apară notch-ul și iconița) închide procesul și se numără ca închidere bruscă, în loc să lase un WinNotch fără fereastră;
   - **3 porniri fără închidere curată în 5 minute** → WinNotch repornește o singură dată în **modul sigur** (`--safe-mode`: funcțiile Experimental și Beta oprite);
-  - dacă se închide brusc **și în modul sigur** → **revine singur la versiunea anterioară**: exe-ul curent devine `WinNotch.rejected.exe`, `WinNotch.old.exe` redevine `WinNotch.exe`, se scrie `rollback.json` (versiunea refuzată și motivul) și pornește versiunea restaurată;
-  - dacă `WinNotch.old.exe` lipsește, nu se schimbă nimic: rămâne în modul sigur și scrie motivul în log;
+  - dacă se închide brusc **și în acest mod sigur pornit automat, în primele 5 minute** → **revine singur la versiunea anterioară** (un mod sigur care a mers mai mult, sau unul pornit de mână cu `--safe-mode`, urmat de o închidere bruscă, se numără doar ca o închidere obișnuită): exe-ul curent devine `WinNotch.rejected.exe`, `WinNotch.old.exe` redevine `WinNotch.exe`, se scrie `rollback.json` (versiunea refuzată și motivul) și pornește versiunea restaurată;
+  - se revine doar la un `WinNotch.old.exe` care e un WinNotch **mai vechi** decât cel curent (după versiunea din fișier); dacă lipsește sau nu e valid, nu se schimbă nimic: rămâne în modul sigur și scrie motivul în log. `rollback.json` se scrie înaintea schimbării fișierelor; dacă schimbarea eșuează, se anulează și totul rămâne cum era;
   - cel mult **o revenire la 30 de minute**, ca două versiuni stricate să nu se înlocuiască una pe alta la nesfârșit (altfel rămâne în modul sigur);
-  - după **10 minute de rulare fără erori neprinse** (nu în modul sigur), versiunea e declarată sănătoasă: contorul se golește și abia acum se șterg `WinNotch.old.exe` (și un eventual `WinNotch.rejected.exe`);
+  - după **10 minute de rulare fără erori neprinse** (nu în modul sigur; numărate minut cu minut, deci somnul laptopului sau schimbarea ceasului le iau de la capăt), versiunea e declarată sănătoasă: contorul se golește și abia acum se șterg `WinNotch.old.exe` (și un eventual `WinNotch.rejected.exe`);
   - versiunea restaurată (dacă are acest cod, adică 0.6.9 sau mai nouă) citește `rollback.json` și afișează o dată în notch „Am revenit la 0.6.9: 0.7.0 se închidea”; versiunea refuzată nu mai e propusă, doar una mai nouă decât ea.
 - **build.bat** rămâne pentru cine vrea să construiască singur din cod.
 
@@ -381,7 +382,7 @@ Dublu-click pe iconiță deschide fereastra WinNotch pe pagina Setări.
 | `%AppData%\WinNotch\log.txt` | Erori și evenimente tehnice (fără texte din clipboard sau link-uri secrete), plus la 6 ore rezumatul de sănătate (RAM, CPU mediu, erori pe funcții); se golește la 512 KB |
 | `%AppData%\WinNotch\startup.json` | Pornirile versiunii curente care nu s-au încheiat curat, dacă rularea e în modul sigur, dacă versiunea e sănătoasă și versiunile refuzate (protecția la o versiune stricată); salvat tot printr-un fișier temporar |
 | `%AppData%\WinNotch\rollback.json` | Doar după o revenire automată: versiunea refuzată și motivul; citit și șters de versiunea restaurată |
-| `%AppData%\WinNotch\crash-test.flag`, `perf.flag` | Doar pentru teste, create de tine: primul provoacă o închidere bruscă la 5 s după pornire (test manual al protecției), al doilea scrie în log timpul de la hover până la primul cadru al deschiderii |
+| `%AppData%\WinNotch\crash-test.flag`, `perf.flag` | Doar pentru teste, create de tine: primul provoacă o închidere bruscă la 5 s după pornire (test manual al protecției), al doilea scrie în log timpul de la începutul hover-ului până la primul cadru al deschiderii (include întârzierea la hover din Setări) |
 | `%AppData%\WinNotch\extension\` | Fișierele extensiei de browser |
 | `Imagini\Screenshots\` | Capturile |
 | `C:\Program Files\WinNotch\` | Serviciul de temperatură (doar dacă l-ai activat): exe-ul și folderul `runtime` |
@@ -413,6 +414,7 @@ Trei audituri (`AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md` — ultimul, de securitate
 - **Rularea ca administrator** (dacă totuși pornești manual așa): toate lansările trec prin Explorer cu drepturi normale; fișierele extensiei nu se mai scriu; capturile se salvează doar în profilul tău (verificat pe calea reală).
 - **Scurtături:** doar http/https/fișiere/ms-settings; căile de rețea (`\\server\share`) sunt refuzate și nu li se cere nici iconița (altfel Windows s-ar autentifica automat la acel server).
 - **Fișiere:** salvări atomice, fără urmarea junction-urilor din folderul WinNotch; log-ul nu conține link-uri, texte din clipboard sau titluri.
+- **Revenirea automată** e singura excepție de la „doar versiuni mai noi”: pornește înapoi doar `WinNotch.old.exe` de lângă exe, numai dacă e un WinNotch mai vechi, cu cale completă. `startup.json` și `rollback.json` din `%AppData%\WinNotch` sunt de încredere doar cât contul tău: un program care rulează deja cu contul tău le poate modifica (de exemplu ca să blocheze o versiune), dar nu poate obține mai multe drepturi; versiunile refuzate sunt scrise în log la fiecare pornire.
 - **Clipboard:** conținutul marcat ca privat de managerele de parole e ignorat.
 - **Calculatorul din lansator:** acceptă doar cifre și operatori, deci nu se poate injecta nimic.
 
@@ -423,8 +425,8 @@ Trei audituri (`AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md` — ultimul, de securitate
 Detaliile sunt în `AUDIT.md`. Pe scurt:
 - **Compilare** cu API-ul real WPF: 0 erori, 0 avertismente.
 - **Două revizii independente,** una pentru bug-uri și performanță, una pentru securitate: 20 de probleme găsite, 18 reparate, 2 acceptate cu motivare.
-- **169 de teste automate, toate trec,** incluse în proiect și rulabile cu `tests\run-tests.bat`:
-  - 146 pentru aplicație (din care 38 pentru actualizări: ordinea versiunilor, inclusiv cu sufixe de test, canalul beta, versiunile refuzate, lista de la GitHub, pornirea monitorizată pe toate ramurile — mod sigur, revenire, blocarea buclelor, sănătos după 10 minute, `startup.json` lipsă sau corupt, schimbarea fișierelor; și 29 pentru comutatoarele funcțiilor noi: setări vechi, salvare și recitire, `Changed` o singură dată, abonați care dau erori, oprire automată care nu e anulată de „Salvează”, mod sigur, rezumatul de sănătate): autentificarea reciprocă a extensiei, refuzul vechiului token în clar, închiderea conexiunilor neautentificate, copertele (doar PNG/JPEG/WebP, ≤ 300 KB), limitarea duratelor, calendarul ostil (20.000 de evenimente procesate sub 3 s), plus: serverul extensiei și autentificarea, nume de site-uri, protecția adreselor, verdictul de viteză, calculatorul, calendarul, **grila de widget-uri** (locuri libere, limite, mutare cu rearanjare, pagină plină, 2000 de mutări aleatoare fără suprapuneri);
+- **185 de teste automate, toate trec,** incluse în proiect și rulabile cu `tests\run-tests.bat`:
+  - 162 pentru aplicație (din care 54 pentru actualizări: ordinea versiunilor, inclusiv cu sufixe de test, canalul beta, versiunile refuzate, lista de la GitHub, pornirea monitorizată pe toate ramurile — mod sigur, revenire doar după modul sigur automat și recent, blocarea buclelor între versiuni, sănătos după 10 minute chiar și cu somn sau ceas schimbat, oprirea Windows anulată, `startup.json` lipsă, corupt sau ciudat, ordinea pașilor (mutex, notă, schimbarea fișierelor) și eșecul la jumătatea schimbării; și 29 pentru comutatoarele funcțiilor noi: setări vechi, salvare și recitire, `Changed` o singură dată, abonați care dau erori, oprire automată care nu e anulată de „Salvează”, mod sigur, rezumatul de sănătate): autentificarea reciprocă a extensiei, refuzul vechiului token în clar, închiderea conexiunilor neautentificate, copertele (doar PNG/JPEG/WebP, ≤ 300 KB), limitarea duratelor, calendarul ostil (20.000 de evenimente procesate sub 3 s), plus: serverul extensiei și autentificarea, nume de site-uri, protecția adreselor, verdictul de viteză, calculatorul, calendarul, **grila de widget-uri** (locuri libere, limite, mutare cu rearanjare, pagină plină, 2000 de mutări aleatoare fără suprapuneri);
   - 23 pentru extensie, rulate cu un Chrome simulat, inclusiv butoanele următoarea/anterioara și refuzul unui server fals.
 - **Revizii independente pentru 0.6** (pagini, editor, drag & drop, teme): 13 probleme găsite, toate reparate.
 - **Al doilea audit** (`AUDIT-2.md`): 38 de probleme găsite pe 5 dimensiuni, toate reparate.
@@ -487,6 +489,7 @@ Detaliile sunt în `AUDIT.md`. Pe scurt:
 - **Revenirea la 0.6.8 sau mai veche:** acele versiuni nu au codul de revenire, deci după o revenire la ele nu apare mesajul „Am revenit la…” și nu țin minte versiunea refuzată: o pot propune din nou. Odată ajunsă pe 0.6.9 sau mai nouă, protecția funcționează complet.
 - **Revenirea are nevoie de `WinNotch.old.exe`:** după ce o versiune a fost declarată sănătoasă (10 minute fără erori), fișierul vechi e șters; o problemă apărută mai târziu duce doar la modul sigur, nu la revenire.
 - **O închidere forțată** (din Task Manager, o pană de curent) se numără ca închidere bruscă; o singură dată nu are niciun efect.
+- **Detectarea se bazează pe reporniri apropiate:** după o închidere bruscă WinNotch nu repornește singur; protecția reacționează când îl pornești din nou (3 porniri în 5 minute). Un WinNotch blocat, dar încă deschis, nu e detectat.
 
 ---
 

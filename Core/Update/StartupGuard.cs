@@ -15,6 +15,12 @@ namespace WinNotch.Core.Update
         public bool Running { get; set; }
         /// <summary>The last (or current) run is in safe mode.</summary>
         public bool SafeMode { get; set; }
+        /// <summary>That safe mode was started by the guard after repeated crashes (not asked with --safe-mode by hand).</summary>
+        public bool AutoSafe { get; set; }
+        /// <summary>When that safe-mode run started (UTC): only a crash soon after it leads to a rollback.</summary>
+        public DateTime SafeStartedAt { get; set; }
+        /// <summary>The guard just asked for a restart in safe mode; the next start (with --safe-mode) takes it over.</summary>
+        public bool SafeRestartPending { get; set; }
         /// <summary>This version ran 10 minutes without unhandled errors: the previous exe may go.</summary>
         public bool Healthy { get; set; }
         /// <summary>Versions this PC rolled back from: never offered again (a newer one is).</summary>
@@ -40,6 +46,7 @@ namespace WinNotch.Core.Update
         /// <summary>The rollback note, if any; it is removed (shown once).</summary>
         RollbackNote TakeRollbackNote();
         void WriteRollbackNote(RollbackNote note);
+        void DeleteRollbackNote();
     }
 
     public enum StartupAction
@@ -50,7 +57,7 @@ namespace WinNotch.Core.Update
         SafeMode,
         /// <summary>Crashed 3 times in 5 minutes: restart once with --safe-mode.</summary>
         RestartInSafeMode,
-        /// <summary>Crashed again in safe mode: put the previous version back.</summary>
+        /// <summary>Crashed again soon after the automatic safe mode: put the previous version back.</summary>
         Rollback,
     }
 
@@ -58,10 +65,11 @@ namespace WinNotch.Core.Update
     /// Watches the starts of a new version. Pure logic: the clock and the store are given, so every branch is tested.
     /// <list type="bullet">
     /// <item>3 starts without a clean exit within 5 minutes → restart once in safe mode;</item>
-    /// <item>one more abrupt end while in safe mode → roll back to the previous version (if WinNotch.old.exe exists and
-    /// there was no rollback in the last 30 minutes; otherwise stay in safe mode);</item>
-    /// <item>10 minutes without unhandled errors (not in safe mode) → healthy: the counter is emptied and only now the
-    /// previous exe may be deleted.</item>
+    /// <item>that automatic safe-mode run ends abruptly within 5 minutes too → roll back to the previous version (if a
+    /// valid WinNotch.old.exe exists and there was no rollback in the last 30 minutes; otherwise stay in safe mode). A
+    /// safe-mode run that worked for longer, or one asked for by hand, only counts as an ordinary crash;</item>
+    /// <item>10 minutes of running (counted in steady minute ticks, so sleep or a clock change can't shorten it) without
+    /// unhandled errors, not in safe mode → healthy: the counter is emptied and only now the previous exe may go.</item>
     /// </list>
     /// A clean exit ("Ieșire", Windows shutting down, the restart for an update) is not counted.
     /// </summary>
@@ -71,6 +79,10 @@ namespace WinNotch.Core.Update
         public static readonly TimeSpan CrashWindow = TimeSpan.FromMinutes(5);
         public static readonly TimeSpan HealthyAfter = TimeSpan.FromMinutes(10);
         public static readonly TimeSpan RollbackCooldown = TimeSpan.FromMinutes(30);
+        /// <summary><see cref="CheckHealthy"/> runs every minute; a longer gap (sleep, clock change) starts the 10 minutes over.</summary>
+        public static readonly TimeSpan MaxTickGap = TimeSpan.FromMinutes(2);
+        /// <summary>After Windows announced the end of the session: still running this much later = the shutdown was cancelled.</summary>
+        public static readonly TimeSpan SessionEndGrace = TimeSpan.FromMinutes(2);
         private const int MaxRefused = 20;
 
         private readonly IStartupStore _store;
@@ -79,8 +91,9 @@ namespace WinNotch.Core.Update
         private readonly Action<string> _log;
         private readonly object _lock = new object();
         private DateTime? _myStart;
-        private DateTime _healthyFrom;
-        private bool _safe;
+        private DateTime _healthyFrom, _lastCheck;
+        private DateTime? _sessionEndingAt;
+        private bool _safe, _begun, _rollbackPending;
 
         public StartupGuard(IStartupStore store, AppVersion current, Func<DateTime> now = null, Action<string> log = null)
         {
@@ -102,8 +115,8 @@ namespace WinNotch.Core.Update
         /// Called first thing at startup: decides how this run starts and records it.
         /// </summary>
         /// <param name="safeModeArg">Started with --safe-mode.</param>
-        /// <param name="previousExeExists">WinNotch.old.exe is there to roll back to.</param>
-        public StartupAction Begin(bool safeModeArg, bool previousExeExists)
+        /// <param name="previousExeValid">WinNotch.old.exe is there and is an older WinNotch, to roll back to.</param>
+        public StartupAction Begin(bool safeModeArg, bool previousExeValid)
         {
             lock (_lock)
             {
@@ -112,18 +125,23 @@ namespace WinNotch.Core.Update
                 string me = _current.ToString();
                 if (s.Version != me)
                 {
-                    s.Version = me; s.Starts.Clear(); s.Running = false; s.SafeMode = false; s.Healthy = false;
+                    s.Version = me; s.Starts.Clear(); s.Running = false; s.SafeMode = false; s.AutoSafe = false;
+                    s.SafeRestartPending = false; s.Healthy = false;
                 }
                 ReadRollbackNote(s);
+                if (s.Refused.Count > 0) _log?.Invoke("Versiuni refuzate pe acest PC (nu mai sunt propuse): " + string.Join(", ", s.Refused) + ".");
 
                 bool previousUnclean = s.Running, previousSafe = s.SafeMode;
-                s.Starts.RemoveAll(t => now - t > CrashWindow || t > now);
+                bool recentAutoSafe = previousSafe && s.AutoSafe && (now - s.SafeStartedAt).Duration() <= CrashWindow;
+                bool safeRestart = s.SafeRestartPending && safeModeArg;
+                s.SafeRestartPending = false;
+                s.Starts.RemoveAll(t => (now - t).Duration() > CrashWindow);
                 int crashes = s.Starts.Count;       // runs of this version that ended abruptly in the last 5 minutes
 
                 StartupAction action;
-                if (previousUnclean && previousSafe)
+                if (previousUnclean && recentAutoSafe)
                 {
-                    if (!previousExeExists) { _log?.Invoke("Pornire: s-a închis brusc și în modul sigur, dar versiunea anterioară lipsește; rămân în modul sigur."); action = StartupAction.SafeMode; }
+                    if (!previousExeValid) { _log?.Invoke("Pornire: s-a închis brusc și în modul sigur, dar nu există o versiune anterioară validă; rămân în modul sigur."); action = StartupAction.SafeMode; }
                     else if (s.LastRollback != default && (now - s.LastRollback).Duration() < RollbackCooldown)     // Duration: a clock set back can't unlock it
                     { _log?.Invoke("Pornire: a fost deja o revenire în ultimele 30 de minute; rămân în modul sigur."); action = StartupAction.SafeMode; }
                     else action = StartupAction.Rollback;
@@ -134,41 +152,53 @@ namespace WinNotch.Core.Update
 
                 if (action == StartupAction.Normal || action == StartupAction.SafeMode)
                 {
-                    s.Starts.Add(now);
-                    _myStart = now;
-                    s.Running = true;
-                    s.SafeMode = _safe = action == StartupAction.SafeMode;
-                    _healthyFrom = now;
+                    bool auto = action == StartupAction.SafeMode && (safeRestart || (previousUnclean && recentAutoSafe));
+                    Record(s, now, action == StartupAction.SafeMode, auto);
                 }
                 else
                 {
                     // handing over (to the safe-mode run or the previous version): this one isn't a crash
                     s.Running = false;
                     s.SafeMode = false;
+                    if (action == StartupAction.RestartInSafeMode)
+                    {
+                        s.Starts.Clear();               // these crashes led to safe mode; a clean exit from it starts the count over
+                        s.SafeRestartPending = true;
+                        _log?.Invoke("Pornire: " + crashes + " închideri bruște în 5 minute; repornesc în modul sigur.");
+                    }
                 }
-                if (action == StartupAction.RestartInSafeMode) _log?.Invoke("Pornire: " + crashes + " închideri bruște în 5 minute; repornesc în modul sigur.");
+                _begun = true;
                 Save(s);
                 return action;
             }
         }
 
-        /// <summary>The rollback failed (or was refused): this run continues in safe mode and is counted as such.</summary>
+        private void Record(StartupState s, DateTime now, bool safe, bool autoSafe)
+        {
+            s.Starts.Add(now);
+            _myStart = now;
+            s.Running = true;
+            s.SafeMode = _safe = safe;
+            s.AutoSafe = safe && autoSafe;
+            if (safe) s.SafeStartedAt = now;
+            _healthyFrom = _lastCheck = now;
+        }
+
+        /// <summary>The rollback or the restart failed: this run continues in safe mode and is counted as such.</summary>
         public void ContinueInSafeMode()
         {
             lock (_lock)
             {
-                var now = _now();
-                State.Starts.Add(now);
-                _myStart = now;
-                State.Running = true;
-                State.SafeMode = _safe = true;
-                _healthyFrom = now;
+                Record(State, _now(), true, false);     // a later crash is an ordinary one, not a new rollback
                 Save(State);
             }
         }
 
-        /// <summary>The previous version was put back: remembers the refused version, the time and writes rollback.json.</summary>
-        public void RolledBack(string reason)
+        /// <summary>
+        /// About to put the previous version back: remembers the refused version and the time and writes rollback.json
+        /// first, so a process killed in the middle of the swap still leaves the note. Undo with <see cref="RollbackFailed"/>.
+        /// </summary>
+        public void RollingBack(string reason)
         {
             lock (_lock)
             {
@@ -178,7 +208,10 @@ namespace WinNotch.Core.Update
                 while (State.Refused.Count > MaxRefused) State.Refused.RemoveAt(0);
                 State.LastRollback = now;
                 State.Running = false;
-                State.SafeMode = false;
+                State.SafeMode = State.AutoSafe = State.Healthy = false;
+                State.Starts.Clear();
+                State.Version = "";                    // if this version is installed again, it starts with a clean count
+                _rollbackPending = true;
                 Save(State);
                 try { _store.WriteRollbackNote(new RollbackNote { Refused = me, Reason = reason ?? "", At = now }); }
                 catch (Exception ex) { _log?.Invoke("Revenire: nota nu a putut fi scrisă: " + ex.GetType().Name); }
@@ -186,8 +219,26 @@ namespace WinNotch.Core.Update
             }
         }
 
-        /// <summary>"Ieșire", Windows shutting down or the restart for an update: this run doesn't count as a crash.</summary>
-        public void MarkCleanExit()
+        /// <summary>The files couldn't be swapped: nothing was refused after all; this run continues in safe mode.</summary>
+        public void RollbackFailed()
+        {
+            lock (_lock)
+            {
+                if (!_rollbackPending) return;
+                _rollbackPending = false;
+                State.Refused.Remove(_current.ToString());
+                State.Version = _current.ToString();
+                try { _store.DeleteRollbackNote(); } catch { }
+            }
+            ContinueInSafeMode();
+        }
+
+        /// <summary>
+        /// "Ieșire", Windows shutting down or the restart for an update: this run doesn't count as a crash.
+        /// <paramref name="sessionEnding"/>: Windows announced the end of the session, which another program can still
+        /// cancel; if this run is still going later, <see cref="CheckHealthy"/> takes the protection up again.
+        /// </summary>
+        public void MarkCleanExit(bool sessionEnding = false)
         {
             lock (_lock)
             {
@@ -195,6 +246,24 @@ namespace WinNotch.Core.Update
                 State.Starts.Remove(_myStart.Value);
                 _myStart = null;
                 State.Running = false;
+                _sessionEndingAt = sessionEnding ? _now() : null;
+                Save(State);
+            }
+        }
+
+        /// <summary>A clean exit was marked but the app keeps running (the restart for an update failed): protected again.</summary>
+        public void Resume()
+        {
+            lock (_lock)
+            {
+                if (_myStart != null || !_begun || _rollbackPending) return;
+                _sessionEndingAt = null;
+                var now = _now();
+                State.Starts.Add(now);
+                _myStart = now;
+                State.Running = true;
+                State.SafeMode = _safe;
+                _healthyFrom = _lastCheck = now;
                 Save(State);
             }
         }
@@ -206,19 +275,29 @@ namespace WinNotch.Core.Update
         }
 
         /// <summary>
-        /// Called now and then. True once, when this version becomes healthy (10 minutes without unhandled errors, not
-        /// in safe mode): the crash counter is emptied and the previous exe may be deleted.
+        /// Called every minute. True once, when this version becomes healthy (10 minutes in steady ticks without
+        /// unhandled errors, not in safe mode): the crash counter is emptied and the previous exe may be deleted.
         /// </summary>
         public bool CheckHealthy()
         {
+            bool resume;
             lock (_lock)
             {
-                if (_safe || _myStart == null || State.Healthy) return false;
                 var now = _now();
+                resume = _sessionEndingAt != null && (now - _sessionEndingAt.Value).Duration() > SessionEndGrace;
+            }
+            if (resume) Resume();
+            lock (_lock)
+            {
+                var now = _now();
+                var gap = now - _lastCheck;
+                _lastCheck = now;
+                if (gap < TimeSpan.Zero || gap > MaxTickGap) { _healthyFrom = now; return false; }     // sleep or clock change
+                if (_safe || _myStart == null || State.Healthy) return false;
                 if (now - _healthyFrom < HealthyAfter) return false;
                 State.Healthy = true;
                 State.Starts.Clear();
-                if (_myStart != null) State.Starts.Add(_myStart.Value);       // this run itself still has to end cleanly
+                State.Starts.Add(_myStart.Value);       // this run itself still has to end cleanly
                 Save(State);
                 return true;
             }
@@ -233,6 +312,9 @@ namespace WinNotch.Core.Update
             if (v is null) return false;
             lock (_lock) return State.Refused.Any(r => AppVersion.TryParse(r, out var x) && x == v);
         }
+
+        /// <summary>WinNotch.old.exe can be rolled back to only if it is a WinNotch older than this one.</summary>
+        public static bool IsValidPrevious(AppVersion previous, AppVersion current) => previous is not null && current is not null && previous < current;
 
         private void ReadRollbackNote(StartupState s)
         {
@@ -254,7 +336,7 @@ namespace WinNotch.Core.Update
             s ??= new StartupState();
             s.Version ??= "";
             s.Starts ??= new List<DateTime>();
-            s.Refused = (s.Refused ?? new List<string>()).Where(r => r != null).ToList();
+            s.Refused = (s.Refused ?? new List<string>()).Where(r => r != null && AppVersion.TryParse(r, out _)).Distinct().Take(MaxRefused).ToList();
             State = s;
             return s;
         }

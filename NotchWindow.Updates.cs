@@ -40,6 +40,7 @@ namespace WinNotch
                 _nextUpdateCheck = DateTime.Now.AddHours(6);
                 _ = CheckUpdate();
             }
+            if (_update != null && _update.PreRelease && !S.BetaChannel) _update = null;     // beta channel switched off
             if (_update != null && !_updateOffered && _mode == Mode.Idle && !_hidden && DateTime.Now >= S.UpdateSnoozeUntil && !_liveInteractive)
                 if (ShowUpdateOffer(_update)) _updateOffered = true;
         }
@@ -56,7 +57,7 @@ namespace WinNotch
         {
             if (!Updater.Configured) return "Actualizările nu sunt configurate încă în această versiune.";
             var u = await Updater.CheckAsync(S.BetaChannel, App.IsRefusedVersion);
-            if (u == null) return "Ai ultima versiune (" + Updater.Current + ").";
+            if (u == null) { _update = null; return "Ai ultima versiune (" + Updater.Current + ")."; }     // e.g. beta channel switched off since
             _update = u;
             _updateOffered = false;
             S.UpdateSnoozeUntil = DateTime.MinValue;
@@ -148,7 +149,11 @@ namespace WinNotch
                 S.Save();
                 // the restart for the update is a clean exit (not counted as a crash), marked before the new version starts
                 if (Updater.Apply(file, () => { App.Guard?.MarkCleanExit(); App.ReleaseSingleInstance(); })) ((App)Application.Current).ExitApp();
-                else ToolAlert(Ui.GWarn, CHot, "Nu am putut înlocui WinNotch.exe", "Detalii în log; versiunea de acum merge mai departe.", 480);
+                else
+                {
+                    App.Guard?.Resume();          // this run goes on: protected again
+                    ToolAlert(Ui.GWarn, CHot, "Nu am putut înlocui WinNotch.exe", "Detalii în log; versiunea de acum merge mai departe.", 480);
+                }
             }
             catch (Exception ex)
             {

@@ -172,8 +172,22 @@ namespace WinNotch.Services
             });
         }
 
-        /// <summary>WinNotch.old.exe is there to roll back to.</summary>
-        public static bool PreviousExists => File.Exists(Rollback.OldPath(Environment.ProcessPath));
+        /// <summary>
+        /// The version of WinNotch.old.exe (from its file version, set by the build), or null if it's missing or not a
+        /// WinNotch build. Only an older WinNotch is rolled back to (a leftover or foreign file is never started).
+        /// </summary>
+        public static AppVersion PreviousVersion()
+        {
+            try
+            {
+                string p = Rollback.OldPath(Environment.ProcessPath);
+                if (!File.Exists(p)) return null;
+                var fi = FileVersionInfo.GetVersionInfo(p);
+                if (fi.ProductName != "WinNotch") return null;
+                return AppVersion.TryParse(fi.ProductVersion, out var v) ? v : null;
+            }
+            catch { return null; }
+        }
 
         /// <summary>This version is healthy: the previous exe (and one refused earlier) are no longer needed.</summary>
         public static void DeletePrevious()

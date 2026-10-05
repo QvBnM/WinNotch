@@ -32,6 +32,11 @@ namespace WinNotch.Core.Update
 
         public void WriteRollbackNote(RollbackNote note) => Write(NotePath, note);
 
+        public void DeleteRollbackNote()
+        {
+            if (File.Exists(NotePath) && AppSettings.SafeToWrite(NotePath)) File.Delete(NotePath);
+        }
+
         private static T Read<T>(string path) where T : class
         {
             try
@@ -47,7 +52,8 @@ namespace WinNotch.Core.Update
             Directory.CreateDirectory(_folder);
             using var hold = AppSettings.HoldFolder();
             string tmp = path + ".tmp";
-            if (!AppSettings.SafeToWrite(path) || !AppSettings.SafeToWrite(tmp)) return;
+            // refused (a link in the folder, as administrator): the caller logs it instead of believing it was saved
+            if (!AppSettings.SafeToWrite(path) || !AppSettings.SafeToWrite(tmp)) throw new IOException("scriere refuzată");
             File.WriteAllText(tmp, JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true }));
             File.Move(tmp, path, true);
         }

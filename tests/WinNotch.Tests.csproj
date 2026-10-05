@@ -27,5 +27,6 @@
     <Compile Include="..\Core\Update\StartupGuard.cs" />
     <Compile Include="..\Core\Update\StartupStore.cs" />
     <Compile Include="..\Core\Update\Rollback.cs" />
+    <Compile Include="..\Core\Update\StartupCoordinator.cs" />
   </ItemGroup>
 </Project>

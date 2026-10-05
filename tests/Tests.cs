@@ -468,6 +468,22 @@ namespace WinNotch
             public void Save(WinNotch.Core.Update.StartupState s) { Json = JsonSerializer.Serialize(s); Saves++; }
             public WinNotch.Core.Update.RollbackNote TakeRollbackNote() { var n = Note; Note = null; return n; }
             public void WriteRollbackNote(WinNotch.Core.Update.RollbackNote n) => Note = n;
+            public void DeleteRollbackNote() => Note = null;
+        }
+
+        /// <summary>The app side of the startup steps, recorded in order.</summary>
+        sealed class FakeHost : WinNotch.Core.Update.IStartupHost
+        {
+            public string ExePath { get; set; }
+            public bool Valid = true, StartOk = true, MutexFree = true;
+            public readonly List<string> Steps = new List<string>();
+            public bool PreviousExeValid() => Valid;
+            public void ReleaseExeLock() => Steps.Add("unlock-exe");
+            public void LockExe() => Steps.Add("lock-exe");
+            public void ReleaseMutex() => Steps.Add("release-mutex");
+            public bool TakeMutex() { Steps.Add("take-mutex"); return MutexFree; }
+            public bool Start(string exe, string args) { Steps.Add("start " + Path.GetFileName(exe) + (args == null ? "" : " " + args)); return StartOk; }
+            public void Log(string m) => Steps.Add("log");
         }
 
         /// <summary>P01: version order, release choice (beta channel, refused versions), crash guard, rollback files.</summary>
@@ -519,6 +535,7 @@ namespace WinNotch
             var me = V("0.6.9");
             StartupGuard G(MemStore st) => new StartupGuard(st, me, () => now);
             StartupAction Crash(MemStore st, bool old = true, bool safe = false, int minutes = 1) { var a = G(st).Begin(safe, old); now = now.AddMinutes(minutes); return a; }
+            StartupState Saved(MemStore st) => JsonSerializer.Deserialize<StartupState>(st.Json);
 
             var s1 = new MemStore();
             var a1 = Crash(s1); var a2 = Crash(s1); var a3 = Crash(s1);
@@ -526,10 +543,10 @@ namespace WinNotch
             var a4 = G(s1).Begin(false, true);
             Check("SG2", "3 închideri bruște în 5 minute → repornire în modul sigur", a4 == StartupAction.RestartInSafeMode);
             var safeRun = G(s1); var a5 = safeRun.Begin(true, true);
-            Check("SG3", "Repornirea cu --safe-mode rulează în modul sigur (fără o nouă repornire)", a5 == StartupAction.SafeMode && safeRun.InSafeMode);
+            Check("SG3", "Repornirea cu --safe-mode rulează în modul sigur (fără o nouă repornire)", a5 == StartupAction.SafeMode && safeRun.InSafeMode && Saved(s1).AutoSafe);
             now = now.AddMinutes(1);
             var a6 = G(s1).Begin(false, true);
-            Check("SG4", "Încă o închidere bruscă în modul sigur → revenire la versiunea anterioară", a6 == StartupAction.Rollback);
+            Check("SG4", "Încă o închidere bruscă la scurt timp după modul sigur automat → revenire la versiunea anterioară", a6 == StartupAction.Rollback);
 
             now = t0; var s2 = new MemStore();
             Crash(s2, minutes: 8); Crash(s2, minutes: 8); Crash(s2, minutes: 8);
@@ -539,43 +556,68 @@ namespace WinNotch
             for (int i = 0; i < 5; i++) { var g = G(s3); g.Begin(false, true); now = now.AddSeconds(30); g.MarkCleanExit(); }
             Check("SG6", "„Ieșire” / oprirea Windows / repornirea pentru actualizare nu se numără", G(s3).Begin(false, true) == StartupAction.Normal);
 
+            // healthy: counted in steady minute ticks, an error starts the 10 minutes over
             now = t0; var s4 = new MemStore();
             Crash(s4); Crash(s4);
             var hg = G(s4); hg.Begin(false, true);
-            now = now.AddMinutes(9);
-            bool notYet = !hg.CheckHealthy() && !hg.OldExeMayBeDeleted;
-            hg.NoteError();                                   // an unhandled error: the 10 minutes start again
-            now = now.AddMinutes(9);
-            bool stillNot = !hg.CheckHealthy();
-            now = now.AddMinutes(2);
-            bool healthy = hg.CheckHealthy() && hg.OldExeMayBeDeleted && !hg.CheckHealthy();
+            var myStart4 = now;
+            bool Tick(StartupGuard g, int minutes) { bool any = false; for (int i = 0; i < minutes; i++) { now = now.AddMinutes(1); any |= g.CheckHealthy(); } return any; }
+            bool notYet = !Tick(hg, 9) && !hg.OldExeMayBeDeleted;
+            hg.NoteError();
+            bool stillNot = !Tick(hg, 9);
+            bool healthy = Tick(hg, 1) && hg.OldExeMayBeDeleted && !Tick(hg, 1);
             Check("SG7", "10 minute fără erori → sănătoasă: abia acum se poate șterge WinNotch.old.exe (o eroare reia numărătoarea)", notYet && stillNot && healthy);
-            var stAfter = JsonSerializer.Deserialize<StartupState>(s4.Json);
-            Check("SG8", "Sănătoasă: contorul de închideri bruște se golește", stAfter.Healthy && stAfter.Starts.Count <= 1);
+            var stAfter = Saved(s4);
+            Check("SG8", "Sănătoasă: contorul se golește, rămâne doar pornirea curentă", stAfter.Healthy && stAfter.Starts.Count == 1 && stAfter.Starts[0] == myStart4);
             hg.MarkCleanExit();
             Check("SG8b", "Sănătoasă, apoi oprită curat: pornirea următoare e normală", G(s4).Begin(false, true) == StartupAction.Normal);
+
+            now = t0; var s4b = new MemStore(); var sleepy = G(s4b); sleepy.Begin(false, true);
+            Tick(sleepy, 3);
+            now = now.AddMinutes(60);                         // laptop asleep (or the clock jumped forward)
+            bool afterSleep = sleepy.CheckHealthy();
+            bool soon = Tick(sleepy, 5);
+            now = now.AddHours(-3);                           // clock set back
+            bool back = sleepy.CheckHealthy() || Tick(sleepy, 5);
+            bool finally10 = Tick(sleepy, 10);
+            Check("SG17", "Somn sau ceas schimbat nu scurtează cele 10 minute (se reiau de la zero)", !afterSleep && !soon && !back && finally10);
 
             now = t0; var s5 = new MemStore();
             Crash(s5); Crash(s5); Crash(s5);
             G(s5).Begin(false, false);                        // → restart in safe mode
             G(s5).Begin(true, false); now = now.AddMinutes(1);
-            Check("SG9", "WinNotch.old.exe lipsă: fără revenire, rămâne în modul sigur", G(s5).Begin(false, false) == StartupAction.SafeMode);
+            Check("SG9", "Fără o versiune anterioară validă: fără revenire, rămâne în modul sigur", G(s5).Begin(false, false) == StartupAction.SafeMode);
 
+            // M1: a safe-mode run that worked for a long time, then one abrupt end (power cut) → not a rollback
+            now = t0; var s11 = new MemStore();
+            Crash(s11); Crash(s11); Crash(s11);
+            G(s11).Begin(false, true); G(s11).Begin(true, true);
+            now = now.AddHours(2);
+            var late = G(s11).Begin(false, true);
+            Check("SG18", "Mod sigur care a mers 2 ore, apoi o pană de curent → nu revine (doar o închidere obișnuită)", late == StartupAction.Normal);
+            now = t0; var s12 = new MemStore();
+            G(s12).Begin(true, true); now = now.AddMinutes(1);   // --safe-mode by hand, then a crash
+            Check("SG19", "Mod sigur pornit de mână (--safe-mode), apoi o închidere bruscă → nu revine", G(s12).Begin(false, true) == StartupAction.Normal);
+            now = t0; var s13 = new MemStore();
+            Crash(s13); Crash(s13); Crash(s13);
+            G(s13).Begin(false, true); var sq = G(s13); sq.Begin(true, true); now = now.AddMinutes(1); sq.MarkCleanExit();
+            Check("SG20", "Ieșire curată din modul sigur, apoi o pornire normală în 5 minute → normală (nu iar mod sigur)", G(s13).Begin(false, true) == StartupAction.Normal);
+
+            // 30 minutes between rollbacks, across versions: 0.7.0 rolls back to 0.6.9, which then crashes the same way
             now = t0; var s6 = new MemStore();
-            Crash(s6); Crash(s6); Crash(s6);
-            G(s6).Begin(false, true); G(s6).Begin(true, true); now = now.AddMinutes(1);
-            var rb = G(s6);
+            StartupGuard G70() => new StartupGuard(s6, V("0.7.0"), () => now);
+            for (int i = 0; i < 3; i++) { G70().Begin(false, true); now = now.AddMinutes(1); }
+            G70().Begin(false, true); G70().Begin(true, true); now = now.AddMinutes(1);
+            var rb = G70();
             bool first = rb.Begin(false, true) == StartupAction.Rollback;
-            rb.RolledBack("test");
-            // the restored exe crashes the same way (same version string here): a second rollback within 30 minutes is blocked
-            now = now.AddMinutes(1);
-            Crash(s6); Crash(s6); Crash(s6);
+            rb.RollingBack("test");
+            for (int i = 0; i < 3; i++) { G(s6).Begin(false, true); now = now.AddMinutes(1); }
             G(s6).Begin(false, true); G(s6).Begin(true, true); now = now.AddMinutes(1);
             var second = G(s6).Begin(false, true);
-            Check("SG10", "A doua revenire în 30 de minute e blocată (rămâne în modul sigur)", first && second == StartupAction.SafeMode);
+            Check("SG10", "A doua revenire în 30 de minute (altă versiune) e blocată: rămâne în modul sigur", first && second == StartupAction.SafeMode);
             now = now.AddMinutes(31);
-            var s6b = new MemStore { Json = s6.Json };
-            var st6 = JsonSerializer.Deserialize<StartupState>(s6b.Json); st6.Running = true; st6.SafeMode = true; s6b.Json = JsonSerializer.Serialize(st6);
+            var st6 = Saved(s6); st6.Running = true; st6.SafeMode = true; st6.AutoSafe = true; st6.SafeStartedAt = now.AddMinutes(-1);
+            var s6b = new MemStore { Json = JsonSerializer.Serialize(st6) };
             Check("SG11", "După 30 de minute, o nouă revenire e din nou posibilă", G(s6b).Begin(false, true) == StartupAction.Rollback);
 
             // the restored version reads the note: message once, refused version not offered, a newer one is
@@ -591,12 +633,73 @@ namespace WinNotch
             var s8 = new MemStore { Note = new RollbackNote { Refused = "0.6.9" } };
             var same = new StartupGuard(s8, V("0.6.9"), () => now); same.Begin(false, false);
             Check("SG14", "O notă veche despre versiunea instalată acum (reinstalată între timp) e ignorată", same.RollbackMessage == null && !same.IsRefused(V("0.6.9")));
-            var s9 = new MemStore(); var rg = new StartupGuard(s9, V("0.7.0"), () => now); rg.Begin(false, true); rg.RolledBack("motiv");
-            Check("SG15", "Revenirea scrie rollback.json (versiunea refuzată + motivul) și ține minte versiunea",
-                  s9.Note?.Refused == "0.7.0" && s9.Note.Reason == "motiv" && rg.IsRefused(V("0.7.0")));
+            var s9 = new MemStore(); var rg = new StartupGuard(s9, V("0.7.0"), () => now); rg.Begin(false, true); rg.RollingBack("motiv");
+            var st9 = Saved(s9);
+            Check("SG15", "Revenirea scrie rollback.json (versiunea refuzată + motivul), ține minte versiunea și golește contorul",
+                  s9.Note?.Refused == "0.7.0" && s9.Note.Reason == "motiv" && rg.IsRefused(V("0.7.0")) && st9.Starts.Count == 0 && st9.Version == "" && !st9.Running);
             var s10 = new MemStore(); var ng = new StartupGuard(s10, V("0.7.1"), () => now);
-            s10.Json = JsonSerializer.Serialize(new StartupState { Version = "0.7.0", Running = true, SafeMode = true, Starts = new List<DateTime> { now, now, now }, Refused = new List<string> { "0.7.0" } });
+            s10.Json = JsonSerializer.Serialize(new StartupState { Version = "0.7.0", Running = true, SafeMode = true, AutoSafe = true, SafeStartedAt = now, Starts = new List<DateTime> { now, now, now }, Refused = new List<string> { "0.7.0" } });
             Check("SG16", "O versiune nouă începe cu contorul gol, dar păstrează lista refuzată", ng.Begin(false, true) == StartupAction.Normal && ng.IsRefused(V("0.7.0")));
+            var s14 = new MemStore(); var rf = new StartupGuard(s14, V("0.7.0"), () => now); rf.Begin(false, true); rf.RollingBack("x"); rf.RollbackFailed();
+            var st14 = Saved(s14);
+            Check("SG21", "Schimbarea fișierelor a eșuat: nimic refuzat, nota ștearsă, rularea continuă în modul sigur (numărată)",
+                  !rf.IsRefused(V("0.7.0")) && s14.Note == null && rf.InSafeMode && st14.Running && st14.Starts.Count == 1 && !st14.AutoSafe);
+            var s15 = new MemStore(); var cs = new StartupGuard(s15, me, () => now); cs.Begin(false, true); cs.ContinueInSafeMode(); now = now.AddMinutes(1);
+            Check("SG22", "Continuat în modul sigur (fără revenire automată): o închidere bruscă ulterioară nu duce la revenire", G(s15).Begin(false, true) != StartupAction.Rollback);
+            var s16 = new MemStore(); var se = new StartupGuard(s16, me, () => now); se.Begin(false, true);
+            se.MarkCleanExit(sessionEnding: true);
+            bool cleanNow = !Saved(s16).Running;
+            now = now.AddMinutes(1); se.CheckHealthy();
+            bool stillClean = !Saved(s16).Running;
+            now = now.AddMinutes(2); se.CheckHealthy();
+            Check("SG23", "Oprirea Windows anulată de alt program: după 2 minute protecția se reia", cleanNow && stillClean && Saved(s16).Running);
+            var s17 = new MemStore(); var rs = new StartupGuard(s17, me, () => now); rs.Begin(false, true); rs.MarkCleanExit(); rs.Resume();
+            Check("SG24", "Actualizarea nu a putut reporni: rularea curentă e din nou protejată", Saved(s17).Running && Saved(s17).Starts.Count == 1);
+            var junk = new MemStore { Json = "{\"Refused\":[\"../../x\",\"0.7.0\",\"0.7.0\",null,\"abc\"],\"Starts\":null}" };
+            var jg = new StartupGuard(junk, me, () => now); jg.Begin(false, true);
+            Check("SG25", "startup.json cu valori ciudate: doar versiunile valide rămân refuzate, fără duplicate", jg.State.Refused.Count == 1 && jg.IsRefused(V("0.7.0")));
+            Check("SG26", "Revenirea doar la un WinNotch mai vechi", StartupGuard.IsValidPrevious(V("0.6.8"), me) && !StartupGuard.IsValidPrevious(V("0.6.9"), me) && !StartupGuard.IsValidPrevious(V("0.7.0"), me) && !StartupGuard.IsValidPrevious(null, me));
+
+            // ---- the order of the startup steps (StartupCoordinator)
+            string cdir = Path.Combine(TestFolder, "coord");
+            if (Directory.Exists(cdir)) Directory.Delete(cdir, true);
+            Directory.CreateDirectory(cdir);
+            string cexe = Path.Combine(cdir, "WinNotch.exe");
+            now = t0; var c1 = new MemStore();
+            var h1 = new FakeHost { ExePath = cexe };
+            for (int i = 0; i < 3; i++) { StartupCoordinator.Run(G(c1), h1, false, "--safe-mode"); now = now.AddMinutes(1); }
+            h1.Steps.Clear();
+            var o1 = StartupCoordinator.Run(G(c1), h1, false, "--safe-mode");
+            Check("SC1", "Repornirea în modul sigur: mutex-ul se eliberează abia înainte de pornire, cu --safe-mode",
+                  o1 == StartupOutcome.HandedOver && string.Join("|", h1.Steps) == "release-mutex|start WinNotch.exe --safe-mode");
+            var h2 = new FakeHost { ExePath = cexe };
+            var o2 = StartupCoordinator.Run(G(c1), h2, true, "--safe-mode");
+            now = now.AddMinutes(1);
+            File.WriteAllText(cexe, "nou"); File.WriteAllText(Rollback.OldPath(cexe), "vechi");
+            var h3 = new FakeHost { ExePath = cexe };
+            var o3 = StartupCoordinator.Run(G(c1), h3, false, "--safe-mode");
+            Check("SC2", "Revenirea: nota scrisă înaintea schimbării, apoi exe deblocat, schimbat, mutex eliberat, versiunea veche pornită",
+                  o2 == StartupOutcome.ContinueSafe && o3 == StartupOutcome.HandedOver && c1.Note?.Refused == "0.6.9" &&
+                  string.Join("|", h3.Steps) == "unlock-exe|release-mutex|start WinNotch.exe" && File.ReadAllText(cexe) == "vechi");
+            now = t0; var c2 = new MemStore();
+            var h4 = new FakeHost { ExePath = cexe, StartOk = false, MutexFree = false };
+            for (int i = 0; i < 3; i++) { StartupCoordinator.Run(G(c2), new FakeHost { ExePath = cexe }, false, "--safe-mode"); now = now.AddMinutes(1); }
+            var o4 = StartupCoordinator.Run(G(c2), h4, false, "--safe-mode");
+            Check("SC3", "Repornirea nu pornește și între timp a pornit alt WinNotch: această copie iese", o4 == StartupOutcome.Quit && h4.Steps.Contains("take-mutex"));
+            now = t0; var c3 = new MemStore();
+            var h5 = new FakeHost { ExePath = cexe, StartOk = false };
+            for (int i = 0; i < 3; i++) { StartupCoordinator.Run(G(c3), new FakeHost { ExePath = cexe }, false, "--safe-mode"); now = now.AddMinutes(1); }
+            var o5 = StartupCoordinator.Run(G(c3), h5, false, "--safe-mode");
+            Check("SC4", "Repornirea nu pornește: continuă aici, în modul sigur, cu mutex-ul luat înapoi", o5 == StartupOutcome.ContinueSafe && h5.Steps.Last() == "take-mutex");
+            if (File.Exists(Rollback.OldPath(cexe))) File.Delete(Rollback.OldPath(cexe));
+            now = t0; var c4 = new MemStore();
+            for (int i = 0; i < 3; i++) { StartupCoordinator.Run(G(c4), new FakeHost { ExePath = cexe }, false, "--safe-mode"); now = now.AddMinutes(1); }
+            StartupCoordinator.Run(G(c4), new FakeHost { ExePath = cexe }, false, "--safe-mode");
+            StartupCoordinator.Run(G(c4), new FakeHost { ExePath = cexe }, true, "--safe-mode"); now = now.AddMinutes(1);
+            var h6 = new FakeHost { ExePath = cexe, Valid = true };       // valid version reported, but the file is gone by now
+            var o6 = StartupCoordinator.Run(G(c4), h6, false, "--safe-mode");
+            Check("SC5", "Schimbarea nu se poate face: rămâne în modul sigur, mutex-ul nu a fost eliberat, nimic refuzat",
+                  o6 == StartupOutcome.ContinueSafe && !h6.Steps.Contains("release-mutex") && !h6.Steps.Any(x => x.StartsWith("start")) && c4.Note == null && !Saved(c4).Refused.Contains("0.6.9") && Saved(c4).Running && Saved(c4).SafeMode);
 
             // ---- startup.json on disk
             string folder = Path.Combine(TestFolder, "startup");
@@ -609,7 +712,7 @@ namespace WinNotch
             File.WriteAllText(fs.StatePath, "null");
             bool nullOk; try { nullOk = new StartupGuard(fs, V("0.6.9"), () => now).Begin(false, true) == StartupAction.Normal; } catch { nullOk = false; }
             Check("ST1", "startup.json lipsă, corupt sau „null” = stare implicită, fără excepție", missingOk && corruptOk && nullOk);
-            var w = new StartupGuard(fs, V("0.6.9"), () => now); w.Begin(false, true); w.RolledBack("r");
+            var w = new StartupGuard(fs, V("0.6.9"), () => now); w.Begin(false, true); w.RollingBack("r");
             Check("ST2", "Scriere atomică: fără fișier .tmp rămas; rollback.json citit o dată și șters",
                   !File.Exists(fs.StatePath + ".tmp") && File.Exists(fs.NotePath) && fs.TakeRollbackNote()?.Refused == "0.6.9" && !File.Exists(fs.NotePath) && fs.TakeRollbackNote() == null);
 
@@ -626,6 +729,10 @@ namespace WinNotch
             string logged = null;
             bool sw2 = Rollback.Swap(exe, () => released = false, l => logged = l);
             Check("RB2", "WinNotch.old.exe lipsă: nimic schimbat, doar un rând în log", !sw2 && released && File.ReadAllText(exe) == "vechi" && logged != null);
+            File.WriteAllText(exe, "curent"); File.WriteAllText(Rollback.OldPath(exe), "vechi");
+            if (File.Exists(Rollback.RejectedPath(exe))) File.Delete(Rollback.RejectedPath(exe));
+            bool sw3 = Rollback.Swap(exe, () => File.Delete(Rollback.OldPath(exe)), null);      // old.exe disappears mid-way
+            Check("RB3", "Eșec la jumătatea schimbării: WinNotch.exe rămâne versiunea curentă", !sw3 && File.Exists(exe) && File.ReadAllText(exe) == "curent");
         }
 
         static bool SafeCalc(string q) { try { Launcher.Calculate(q); return true; } catch { return false; } }

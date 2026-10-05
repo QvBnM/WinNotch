@@ -35,6 +35,12 @@ namespace WinNotch.Core.Update
             catch (Exception ex)
             {
                 log?.Invoke("Revenire: nu am putut schimba fișierele: " + ex.GetType().Name);
+                // both moves failed: never leave the folder without WinNotch.exe (the Run entry points to it)
+                if (!File.Exists(exePath) && File.Exists(rejected))
+                {
+                    try { File.Copy(rejected, exePath, false); log?.Invoke("Revenire: WinNotch.exe lipsea; l-am refăcut din copia curentă."); }
+                    catch (Exception ex2) { log?.Invoke("Revenire: WinNotch.exe lipsește și nu a putut fi refăcut: " + ex2.GetType().Name); }
+                }
                 return false;
             }
         }

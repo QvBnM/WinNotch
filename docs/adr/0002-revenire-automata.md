@@ -14,13 +14,20 @@ Comparația versiunilor era `System.Version`, care nu înțelege sufixe ca „-r
 - Toată logica stă în `Core/Update/`, fără WPF și fără I/O direct în decizie (ceasul și stocarea sunt injectate), ca fiecare
   ramură să fie testată automat: `AppVersion`, `ReleaseFeed`, `StartupGuard` + `IStartupStore`, `Rollback`.
 - **Pornire monitorizată** în `startup.json`: o pornire rămâne „deschisă” până la o închidere curată (Ieșire, oprirea
-  Windows, repornirea pentru actualizare). 3 porniri deschise în 5 minute → o repornire în modul sigur; încă o închidere
-  bruscă în modul sigur → revenire. Pornirea se înregistrează imediat după verificarea „o singură instanță” (altfel a doua
+  Windows, repornirea pentru actualizare). 3 porniri deschise în 5 minute → o repornire în modul sigur; o închidere
+  bruscă a acestui mod sigur automat în primele 5 minute → revenire. Un mod sigur care a mers mai mult sau unul pornit de
+  mână se numără doar ca o închidere obișnuită (o pană de curent după ore nu trebuie să refuze o versiune bună). Pornirea se înregistrează imediat după verificarea „o singură instanță” (altfel a doua
   copie, care iese imediat, ar fi numărată ca închidere bruscă), înaintea setărilor și a oricărui serviciu.
 - **Revenirea** doar redenumește fișiere (`exe → rejected`, `old → exe`); nimic nu se șterge înainte ca schimbarea să reușească.
-  Fără `WinNotch.old.exe` nu se face nimic distructiv. Cel mult o revenire la 30 de minute, ca două versiuni stricate să
+  Se revine doar la un `WinNotch.old.exe` care e un WinNotch mai vechi (versiunea din fișier). `rollback.json` se scrie
+  înaintea schimbării (un proces oprit la jumătate tot lasă nota); un eșec anulează nota și refuzul. Mutex-ul „o singură
+  instanță” se eliberează abia înainte de a porni celălalt proces. Ordinea pașilor stă în `StartupCoordinator` (testat),
+  nu în codul WPF.
+- O pornire care eșuează la jumătate (excepție în `OnStartup`) închide procesul (`Environment.Exit(1)`), deci se numără;
+  „sănătos” începe să fie măsurat abia după ce notch-ul și iconița există. Cel mult o revenire la 30 de minute, ca două versiuni stricate să
   nu se înlocuiască la nesfârșit.
-- **„Sănătos”** = 10 minute fără erori neprinse, în afara modului sigur. Abia atunci se șterge `WinNotch.old.exe`.
+- **„Sănătos”** = 10 minute fără erori neprinse, în afara modului sigur, numărate minut cu minut (un somn sau o schimbare a
+  ceasului le reia). Abia atunci se șterge `WinNotch.old.exe`.
 - **Versiunile refuzate** se țin minte în `startup.json` (comun tuturor versiunilor) și se aduc din `rollback.json`, scris de
   versiunea care renunță și citit o dată de cea restaurată; nu mai sunt oferite, dar o versiune mai nouă decât ele da.
 - **Canalul beta** e o setare (nu un feature flag): oprit = `releases/latest` (GitHub nu întoarce niciodată pre-release-uri

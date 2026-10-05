@@ -70,6 +70,7 @@ Versiunile 0.7 → 1.0 sunt construite pe pași (ID-uri P00, P10, P11… în `do
   loc unde se compară versiuni), `ReleaseFeed` (ce release se oferă: canal beta, versiuni refuzate), `StartupGuard`
   (pornire monitorizată → mod sigur → revenire; „sănătos” după 10 minute), `FileStartupStore` (`startup.json`,
   `rollback.json`), `Rollback` (schimbarea fișierelor). `Services/Updater.cs` doar descarcă și verifică semnătura;
-  `App.xaml.cs` (`StartGuarded`) și `NotchWindow.Updates.cs` doar leagă aceste piese. Orice ieșire curată nouă din aplicație
+  `StartupCoordinator` (ordinea pașilor la pornire: mutex, notă, schimbarea fișierelor, repornirea);
+  `App.xaml.cs` (`StartGuarded`, `StartupHost`) și `NotchWindow.Updates.cs` doar leagă aceste piese. Orice ieșire curată nouă din aplicație
   trebuie să apeleze `App.Guard.MarkCleanExit()`, altfel se numără ca închidere bruscă. Vezi `docs/adr/0002-revenire-automata.md`.
 - CI (`.github/workflows/ci.yml`) rulează build-ul și testele la fiecare pull request și push pe alte ramuri decât `main`.
