@@ -56,7 +56,10 @@ jobs:
       - name: Smoke tests (activity-manager on)
         if: env.NEW == 'true'
         timeout-minutes: 8
-        run: dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- out\WinNotch.exe smoke-artifacts\activity-manager-on --activity-manager=on
+        shell: pwsh
+        run: |
+          Stop-Process -Name WinNotch -ErrorAction SilentlyContinue
+          dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- out\WinNotch.exe smoke-artifacts\activity-manager-on --activity-manager=on
 
       - name: Smoke artifacts (last log, if a run could not copy it)
         if: failure() && env.NEW == 'true'
@@ -66,8 +69,9 @@ jobs:
           $log = Join-Path $env:APPDATA 'WinNotch\smoke\log.txt'
           if (Test-Path $log) { Copy-Item $log smoke-artifacts\last-run-log.txt }
 
+      # only on failure: an artifact-service hiccup must never block a release
       - uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() && env.NEW == 'true' }}
+        if: failure() && env.NEW == 'true'
         with:
           name: smoke-artifacts
           path: smoke-artifacts

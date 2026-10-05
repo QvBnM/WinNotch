@@ -259,6 +259,8 @@ namespace WinNotch.Smoke
         private static void Peek()
         {
             SettledIdle();
+            // runs after the burst: wait out its 5 s window, so the Low activity can't be counted with it (timing-independent)
+            if (_activityOn) Thread.Sleep(5500);
             if (!_activityOn) { Refused("post-activity low"); return; }
             Command("post-activity low");
             var p = WaitFor(ReadStatus, s => s.Mode == "Live" && s.Peek == 1, TimeSpan.FromSeconds(8), "„peek” (peek=1)");

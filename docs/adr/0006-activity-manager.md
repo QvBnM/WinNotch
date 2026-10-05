@@ -23,10 +23,13 @@ codul vechi rămâne neatins; fără polling în standby; logica testabilă făr
     OCR „Citesc…” → „Text copiat”, progresul RAM → rezultatul, descărcarea → „refuzată” / „Instalez…”);
   - prioritate egală sau mai mare → înlocuiește alerta afișată (ca înainte); mai mică → așteaptă la coadă și apare după,
     dacă nu a așteptat mai mult de 10 s; coada are cel mult 50 de locuri (pleacă întâi cele Low, apoi cele mai vechi);
-  - Critical întrerupe orice; cu notch-ul deschis, Critical și persistentele așteaptă închiderea, restul sunt aruncate (ca
-    înainte); peste ecran complet doar High și Critical (ca „important” înainte);
+  - Critical întrerupe orice; cu notch-ul deschis, Critical (fără butoane) și persistentele așteaptă închiderea, restul sunt
+    aruncate (ca înainte); peste ecran complet doar alertele High și Critical (ca „important” înainte), iar persistentele
+    mai puțin importante sunt păstrate și desenate când ecranul complet se termină (un rând în `MonitorTick` →
+    `ActivityManager.Refresh`);
   - **„N noutăți”:** peste 3 alerte Normal/Low cu chei diferite în 5 s → un singur rezumat; alertele rafalei sunt aruncate,
-    se păstrează doar numărul; rezumatul crește cât continuă rafala, nu e interactiv (click-ul trece prin el, ca la alertele
+    se păstrează doar numărul (rafala se numără o singură dată: la crearea și la expirarea rezumatului numărătoarea începe
+    din nou); rezumatul crește cât continuă rafala, nu e interactiv (click-ul trece prin el, ca la alertele
     obișnuite) și expiră după 4 s. Actualizările aceleiași chei, alertele High/Critical și cele cu butoane nu se grupează;
   - **peek:** o activitate Low nu ia pastila: o lărgește cu 48 px, la înălțimea pastilei mici, 2 s, cu titlul ei;
   - **persistente:** stau până la `Dismiss`, în spatele alertelor (o alertă trece peste ele și apoi revin); una → pastila ei;
@@ -41,8 +44,9 @@ codul vechi rămâne neatins; fără polling în standby; logica testabilă făr
   tabel) și trimisă managerului; prezentatorul desenează tot cu `ShowLive` (aspect identic), apoi oprește cronometrul vechi:
   managerul decide când se termină.
 - **Legături în fișierele mari, câte un rând:** la finalul `EndLive` (`ActivityLiveEnded()`: un buton sau un `catch` a
-  închis alerta → managerul trece la următoarea), la finalul `Collapse` (`ActivityNotchClosed()`) și în ramura „pe loc” din
-  `LiveVolume` (`ActivityTouch`, înaintea cronometrului vechi). Toate sunt fără efect cu comutatorul oprit.
+  închis alerta → managerul trece la următoarea), la finalul `Collapse` (`ActivityNotchClosed()`), în ramura „pe loc” din
+  `LiveVolume` (`ActivityTouch`, înaintea cronometrului vechi) și în `MonitorTick`, la schimbarea ecranului complet
+  (`ActivityFullscreenChanged()`, revizia R1). Toate sunt fără efect cu comutatorul oprit.
 - **Fixarea căii vechi:** întâi, într-un commit separat, testele de caracterizare (`tests/AlertCharacterizationTests.cs`,
   tabelul `Features/Activity/LegacyAlerts.cs`): fiecare apel trimite mărimea, durata și „important” din tabel; corpurile
   `ShowLive`, `EndLive` (fără rândul de legătură) și `EndLiveInteractive` sunt neschimbate; fiecare limită de repetare
@@ -77,6 +81,6 @@ codul vechi rămâne neatins; fără polling în standby; logica testabilă făr
 - Cu comutatorul pornit: o alertă mai puțin importantă nu o mai acoperă pe una importantă (o piesă nouă așteaptă după
   „Baterie descărcată”); multe alerte deodată devin „N noutăți”.
 - **Limitări cunoscute:** o activitate persistentă deja afișată rămâne vizibilă dacă pornește apoi un joc pe tot ecranul
-  (ca o alertă importantă de azi; Game Mode, P44, o va ascunde); una Normal ascunsă de ecranul complet reapare abia la
-  următoarea schimbare din manager. Mediul (notch deschis, ecran complet) e citit fără lock de pe firul cronometrului;
+  (ca o alertă importantă de azi; Game Mode, P44, o va ascunde). „N noutăți” nu apare cu alertele de azi (doar trei se pot
+  grupa, sub prag): e pentru funcțiile viitoare și e verificat de testele de fum. Mediul (notch deschis, ecran complet) e citit fără lock de pe firul cronometrului;
   prezentatorul verifică din nou pe firul interfeței.

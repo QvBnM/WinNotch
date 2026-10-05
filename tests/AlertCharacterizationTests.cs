@@ -514,11 +514,12 @@ namespace WinNotch
             string endLive = Norm(NoComments(MethodBody(notch, "private void EndLive()")));
             string collapse = Norm(NoComments(MethodBody(notch, "private void Collapse()")));
             string volume = Norm(NoComments(MethodBody(notch, "private void LiveVolume(int v, bool muted)")));
-            Check("AR-P13-3", "Legăturile P13 din notch sunt câte un rând: la finalul EndLive și Collapse, în LiveVolume înainte de cronometrul vechi; fără ele, corpurile vechi rămân",
+            Check("AR-P13-3", "Legăturile P13 din notch sunt câte un rând: la finalul EndLive și Collapse, în LiveVolume înainte de cronometrul vechi, după schimbarea ecranului complet; fără ele, corpurile vechi rămân",
                   Count(endLive, EndLiveHook) == 1 && endLive.EndsWith(EndLiveHook + " }", StringComparison.Ordinal) &&
                   Count(collapse, "ActivityNotchClosed();") == 1 && collapse.EndsWith("UpdateVisualizer(); ActivityNotchClosed(); }", StringComparison.Ordinal) &&
                   volume.Contains("if (ActivityTouch(LegacyAlerts.Volume)) return; _liveTimer.Stop(); _liveTimer.Start(); return; }") &&
-                  Count(Norm(NoComments(notch)), "Activity") == 4 /* the using line and the three hooks */);
+                  Norm(NoComments(notch)).Contains("if (hidden != _hidden) { _hidden = hidden; ApplyHidden(); ActivityFullscreenChanged(); }") &&
+                  Count(Norm(NoComments(notch)), "Activity") == 5 /* the using line and the four hooks */);
         }
 
         /// <summary>What only the legacy path does (the Activity Manager has its own rules for it, see ActivityTests).</summary>

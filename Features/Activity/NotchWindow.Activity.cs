@@ -50,7 +50,12 @@ namespace WinNotch
             bool on = ActivityEnabled();
             if (on == _activityOn) return;
             _activityOn = on;
-            if (!on) _activity?.DismissAll();          // whatever it showed goes; the next alerts take the old path
+            if (!on)
+            {
+                _activity?.DismissAll();               // whatever it showed goes; the next alerts take the old path
+                _activityShown = null;                 // also when it couldn't be drawn now (notch open): nothing of it is left
+                _activityRendered = -1;
+            }
             App.Log("Activity Manager: " + (on ? "pornit." : "oprit."));
         }
 
@@ -102,6 +107,14 @@ namespace WinNotch
             _activityRendered = -1;
             if (shown.IsPersistent) RenderActivity();
             else _activity.Dismiss(shown.Primary?.Key);
+        }
+
+        /// <summary>P13 hook in MonitorTick: the fullscreen app is gone, persistent activities kept meanwhile are drawn.</summary>
+        private void ActivityFullscreenChanged()
+        {
+            if (!_activityOn || _activity == null || _hidden) return;
+            _activityRendered = -1;
+            _activity.Refresh();
         }
 
         /// <summary>P13 hook, last line of Collapse: alerts covered by the open notch are gone; persistent ones come back.</summary>

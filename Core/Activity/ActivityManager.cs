@@ -172,6 +172,16 @@ namespace WinNotch.Core.Activity
             Notify();
         }
 
+        /// <summary>
+        /// Draws the current view again (a new version): the notch calls it when the fullscreen app is gone, so persistent
+        /// activities kept meanwhile show up.
+        /// </summary>
+        public void Refresh()
+        {
+            lock (_lock) Bump();
+            Notify();
+        }
+
         // ------------------------------------------------------------------ the rules (under _lock)
 
         private PostResult PostLocked(Activity a, DateTime now)
@@ -185,10 +195,15 @@ namespace WinNotch.Core.Activity
             if (_env?.NotchOpen == true)
             {
                 if (a.Persistent) { AddPersistent(a, now); return PostResult.Queued; }
-                if (critical) { Enqueue(NewEntry(a, now)); return PostResult.Queued; }
+                if (critical && !a.Interactive) { Enqueue(NewEntry(a, now)); return PostResult.Queued; }    // button alerts: now or never
                 return PostResult.Dropped;
             }
-            if (_env?.Fullscreen == true && a.Priority < ActivityPriority.High) return PostResult.Dropped;
+            if (_env?.Fullscreen == true && a.Priority < ActivityPriority.High)
+            {
+                // a persistent one is kept and shows once the fullscreen app is gone (Refresh); alerts are dropped, as before
+                if (a.Persistent) { AddPersistent(a, now); return PostResult.Queued; }
+                return PostResult.Dropped;
+            }
 
             if (a.Persistent)
             {
@@ -227,6 +242,7 @@ namespace WinNotch.Core.Activity
                     _queue.RemoveAll(q => q.Groupable && keys.Contains(q.A.Key));
                     if (_current != null && _current.Groupable && keys.Contains(_current.A.Key)) _current = null;
                     var g = new Entry { IsGroup = true, Keys = keys, PostedAt = now, Seq = ++_seq, A = GroupActivity(keys.Count) };
+                    _burst.Clear();                 // counted once: new alerts while it lives join it (GroupEntry), after it a new burst starts
                     Place(g);
                     return PostResult.Grouped;
                 }
@@ -354,6 +370,7 @@ namespace WinNotch.Core.Activity
                 if (gen != _timerGen) return;                  // replaced or dismissed meanwhile
                 _timer?.Dispose();
                 _timer = null;
+                if (_current?.IsGroup == true) _burst.Clear();  // the summary is over: its alerts are not counted again
                 _current = null;
                 Advance(_clock.UtcNow);
             }

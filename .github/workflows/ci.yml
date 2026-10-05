@@ -30,6 +30,7 @@ jobs:
           node --test tests/extension/controls.test.js
 
       - name: Build
+        id: build
         run: dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 
       # P02: the published exe, started with --smoke and driven through UI Automation (tests/WinNotch.Smoke).
@@ -40,9 +41,12 @@ jobs:
         run: dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- publish\WinNotch.exe smoke-artifacts\activity-manager-off --activity-manager=off
 
       - name: Smoke tests (activity-manager on)
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 8
-        run: dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- publish\WinNotch.exe smoke-artifacts\activity-manager-on --activity-manager=on
+        shell: pwsh
+        run: |
+          Stop-Process -Name WinNotch -ErrorAction SilentlyContinue      # a first run that failed may have left it running
+          dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- publish\WinNotch.exe smoke-artifacts\activity-manager-on --activity-manager=on
 
       - name: Smoke artifacts (last log, if a run could not copy it)
         if: failure()

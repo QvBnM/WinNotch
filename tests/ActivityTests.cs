@@ -106,9 +106,9 @@ namespace WinNotch
                 var fl = m.Post(Act("l", ActivityPriority.Low)); var fn = m.Post(Act("n")); var fp = m.Post(Act("p2", persistent: true));
                 var fh = m.Post(Act("h", ActivityPriority.High)); bool hShown = m.View.Primary?.Id == "h";
                 var fc = m.Post(Act("c", ActivityPriority.Critical));
-                Check("AM4", "Notch deschis: Normal/High aruncate (ca până acum), Critical și persistentele așteaptă închiderea; ecran complet: doar High și Critical",
+                Check("AM4", "Notch deschis: Normal/High aruncate (ca până acum), Critical și persistentele așteaptă închiderea; ecran complet: doar alertele High și Critical, persistentele așteaptă",
                       n == PostResult.Dropped && h == PostResult.Dropped && cr == PostResult.Queued && pe == PostResult.Queued && hiddenWhileOpen && critAfter && persAfter &&
-                      fl == PostResult.Dropped && fn == PostResult.Dropped && fp == PostResult.Dropped && fh == PostResult.Shown && hShown && fc == PostResult.Shown,
+                      fl == PostResult.Dropped && fn == PostResult.Dropped && fp == PostResult.Queued /* R1: kept for after */ && fh == PostResult.Shown && hShown && fc == PostResult.Shown,
                       $"{n} {h} {cr} {pe} {critAfter} {persAfter} {fl} {fn} {fp} {fh} {fc}");
             }
 
@@ -138,6 +138,34 @@ namespace WinNotch
                 for (int i = 0; i < 4; i++) m2.Post(Act("btn" + i, ActivityPriority.High, interactive: true));     // button alerts neither
                 Check("AM6", "Nu se grupează: actualizările aceleiași chei (volum tras), alertele High, cele cu butoane; un grup care nu poate apărea încă așteaptă la coadă",
                       volOk && highOk && groupWaits && m2.View.Primary.Id == "btn3", $"{volOk} {highOk} {groupWaits} {m2.View.Primary.Id}");
+            }
+
+            // ---- R1 (P13): after „N noutăți” expires, the burst starts over (it used to recount the summarized alerts)
+            {
+                var (m, c, _, _) = New();
+                for (int i = 1; i <= 5; i++) { m.Post(Act("r" + i)); c.Ms(200); }        // group at the 4th, expires 4 s after the 5th
+                bool grouped = m.View.Kind == ActivityViewKind.Group && m.View.GroupCount == 5;
+                c.Ms(3800); bool expired = m.View.Kind == ActivityViewKind.None;
+                c.Ms(500);
+                var r = m.Post(Act("after"));
+                Check("AM15", "R1: o alertă la 500 ms după ce „5 noutăți” a expirat apare singură (nu ca „6 noutăți”)",
+                      grouped && expired && r == PostResult.Shown && m.View.Kind == ActivityViewKind.Single && m.View.Primary.Id == "after", $"{grouped} {expired} {r} {m.View.Kind}");
+            }
+
+            // ---- R1 (P13): persistent ones posted over fullscreen wait for it to end; a button alert is never queued
+            {
+                var (m, _, e, _) = New();
+                e.Full = true;
+                var rp = m.Post(Act("p-full", persistent: true, title: "Livrare"));
+                bool waits = rp == PostResult.Queued && m.PersistentCount == 1 && m.View.Kind == ActivityViewKind.None;
+                e.Full = false; m.Refresh();
+                bool shownAfter = m.View.Kind == ActivityViewKind.Single && m.View.Primary.Id == "p-full";
+                var (m2, _, e2, _) = New();
+                e2.Open = true;
+                var ri = m2.Post(Act("btn-crit", ActivityPriority.Critical, interactive: true));
+                e2.Open = false; m2.NotchClosed();
+                Check("AM16", "R1: o activitate persistentă Normal venită peste ecran complet e păstrată și apare când ecranul complet se termină; o alertă Critical cu butoane cu notch-ul deschis e aruncată, nu pusă la coadă",
+                      waits && shownAfter && ri == PostResult.Dropped && m2.View.Kind == ActivityViewKind.None, $"{rp} {waits} {shownAfter} {ri}");
             }
 
             Check("AM7", "„N noutăți” în română: 1 noutate, 4 noutăți, 19 noutăți, 20 de noutăți, 101 noutăți, 120 de noutăți",

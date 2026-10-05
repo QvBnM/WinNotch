@@ -599,7 +599,7 @@ namespace WinNotch
             if (_mode != Mode.Expanded && (t.Handle != _curMon || _target == null || !SameRect(t.Bounds, _target.Bounds) || Math.Abs(t.Scale - _target.Scale) > 0.01))
                 MoveToMonitor(t, _curMon != IntPtr.Zero && t.Handle != _curMon);
 
-            if (hidden != _hidden) { _hidden = hidden; ApplyHidden(); }
+            if (hidden != _hidden) { _hidden = hidden; ApplyHidden(); ActivityFullscreenChanged(); }     // P13 hook: no-op with the switch off
             if (slim != _slim) { _slim = slim; if (_mode == Mode.Idle) ApplyMode(); }
         }
 
