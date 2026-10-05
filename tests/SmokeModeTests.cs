@@ -34,6 +34,16 @@ namespace WinNotch
             Check("SM5", "Starea pentru UI Automation: „mode=Live;pill=360x54” se scrie și se citește înapoi; altceva e refuzat",
                   ok && mode == "Live" && w == 360 && h == 54 && SmokeMode.Status("Idle", 180, 32) == "mode=Idle;pill=180x32" &&
                   !SmokeMode.TryParseStatus("", out _, out _, out _) && !SmokeMode.TryParseStatus("mode=Idle", out _, out _, out _));
+            // R1 (P02): errors FeatureFlags catches from a Changed handler, an automatic switch-off and a failed test command
+            // used to pass the smoke test's "no exception in log.txt" check
+            Check("SM6", "Log-ul testului de fum: erorile de comutator, oprirea automată, comenzile eșuate și stivele pică testul; excepțiile tratate nu",
+                  new[] { "12:00 Eroare la schimbarea funcției „context-engine”: NullReferenceException",
+                          "12:00 Funcția „context-engine” a fost oprită automat: prea multe erori",
+                          "12:00 Test de fum: comanda a dat eroare: InvalidOperationException",
+                          "12:00 Eroare neprevăzută: System.InvalidOperationException: x", "   at WinNotch.App.OnStartup()",
+                          "12:00 Eroare în funcția „context-engine”: COMException" }.All(SmokeMode.IsFatalLogLine) &&
+                  !SmokeMode.IsFatalLogLine("12:00 Temperaturi: COMException") && !SmokeMode.IsFatalLogLine("12:00 Test de fum: alertă de volum.") &&
+                  !SmokeMode.IsFatalLogLine("") && !SmokeMode.IsFatalLogLine(null));
         }
     }
 }

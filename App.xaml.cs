@@ -184,6 +184,8 @@ namespace WinNotch
             {
                 try
                 {
+                    // a restart of a smoke-test run (safe mode, rollback) stays in smoke mode: its own folder, no updates
+                    if (Features.Smoke.SmokeMode.On) args = string.IsNullOrEmpty(args) ? Features.Smoke.SmokeMode.Arg : args + " " + Features.Smoke.SmokeMode.Arg;
                     var psi = args == null ? new ProcessStartInfo(exe) : new ProcessStartInfo(exe, args);
                     psi.UseShellExecute = false;
                     psi.WorkingDirectory = Path.GetDirectoryName(exe);

@@ -18,7 +18,7 @@ namespace WinNotch.Features.Smoke
     /// <summary>
     /// The smoke-test mode (WinNotch.exe --smoke, used by tests/WinNotch.Smoke in CI): its own data folder
     /// (%AppData%\WinNotch\smoke, so the real settings, log and startup records are never touched), no update checks, no
-    /// temperature service, no message boxes, and a few test commands read from smoke-commands.txt in that folder.
+    /// temperature service, no "already running" message box (exit code 3 instead), and a few test commands read from smoke-commands.txt in that folder.
     /// Without --smoke none of this exists: the commands file is never read.
     /// </summary>
     public static class SmokeMode
@@ -72,6 +72,25 @@ namespace WinNotch.Features.Smoke
             }
             return list;
         }
+
+        /// <summary>
+        /// Log lines that fail the smoke test: unhandled errors, failed starts, errors reported by features (also the ones
+        /// FeatureFlags catches from a Changed handler, and an automatic switch-off), a failed test command, stack traces.
+        /// Other lines naming a handled exception (a service missing on the CI machine) don't.
+        /// </summary>
+        public static bool IsFatalLogLine(string line)
+        {
+            if (string.IsNullOrEmpty(line)) return false;
+            if (line.StartsWith("   at ", StringComparison.Ordinal)) return true;
+            foreach (var f in FatalLogTexts) if (line.Contains(f, StringComparison.Ordinal)) return true;
+            return false;
+        }
+
+        private static readonly string[] FatalLogTexts =
+        {
+            "Eroare neprevăzută", "Eroare fatală", "Pornirea a eșuat", "Eroare în funcția", "Eroare la schimbarea funcției",
+            "a fost oprită automat", "Test de fum: comanda a dat eroare", "Exception:", "Unhandled",
+        };
 
         /// <summary>"mode=Live;pill=360x54": what the smoke test reads from the notch window (UI Automation ItemStatus).</summary>
         public static string Status(string mode, double pillWidth, double pillHeight) =>
