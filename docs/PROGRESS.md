@@ -15,3 +15,13 @@
 - **Revizia R1:** aprobat cu reparații: 1 Mediu (rafala „N noutăți” nenumărată din nou după rezumat → „6 noutăți” fals și peek dependent de timp), 7 Minore; toate reparate în abf8c04 (teste AM15, AM16).
 - **Teste:** 416 C# (161 noi) + 23 extensie + fum 12 (oprit) / 13 (pornit); CI run 23 verde pe Windows, fumul rulat de două ori; release.yml run 13 verde (fum de două ori înainte de „Sign”).
 - **Rămas așa:** „N noutăți” nu apare cu alertele de azi (doar 3 chei grupabile), e pentru P20+/P46; meniul iconiței cade încă pe mesajul de click dreapta în CI (avertisment, o singură reîncercare); nimic verificat vizual de un om pe Windows.
+
+## Rularea 3 — P14 Command Bar + P27 Pagina după context (5 oct 2026)
+
+### P14 Command Bar
+- **Făcut:** `Features/CommandBar` (căutare peste `ActionRegistry.Search`, parametri în text „volum 30”, săgeți/Enter/Esc, Confirm = a doua apăsare pe Enter, Dangerous ascunse), Win+Alt+Space cu alternativa Win+Alt+K în Setări (alertă o dată la conflict), focusul pe calea lansatorului (`EnableTyping` → `StopTyping`/`LastForeground`), nimic peste ecran complet; 21 de acțiuni `settings.*`; comutatorul „command-bar” Experimental, oprit; ADR 0007.
+- **Revizia R1:** aprobat cu reparații, 0 Critic/Major/Mediu, 7 Minore; reparate în e4c4990: panoul ascuns nu se mai reîmprospătează sub bară, raza urmează scara, textul tăiat cu „…”, textul din Setări într-un singur loc, nota din ADR; rămase (documentate): focus refuzat de Windows de două ori → bara fără tastatură până la scurtătură/mouse; click pe desktop trage tastatura înapoi (ca lansatorul).
+- **CI:** run 25 roșu (meniul iconiței: `NoClickablePointException` după testul `settings.position`, nu Command Bar); reparat în testul de fum (cade pe mesajul de click dreapta, ca la iconița negăsită); run 26 verde.
+- **Teste:** 455 C# (39 noi, CB1–CB39) + 23 extensie + fum 15 (oprit) / 16 (pornit); scurtătura reală Win+Alt+Space a mers pe ambele drumuri (fără comanda de rezervă); regula ecranului complet doar în teste unitare.
+- **Abatere:** ramura `p14-command-bar` (nume ales de pilot); unită local în `main` cu `--no-ff`, fără versiune nouă.
+
