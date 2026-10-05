@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using WinNotch.Features.Activity;
 using WinNotch.Panes;
 using WinNotch.Services;
 
@@ -190,6 +191,7 @@ namespace WinNotch
         public void Cleanup()
         {
             StopSmoke();
+            StopActivities();
             _poll.Stop(); _sec.Stop(); _mon.Stop(); _audioTick.Stop();
             CompositionTarget.Rendering -= OnFrame;
             S.PinnedClips = Clips.Where(c => c.Pinned).Select(c => c.Text).ToList();
@@ -451,6 +453,7 @@ namespace WinNotch
             ApplyMode();
             ApplyHidden();
             UpdateVisualizer();
+            ActivityNotchClosed();          // P13 hook (Features/Activity): no-op with the switch off
         }
 
         // =====================================================================
@@ -875,6 +878,7 @@ namespace WinNotch
             var clear = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
             clear.Tick += (o, e) => { clear.Stop(); if (_mode != Mode.Live && LiveLayer.Content == shown) LiveLayer.Content = null; };
             clear.Start();
+            ActivityLiveEnded();            // P13 hook (Features/Activity): no-op with the switch off
         }
 
         private void EndLiveInteractive()
@@ -937,12 +941,12 @@ namespace WinNotch
         {
             string path;
             try { path = ScreenTools.SaveAndCopy(img); }
-            catch (Exception ex) { App.Log("Captură: " + ex.Message); ToolAlert(Ui.GWarn, CWarn, "Captura nu a putut fi salvată", ex.Message); return; }
+            catch (Exception ex) { App.Log("Captură: " + ex.Message); ToolAlert(LegacyAlerts.CaptureError, Ui.GWarn, CWarn, "Captura nu a putut fi salvată", ex.Message); return; }
             var open = Ui.PillBtn("Deschide", () => { try { Shell.Open(path); } catch { } EndLive(); });
             var folder = Ui.PillBtn("Folder", () => { ScreenTools.ShowInFolder(path); EndLive(); });
             var btns = Ui.V(6, open, folder);
             var row = PreviewRow(img, "Captură salvată", img.PixelWidth + " × " + img.PixelHeight + " · copiată, lipește cu Ctrl+V", null, btns);
-            ShowInteractive(row, 540, 100, 5000);
+            ShowInteractive(LegacyAlerts.CaptureResult, row, 540, 100, 5000);
         }
 
         internal async void TextFromScreen()
@@ -953,20 +957,20 @@ namespace WinNotch
 
             // Visible right away: the picked area and "reading…", while Windows recognizes the text.
             var status = Ui.T("Citesc textul…", 12, "MutedBrush");
-            ShowLive(PreviewRow(img, "Text din ecran", null, status, Spinner()), 470, 100, 30000, true);
+            Alert(LegacyAlerts.OcrReading, PreviewRow(img, "Text din ecran", null, status, Spinner()), 470, 100, 30000, true);
             string text = null;
             try { text = await ScreenTools.RecognizeAsync(img); }
             catch (Exception ex) { App.Log("OCR: " + ex); }
 
-            if (text == null) { ToolAlert(Ui.GWarn, CWarn, "Windows nu are recunoaștere de text", "Setări › Ora și limba › Limbă › Română › Opțiuni › Recunoaștere optică", 560); return; }
-            if (string.IsNullOrWhiteSpace(text)) { ToolAlert(Ui.GWarn, CWarn, "Nu am găsit text în zona aleasă", "Încearcă o zonă mai mare sau mai clară"); return; }
+            if (text == null) { ToolAlert(LegacyAlerts.OcrNoEngine, Ui.GWarn, CWarn, "Windows nu are recunoaștere de text", "Setări › Ora și limba › Limbă › Română › Opțiuni › Recunoaștere optică", 560); return; }
+            if (string.IsNullOrWhiteSpace(text)) { ToolAlert(LegacyAlerts.OcrNoText, Ui.GWarn, CWarn, "Nu am găsit text în zona aleasă", "Încearcă o zonă mai mare sau mai clară"); return; }
             try { Clipboard.SetText(text); } catch { }
             int lines = text.Split('\n').Length;
             var preview = Ui.T(text.Replace("\r", "").Replace("\n", "  ·  "), 12, "InkBrush");
             preview.TextWrapping = TextWrapping.Wrap;
             preview.TextTrimming = TextTrimming.CharacterEllipsis;
             preview.MaxHeight = 34;
-            ShowLive(PreviewRow(img, "Text copiat · " + lines + (lines == 1 ? " rând" : " rânduri"), null, preview, LiveIcon("\uE73E", COk)), 470, 100, 5000, true);
+            Alert(LegacyAlerts.OcrDone, PreviewRow(img, "Text copiat · " + lines + (lines == 1 ? " rând" : " rânduri"), null, preview, LiveIcon("\uE73E", COk)), 470, 100, 5000, true);
         }
 
         /// <summary>
@@ -1012,7 +1016,7 @@ namespace WinNotch
                 list.Children.Add(row);
             }
             var content = Ui.V(0, head, list);
-            if (!ShowLive(content, 470, 66 + top.Count * 23, 15000)) return false;
+            if (!Alert(LegacyAlerts.Ram, content, 470, 66 + top.Count * 23, 15000)) return false;
             _liveInteractive = true;                    // the buttons take clicks
             LiveLayer.IsHitTestVisible = true;
             SetClickThrough(false);
@@ -1037,7 +1041,7 @@ namespace WinNotch
                 bar.Width = 110;
                 var content = LiveRow(Spinner(), "Eliberez memoria…", null, bar);
                 ((StackPanel)((Grid)content).Children[1]).Children.Add(sub);
-                ShowLive(content, 430, 60, 60000, true);
+                Alert(LegacyAlerts.RamProgress, content, 430, 60, 60000, true);
 
                 var started = DateTime.Now;
                 var progress = new Progress<(int Done, int Total)>(p =>
@@ -1058,7 +1062,7 @@ namespace WinNotch
                 afterFill.ScaleX = pct0 / 100;
                 afterFill.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(pct0 / 100, pct1 / 100, TimeSpan.FromMilliseconds(900)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
                 var done = LiveRow(LiveIcon(Ui.GMemory, COk), title, Math.Round(pct0) + "% → " + Math.Round(pct1) + "% folosit · " + apps + " aplicații" + (standby ? " · cache golit" : ""), after);
-                ShowLive(done, 520, 60, 4500, true);
+                Alert(LegacyAlerts.RamDone, done, 520, 60, 4500, true);
             }
             catch (Exception ex) { App.Log("RAM: " + ex.Message); EndLive(); }
             finally { _toolBusy = false; }
@@ -1109,17 +1113,17 @@ namespace WinNotch
             return new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(15), Background = Ui.Rgb(0x5A, 0xA9, 0xFF, 0x29), Child = icon };
         }
 
-        private void ShowInteractive(UIElement content, double w, double h, int ms)
+        private void ShowInteractive(string id, UIElement content, double w, double h, int ms)
         {
-            if (!ShowLive(content, w, h, ms, true)) return;     // notch open: no interactive alert, so hover keeps working
+            if (!Alert(id, content, w, h, ms, true)) return;     // notch open: no interactive alert, so hover keeps working
             _liveInteractive = true;
             LiveLayer.IsHitTestVisible = true;
             SetClickThrough(false);
         }
 
-        private void ToolAlert(string glyph, Color c, string title, string sub, double width = 440)
+        private void ToolAlert(string id, string glyph, Color c, string title, string sub, double width = 440)
         {
-            Dispatcher.InvokeAsync(() => ShowLive(LiveRow(LiveIcon(glyph, c), title, sub, null), width, 58, 4200, true), System.Windows.Threading.DispatcherPriority.Background);
+            Dispatcher.InvokeAsync(() => Alert(id, LiveRow(LiveIcon(glyph, c), title, sub, null), width, 58, 4200, true), System.Windows.Threading.DispatcherPriority.Background);
         }
 
         internal Grid LiveRow(UIElement icon, string title, string sub, UIElement extra)
@@ -1158,6 +1162,7 @@ namespace WinNotch
                 _volFill.ScaleX = muted ? 0 : v / 100.0;
                 _volNum.Text = muted ? "—" : v.ToString();
                 _volIcon.Text = muted ? Ui.GMute : Ui.GVol;
+                if (ActivityTouch(LegacyAlerts.Volume)) return;          // P13 hook: the Activity Manager keeps it
                 _liveTimer.Stop();
                 _liveTimer.Start();
                 return;
@@ -1173,7 +1178,7 @@ namespace WinNotch
             _volNum.TextAlignment = TextAlignment.Right;
             g.Put(_volNum, 2);
             _volLive = g;
-            ShowLive(g, 270, 40, 1600);
+            Alert(LegacyAlerts.Volume, g, 270, 40, 1600);
         }
 
         /// <summary>20-20-20: look at something far away for 20 seconds. Has a "Sari" button, so it accepts clicks.</summary>
@@ -1184,7 +1189,7 @@ namespace WinNotch
             var skip = Ui.PillBtn("Sari", null);
             var extra = Ui.H(10, count, skip);
             var content = LiveRow(LiveIcon(Ui.GEye, COk), "Pauză pentru ochi", "Privește ceva departe, 20 de secunde", extra);
-            if (!ShowLive(content, 360, 48, 21000, true)) return;
+            if (!Alert(LegacyAlerts.EyeBreak, content, 360, 48, 21000, true)) return;
             _liveInteractive = true;
             LiveLayer.IsHitTestVisible = true;
             SetClickThrough(false);
@@ -1221,7 +1226,7 @@ namespace WinNotch
                 if (_lastCharging != null && _lastCharging.Value != Stats.Charging)
                 {
                     var pct = Ui.T(Stats.BatteryPercent + "%", 12, Stats.Charging ? "OkBrush" : "InkBrush", false, true);
-                    ShowLive(LiveRow(LiveIcon(Stats.Charging ? Ui.GBolt : Ui.GBattery, Stats.Charging ? COk : CWhite), Stats.Charging ? "Se încarcă" : "Pe baterie", null, pct), 260, 40, 2600);
+                    Alert(LegacyAlerts.Power, LiveRow(LiveIcon(Stats.Charging ? Ui.GBolt : Ui.GBattery, Stats.Charging ? COk : CWhite), Stats.Charging ? "Se încarcă" : "Pe baterie", null, pct), 260, 40, 2600);
                 }
                 _lastCharging = Stats.Charging;
                 int b = Stats.BatteryPercent;
@@ -1229,7 +1234,7 @@ namespace WinNotch
                 else if (b >= 0 && ((b <= 10 && _lastBatAlert > 10) || (b <= 20 && _lastBatAlert > 20)))
                 {
                     _lastBatAlert = b <= 10 ? 10 : 20;
-                    ShowLive(LiveRow(LiveIcon(Ui.GBatteryLow, b <= 10 ? CHot : CWarn), "Baterie descărcată: " + b + "%", "Conectează încărcătorul", null), 330, 54, 5000, true);
+                    Alert(LegacyAlerts.BatteryLow, LiveRow(LiveIcon(Ui.GBatteryLow, b <= 10 ? CHot : CWarn), "Baterie descărcată: " + b + "%", "Conectează încărcătorul", null), 330, 54, 5000, true);
                 }
             }
 
@@ -1237,7 +1242,7 @@ namespace WinNotch
             if (S.Temperatures && hot >= 88 && (DateTime.Now - _lastHotAlert).TotalMinutes > 5)
             {
                 _lastHotAlert = DateTime.Now;
-                ShowLive(LiveRow(LiveIcon(Ui.GWarn, CHot), "Temperatură ridicată", "CPU " + Deg(Temps.Cpu) + "C · GPU " + Deg(Temps.Gpu) + "C", null), 360, 54, 5000, true);
+                Alert(LegacyAlerts.TempHot, LiveRow(LiveIcon(Ui.GWarn, CHot), "Temperatură ridicată", "CPU " + Deg(Temps.Cpu) + "C · GPU " + Deg(Temps.Gpu) + "C", null), 360, 54, 5000, true);
             }
 
             CheckRam();
@@ -1305,7 +1310,7 @@ namespace WinNotch
         private void ShowTrackAlert(MediaInfo mi)
         {
             var art = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(8), Background = mi.Art != null ? new ImageBrush(mi.Art) { Stretch = Stretch.UniformToFill } : Ui.B("TrackBrush") };
-            ShowLive(LiveRow(art, mi.Title, mi.Artist, Equalizer()), 360, 54, 3200);
+            Alert(LegacyAlerts.Track, LiveRow(art, mi.Title, mi.Artist, Equalizer()), 360, 54, 3200);
         }
 
         /// <summary>

@@ -118,6 +118,7 @@ namespace WinNotch
             if (JustUpdated) Services.Updater.CleanUp();
             _notch = new NotchWindow(Settings);
             _notch.Show();
+            _notch.StartActivities();                                  // P13: the alerts' manager; idle with its switch off
             if (Features.Smoke.SmokeMode.On) _notch.StartSmoke();
             _tray = new TrayIcon(this);
             RegisterActions();
@@ -224,6 +225,7 @@ namespace WinNotch
                 var registry = new Core.Actions.ActionRegistry(Core.Flags.FeatureFlags.Current, new Features.Actions.WpfUiDispatcher(), Log);
                 Features.Actions.BuiltInActions.Register(registry, new Features.Actions.AppActionHost(this, _notch));
                 Features.Context.ContextActions.Register(registry, () => Core.Context.ContextEngine.Current, new Features.Context.NotchContextHost(_notch));
+                Features.Activity.ActivityActions.Register(registry, new NotchActivityHost());
                 Core.Actions.ActionRegistry.Current = registry;
             }
             catch (Exception ex) { Log("Acțiuni: înregistrarea a eșuat: " + ex.GetType().Name); }

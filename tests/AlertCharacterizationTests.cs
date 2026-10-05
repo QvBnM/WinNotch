@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using WinNotch.Core.Activity;
 using WinNotch.Features.Activity;
 
 namespace WinNotch
@@ -123,6 +124,58 @@ namespace WinNotch
             }
         }
 
+        /// <summary>
+        /// The "activity-manager" path: the alert posted as the notch posts it (ActivityRouting.FromAlert), the manager with a
+        /// fake clock, the notch's state as its environment, and the notch's hooks (Collapse → NotchClosed, EndLive → Dismiss,
+        /// LiveVolume in place → Touch).
+        /// </summary>
+        sealed class ActivitySink : AlertSink, IActivityEnvironment
+        {
+            private readonly FakeClock _clock = new FakeClock();
+            public readonly ActivityManager M;
+            private bool _wasOpen;
+            public ActivitySink() { M = new ActivityManager(_clock, this); }
+            public override string Name => "Activity Manager";
+            bool IActivityEnvironment.NotchOpen => Open;
+            bool IActivityEnvironment.Fullscreen => Hidden;
+
+            /// <summary>The notch was closed since the last step: Collapse's hook.</summary>
+            private void Sync()
+            {
+                if (_wasOpen && !Open) M.NotchClosed();
+                _wasOpen = Open;
+            }
+
+            public override bool Show(LegacyAlert a, int rows = 0)
+            {
+                Sync();
+                var act = ActivityRouting.FromAlert(a.Id, a.Width, a.HeightFor(rows), a.DurationMs, a.Important, new object());
+                var r = M.Post(act);
+                return ActivityRouting.Accepted(r, act.Interactive, !Open && M.View.Primary?.Key == act.Key);
+            }
+
+            public override void Volume()
+            {
+                Sync();
+                if (ShownId == LegacyAlerts.Volume && M.Touch(LegacyAlerts.Volume)) return;
+                Show(LegacyAlerts.Find(LegacyAlerts.Volume));
+            }
+
+            public override string ShownId
+            {
+                get
+                {
+                    var v = M.View;
+                    if (Open || v.Kind == ActivityViewKind.None) return null;
+                    return v.Kind == ActivityViewKind.Group ? ActivityManager.GroupId : v.Primary.Id;
+                }
+            }
+            public override double ShownW => M.View.Primary?.Width ?? 0;
+            public override double ShownH => M.View.Primary?.Height ?? 0;
+            public override void EndByUser() { var k = M.View.Primary?.Key; if (k != null) M.Dismiss(k); }
+            public override void Advance(TimeSpan d) { Sync(); Now += d; _clock.Advance(d); Sync(); }
+        }
+
         /// <summary>Source snippets of the legacy decisions (whitespace-insensitive), each expected exactly once in its file.</summary>
         static readonly (string Id, string File, string Snippet)[] LegacyPins =
         {
@@ -184,9 +237,9 @@ namespace WinNotch
                 foreach (var l in Src(f).Split('\n'))
                 {
                     string n = Norm(NoComments(l));
-                    if (!Regex.IsMatch(n, @"\b(ShowLive|ShowInteractive|ToolAlert)\(")) continue;
+                    if (!Regex.IsMatch(n, @"\b(ShowLive|ShowInteractive|ToolAlert|Alert)\(")) continue;
                     if (Regex.IsMatch(n, @"^(private|internal|public)\b")) continue;                    // the declarations
-                    if (n.Contains("ShowLive(content, w, h, ms, true)") || n.Contains("width, 58, 4200, true)")) continue;    // the funnels' own bodies
+                    if (n.Contains("content, w, h, ms, true)") || n.Contains("width, 58, 4200, true)")) continue;    // the funnels' own bodies
                     if (!all.Any(a => a.File == f && l.Contains(a.Anchor, StringComparison.Ordinal))) calls.Add(f + ": " + n);
                 }
             Check("AC2", "Fiecare apel de alertă din notch e în tabel (nicio alertă necunoscută)", calls.Count == 0, string.Join(" | ", calls));
@@ -219,10 +272,20 @@ namespace WinNotch
 
             CharacterizePath(new LegacySink(), () => new LegacySink());
             LegacyOnlyCharacterization();
+            CharacterizePath(new ActivitySink(), () => new ActivitySink());       // the same, with the "activity-manager" switch on
+            RoutingPins();
         }
 
-        /// <summary>EndLive's body without the hook lines a later step may add (none at this point).</summary>
-        static string LegacyEndLiveBody(string notch) => Norm(NoComments(MethodBody(notch, "private void EndLive()")));
+        /// <summary>The one line P13 adds at the end of EndLive (a notification; a no-op with the switch off).</summary>
+        const string EndLiveHook = "ActivityLiveEnded();";
+
+        /// <summary>EndLive's body without the P13 hook (which must be its last statement).</summary>
+        static string LegacyEndLiveBody(string notch)
+        {
+            string b = Norm(NoComments(MethodBody(notch, "private void EndLive()")));
+            string tail = " " + EndLiveHook + " }";
+            return b.EndsWith(tail, StringComparison.Ordinal) ? b.Substring(0, b.Length - tail.Length) + " }" : b;
+        }
 
         /// <summary>
         /// Per alert and per repeat limit: the visible outcome on one path. <paramref name="fresh"/> makes a new sink of the
@@ -423,6 +486,39 @@ namespace WinNotch
                 bool whats = w.Show(LegacyAlerts.Find(LegacyAlerts.WhatsNew), 6) && w.ShownH == 64 + 6 * 22;
                 Check("AC-lim-pornire" + sfx, "După actualizare și după revenire: o dată, din a 4-a secundă, doar în standby" + p, after && roll && whats);
             }
+        }
+
+        /// <summary>
+        /// P13 routing, in the source: every alert goes through Alert(LegacyAlerts.X, …) with its own table id; ShowLive is called
+        /// only by Alert (switch off) and the presenter; the hooks are single lines.
+        /// </summary>
+        static void RoutingPins()
+        {
+            var wrong = new List<string>();
+            foreach (var a in LegacyAlerts.All)
+            {
+                var line = LinesWith(a.File, a.Anchor).FirstOrDefault() ?? "";
+                string field = typeof(LegacyAlerts).GetFields().First(f => f.IsLiteral && (string)f.GetRawConstantValue() == a.Id && f.Name != "OcrKey").Name;
+                string call = Norm(line).Contains("ShowInteractive(") ? "ShowInteractive(LegacyAlerts." + field : Norm(line).Contains("ToolAlert(") ? "ToolAlert(LegacyAlerts." + field : "Alert(LegacyAlerts." + field;
+                if (a.Id == LegacyAlerts.ContextShow) call = "Alert(Features.Activity.LegacyAlerts." + field;
+                if (!Norm(line).Contains(call + ",")) wrong.Add(a.Id);
+            }
+            Check("AR-P13-1", "Fiecare alertă trece prin Alert / ToolAlert / ShowInteractive cu id-ul ei din tabel", wrong.Count == 0, string.Join(", ", wrong));
+
+            string notch = Src(LegacyAlerts.Notch), act = Src("Features/Activity/NotchWindow.Activity.cs");
+            int direct = Regex.Matches(Norm(NoComments(notch)) + Norm(NoComments(Src(LegacyAlerts.Updates))) + Norm(NoComments(Src(LegacyAlerts.Context))), @"\bShowLive\(").Count;
+            string alertBody = Norm(NoComments(MethodBody(act, "private bool Alert(")));
+            Check("AR-P13-2", "ShowLive e apelat doar de Alert (comutator oprit: primul rând, neschimbat) și de prezentator",
+                  direct == 1 /* its declaration */ && alertBody.StartsWith("{ if (!_activityOn || _activity == null) return ShowLive(content, w, h, ms, important);", StringComparison.Ordinal) &&
+                  Regex.Matches(Norm(NoComments(act)), @"\bShowLive\(").Count == 3, direct + " / " + alertBody);
+            string endLive = Norm(NoComments(MethodBody(notch, "private void EndLive()")));
+            string collapse = Norm(NoComments(MethodBody(notch, "private void Collapse()")));
+            string volume = Norm(NoComments(MethodBody(notch, "private void LiveVolume(int v, bool muted)")));
+            Check("AR-P13-3", "Legăturile P13 din notch sunt câte un rând: la finalul EndLive și Collapse, în LiveVolume înainte de cronometrul vechi; fără ele, corpurile vechi rămân",
+                  Count(endLive, EndLiveHook) == 1 && endLive.EndsWith(EndLiveHook + " }", StringComparison.Ordinal) &&
+                  Count(collapse, "ActivityNotchClosed();") == 1 && collapse.EndsWith("UpdateVisualizer(); ActivityNotchClosed(); }", StringComparison.Ordinal) &&
+                  volume.Contains("if (ActivityTouch(LegacyAlerts.Volume)) return; _liveTimer.Stop(); _liveTimer.Start(); return; }") &&
+                  Count(Norm(NoComments(notch)), "Activity") == 4 /* the using line and the three hooks */);
         }
 
         /// <summary>What only the legacy path does (the Activity Manager has its own rules for it, see ActivityTests).</summary>

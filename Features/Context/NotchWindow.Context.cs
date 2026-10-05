@@ -5,6 +5,6 @@ namespace WinNotch
     {
         /// <summary>Shows what the context engine sees (debugging). UI thread.</summary>
         internal void ShowContextAlert(string title, string detail) =>
-            ShowLive(LiveRow(LiveIcon(Features.Context.ContextActions.GInfo, CWhite), title, detail, null), 620, 58, 6000, true);
+            Alert(Features.Activity.LegacyAlerts.ContextShow, LiveRow(LiveIcon(Features.Context.ContextActions.GInfo, CWhite), title, detail, null), 620, 58, 6000, true);
     }
 }
