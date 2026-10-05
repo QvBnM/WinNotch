@@ -16,6 +16,10 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.11
+
+- Pregătire internă pentru funcțiile care se adaptează la ce faci: nimic nu se schimbă la ce vezi („Motorul de context”, în Setări › Funcții noi).
+
 ## Noutăți în 0.6.10
 
 - Pregătire internă pentru bara de comenzi (Command Bar): nimic nu se schimbă la ce vezi.

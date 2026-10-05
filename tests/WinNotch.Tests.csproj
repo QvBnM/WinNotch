@@ -11,6 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Tests.cs" />
+    <Compile Include="ContextTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -34,5 +35,12 @@
     <Compile Include="..\Core\Actions\ActionRegistry.cs" />
     <Compile Include="..\Features\Actions\IBuiltInHost.cs" />
     <Compile Include="..\Features\Actions\BuiltInActions.cs" />
+    <Compile Include="..\Core\Context\ContextSnapshot.cs" />
+    <Compile Include="..\Core\Context\ContextSources.cs" />
+    <Compile Include="..\Core\Context\AppCategories.cs" />
+    <Compile Include="..\Core\Context\ContextRules.cs" />
+    <Compile Include="..\Core\Context\ContextEngine.cs" />
+    <Compile Include="..\Core\Context\CameraRefresh.cs" />
+    <Compile Include="..\Features\Context\ContextActions.cs" />
   </ItemGroup>
 </Project>

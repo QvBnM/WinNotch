@@ -33,11 +33,16 @@ namespace WinNotch.Core.Flags
     public static class FeatureCatalog
     {
         public const string DemoFlag = "demo-flag";
+        /// <summary>Core/Context: same id as ContextEngine.FeatureId (the tests check they match).</summary>
+        public const string ContextEngine = "context-engine";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
             new FeatureInfo(DemoFlag, "Funcție de test", "Nu face nimic vizibil; verifică faptul că pornirea și oprirea funcțiilor noi merg.",
                             FeatureStage.Experimental, false),
+            // no UI of its own: on by default (Beta, so --safe-mode turns it off); the features built on it have their own switches
+            new FeatureInfo(ContextEngine, "Motorul de context", "Urmărește ce faci acum (aplicația din față, ecran complet, întâlniri, media) pentru funcțiile care se adaptează.",
+                            FeatureStage.Beta, true),
         };
 
         public static FeatureInfo Find(string id) => All.FirstOrDefault(f => string.Equals(f.Id, id, StringComparison.Ordinal));

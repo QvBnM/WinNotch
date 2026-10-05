@@ -16,7 +16,7 @@ Stări: **De făcut** · **În lucru** · **Gata**. Regulile de lucru sunt în `
 |---|---|---|
 | P10 | Feature flags: comutatoare pentru funcțiile noi, mod sigur, secțiunea din Setări, rezumat de sănătate în log | Gata |
 | P11 | Action Registry: registru central de acțiuni (nume, iconiță, execuție) folosit de notch, scurtături și Command Bar | Gata |
-| P12 | Context Engine: ce faci acum (aplicația din față, media, întâlniri, rețea), publicat ca evenimente | De făcut |
+| P12 | Context Engine: ce faci acum (aplicația din față, media, întâlniri, rețea), publicat ca evenimente | Gata |
 | P13 | Activity Manager: activitățile live din notch (prioritate, coadă, durată), peste alertele existente | De făcut |
 | P14 | Command Bar: bară de comenzi din notch, peste Action Registry | De făcut |
 

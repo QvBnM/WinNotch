@@ -111,6 +111,7 @@ namespace WinNotch
             _notch.Show();
             _tray = new TrayIcon(this);
             RegisterActions();
+            Features.Context.ContextStartup.Start(_notch, Log);       // what the user is doing now (P12); off with its switch
             StartHealthTimer();
         }
 
@@ -210,6 +211,7 @@ namespace WinNotch
             {
                 var registry = new Core.Actions.ActionRegistry(Core.Flags.FeatureFlags.Current, new Features.Actions.WpfUiDispatcher(), Log);
                 Features.Actions.BuiltInActions.Register(registry, new Features.Actions.AppActionHost(this, _notch));
+                Features.Context.ContextActions.Register(registry, () => Core.Context.ContextEngine.Current, new Features.Context.NotchContextHost(_notch));
                 Core.Actions.ActionRegistry.Current = registry;
             }
             catch (Exception ex) { Log("Acțiuni: înregistrarea a eșuat: " + ex.GetType().Name); }
@@ -318,6 +320,7 @@ namespace WinNotch
         {
             Guard?.MarkCleanExit();
             _healthTimer?.Dispose();
+            try { Core.Context.ContextEngine.Current?.Dispose(); } catch { }
             try { _notch?.Cleanup(); } catch { }
             try { _tray?.Dispose(); } catch { }
             Core.Diagnostics.HealthLog.Stop();
