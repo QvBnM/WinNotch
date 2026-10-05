@@ -74,3 +74,7 @@ fixate de testele de caracterizare; logica trebuie testată fără WPF; nicio sc
 - Orice opțiune nouă în Setări trebuie să primească o acțiune `settings.<nume>` (testul CB29 pică altfel).
 - Scurtătura, textele „Command Bar: …” din log și id-urile de UI Automation (`WinNotchCommandBox`, `WinNotchCommandResult:<id>`)
   sunt folosite de testele de fum.
+
+## Note după revizia R1
+- Bara citește fereastra din față la cerere (`ForegroundSource.Read()`, o singură dată la apăsarea scurtăturii), doar pentru regula „nimic peste ecran complet”: trebuie să meargă și cu „context-engine” oprit. Nu pornește hook-ul sursei, iar titlul nu ajunge nicăieri. Excepție acceptată de la „Cum folosești contextul”, pct. 1.
+- Dacă Windows refuză și `Activate`, și `ForceForeground`, bara rămâne deschisă fără tastatură; se închide cu scurtătura sau trecând cu mouse-ul peste ea și plecând. Nu o închidem singuri (testul de fum dă focusul cu un click după deschidere).

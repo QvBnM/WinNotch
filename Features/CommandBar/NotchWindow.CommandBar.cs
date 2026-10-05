@@ -351,8 +351,9 @@ namespace WinNotch
             var dur = TimeSpan.FromMilliseconds(first ? 420 : 200);
             Pill.BeginAnimation(WidthProperty, new DoubleAnimation(CommandBarLayout.Width * k, dur) { EasingFunction = Spring });
             Pill.BeginAnimation(HeightProperty, new DoubleAnimation(h * k, dur) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+            // the radius follows the scale too (UiScale may change while the bar is open)
+            BeginAnimation(RadiusProperty, new DoubleAnimation(CommandBarLayout.Radius * k, TimeSpan.FromMilliseconds(first ? 380 : 200)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
             if (!first) return;
-            BeginAnimation(RadiusProperty, new DoubleAnimation(CommandBarLayout.Radius * k, TimeSpan.FromMilliseconds(380)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
             Pill.BeginAnimation(MarginProperty, new ThicknessAnimation(new Thickness(0, 8, 0, 0), TimeSpan.FromMilliseconds(300)));
             FadeLayer(IdleLayer, false, 0);
             FadeLayer(MiniLayer, false, 0);
@@ -404,13 +405,17 @@ namespace WinNotch
             var a = item.Action;
             var g = Ui.Cols(Ui.Px(30), Ui.Star(), Ui.Auto);
             g.Put(CommandGlyph(string.IsNullOrEmpty(a.Icon) ? Ui.GSettings : a.Icon, 13, selected ? "AccentBrush" : "MutedBrush"));
-            g.Put(ThemedText(a.Title, 13, "InkBrush", selected), 1);
+            var title = ThemedText(a.Title, 13, "InkBrush", selected);
+            title.TextTrimming = TextTrimming.CharacterEllipsis;     // a long title ends in "…" instead of being cut
+            g.Put(title, 1);
 
             var right = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
             string detail = item.Detail;
             if (detail.Length > 0)
             {
                 var d = ThemedText(detail, 12.5, "AccentBrush", true);
+                d.TextTrimming = TextTrimming.CharacterEllipsis;
+                d.MaxWidth = 200;
                 d.Margin = new Thickness(10, 0, 0, 0);
                 right.Children.Add(d);
             }

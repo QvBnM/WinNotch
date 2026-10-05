@@ -277,11 +277,12 @@ namespace WinNotch
             const string Part = "Features/CommandBar/NotchWindow.CommandBar.cs";
             string notch = Norm(NoComments(Src(LegacyAlerts.Notch))), part = Src(Part), partN = Norm(NoComments(part));
             string applyMode = Norm(NoComments(MethodBody(Src(LegacyAlerts.Notch), "private void ApplyMode()")));
-            Check("CB32", "Legăturile din NotchWindow.xaml.cs sunt câte un rând: WndProc, primul rând din ApplyMode, finalul ApplySettings, Cleanup",
+            Check("CB32", "Legăturile din NotchWindow.xaml.cs sunt câte un rând: WndProc, primul rând din ApplyMode, finalul ApplySettings, Cleanup, SecondTick (panoul nu se reîmprospătează sub bară)",
                   Count(notch, "wParam.ToInt32() == CommandBarHotkeyId) { OnCommandBarShortcut(); handled = true; }") == 1 &&
                   applyMode.StartsWith("{ if (CommandBarApplyMode()) return; ", StringComparison.Ordinal) &&
                   Count(notch, "CommandBarSettingsChanged();") == 1 && Count(notch, "StopCommandBar();") == 1 &&
-                  Count(notch, "CommandBar") == 5 && Count(notch, "CommandBarHotkeyId") == 1);
+                  Count(notch, "if (_mode == Mode.Expanded && !CommandBarOpen)") == 1 &&
+                  Count(notch, "CommandBar") == 6 && Count(notch, "CommandBarHotkeyId") == 1);
             string open = Norm(NoComments(MethodBody(part, "private void OpenCommandBar()")));
             string close = Norm(NoComments(MethodBody(part, "private void CloseCommandBar()")));
             Check("CB33", "Focus: aceeași cale ca lansatorul (EnableTyping la deschidere, Collapse → StopTyping → LastForeground la închidere); ForceForeground doar dacă Windows refuză Activate; niciun SetForegroundWindow propriu",

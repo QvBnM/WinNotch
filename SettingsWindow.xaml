@@ -119,8 +119,7 @@
                                 <ComboBoxItem Tag="k" Content="Win+Alt+K"/>
                             </ComboBox>
                         </Grid>
-                        <TextBlock x:Name="CmdKeyHint" Style="{StaticResource Hint}" Margin="170,4,0,0"
-                                   Text="Pentru Command Bar (îl pornești din „Funcții noi”, mai jos). Dacă scurtătura e folosită de altă aplicație, alege-o pe cealaltă."/>
+                        <TextBlock x:Name="CmdKeyHint" Style="{StaticResource Hint}" Margin="170,4,0,0"/>
                         <CheckBox x:Name="SlimBox" Margin="0,12,0,0" Content="Mic peste ferestre maximizate (tab-uri, bara de titlu)"/>
                         <CheckBox x:Name="TempsBox" Margin="0,8,0,0" Content="Citește temperaturile PC-ului"/>
                         <TextBlock x:Name="TempsHint" Style="{StaticResource Hint}" Margin="22,2,0,0"

@@ -582,9 +582,15 @@ namespace WinNotch.Smoke
         private static void OpenTrayMenu()
         {
             var icon = FindTrayIcon();
-            if (icon != null) { icon.RightClick(); Console.WriteLine("      (meniul iconiței: click dreapta pe iconiță)"); return; }
+            string why = "iconița nu e vizibilă în bara de activități";
+            if (icon != null)
+            {
+                // found but sometimes not clickable on the CI runner (NoClickablePointException): same fallback as "not found"
+                try { icon.RightClick(); Console.WriteLine("      (meniul iconiței: click dreapta pe iconiță)"); return; }
+                catch (NoClickablePointException) { why = "iconița găsită, dar fără punct de click"; }
+            }
             PostTrayRightClick();
-            Console.WriteLine("      (meniul iconiței: iconița nu e vizibilă în bara de activități; mesajul ei de click dreapta)");
+            Console.WriteLine("      (meniul iconiței: " + why + "; mesajul ei de click dreapta)");
             // visible in the run summary: the icon itself wasn't checked this time
             if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
                 Console.WriteLine("::warning::Testul de fum nu a găsit iconița în bara de activități; meniul a fost deschis cu mesajul ei de click dreapta.");

@@ -1270,7 +1270,7 @@ namespace WinNotch
 
             BuildIdle();
             UpdateIdleValues();
-            if (_mode == Mode.Expanded)
+            if (_mode == Mode.Expanded && !CommandBarOpen)     // P14: the bar uses Expanded without the panel
             {
                 HeaderClock.Text = DateTime.Now.ToString("HH:mm");
                 _pane?.Refresh();
