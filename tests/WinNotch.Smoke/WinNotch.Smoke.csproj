@@ -9,6 +9,8 @@
     <LangVersion>latest</LangVersion>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- P14: a small window of the test itself, the "previous window" the Command Bar gives the keyboard back to -->
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />

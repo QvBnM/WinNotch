@@ -727,6 +727,9 @@ namespace WinNotch
         // =====================================================================
         //  Settings: the same controls as before, now a page of this window
         // =====================================================================
+        /// <summary>P14 ("settings.*" actions): the Settings page scrolled to one option, focused.</summary>
+        internal void RevealSetting(string target) => _settings?.Reveal(target);
+
         private FrameworkElement BuildSettings()
         {
             _settings?.Detach();

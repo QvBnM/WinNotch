@@ -36,6 +36,7 @@ jobs:
       # P02: the published exe, started with --smoke and driven through UI Automation (tests/WinNotch.Smoke).
       # P13: the whole set twice, with the "activity-manager" switch off (the old alert path) and on (the Activity
       # Manager, plus the split pill, „N noutăți” and the peek); each run keeps its own log in its own folder.
+      # P14: both runs also check the Command Bar (off: Win+Alt+Space opens nothing; on: opens, searches, Esc, Enter).
       - name: Smoke tests (activity-manager off)
         timeout-minutes: 8
         run: dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- publish\WinNotch.exe smoke-artifacts\activity-manager-off --activity-manager=off

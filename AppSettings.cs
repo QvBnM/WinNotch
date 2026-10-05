@@ -53,6 +53,8 @@ namespace WinNotch
         public bool BrowserTabs { get; set; } = true;
         /// <summary>Size of the open notch and alerts: 0 = automatic (by monitor), otherwise 1.0, 1.15, 1.25…</summary>
         public double UiScale { get; set; }
+        /// <summary>Command Bar shortcut (P14): "space" = Win+Alt+Space, "k" = Win+Alt+K. Anything else reads as "space".</summary>
+        public string CommandBarKey { get; set; } = "space";
 
         // ---- themes ----
         /// <summary>dark | light | auto (follows Windows)</summary>

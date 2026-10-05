@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace WinNotch.Features.Smoke
 {
-    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities }
+    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar }
 
     /// <summary>One line of smoke-commands.txt, checked.</summary>
     public sealed class SmokeCommand
@@ -31,6 +31,10 @@ namespace WinNotch.Features.Smoke
         public const string CommandsFile = "smoke-commands.txt";
         /// <summary>UI Automation id of the notch window (the smoke test finds it by this).</summary>
         public const string NotchAutomationId = "WinNotchNotch";
+        /// <summary>P14: UI Automation id of the Command Bar's text box (exists only while the bar is open).</summary>
+        public const string CommandBoxAutomationId = "WinNotchCommandBox";
+        /// <summary>P14: UI Automation id of a result row = this prefix + the action id; the selected row's ItemStatus is "selected".</summary>
+        public const string CommandResultAutomationPrefix = "WinNotchCommandResult:";
         /// <summary>Bigger files are ignored (and deleted): the commands are a few short lines.</summary>
         public const int MaxFileBytes = 4096;
         public const int MaxLines = 20;
@@ -47,7 +51,8 @@ namespace WinNotch.Features.Smoke
         /// <summary>
         /// "post-alert volume" (or "volum"), "post-alert track" (or "piesa", "piesă"), "toggle feature &lt;id&gt;", and for the
         /// Activity Manager (P13): "post-activity persistent &lt;1–3&gt;", "post-activity burst &lt;1–10&gt;", "post-activity low",
-        /// "dismiss-activities". Case and extra spaces don't matter; anything else is null (ignored).
+        /// "dismiss-activities", and for the Command Bar (P14): "open-command-bar" (the same code path as its shortcut). Case and
+        /// extra spaces don't matter; anything else is null (ignored).
         /// </summary>
         public static SmokeCommand Parse(string line)
         {
@@ -69,6 +74,7 @@ namespace WinNotch.Features.Smoke
             }
             if (w.Length == 2 && w[0] == "post-activity" && w[1] == "low") return new SmokeCommand { Kind = SmokeCommandKind.LowActivity };
             if (w.Length == 1 && w[0] == "dismiss-activities") return new SmokeCommand { Kind = SmokeCommandKind.DismissActivities };
+            if (w.Length == 1 && w[0] == "open-command-bar") return new SmokeCommand { Kind = SmokeCommandKind.OpenCommandBar };
             return null;
         }
 
@@ -108,11 +114,11 @@ namespace WinNotch.Features.Smoke
         /// <summary>
         /// "mode=Live;pill=360x54": what the smoke test reads from the notch window (UI Automation ItemStatus). With the
         /// Activity Manager (P13) it can go on with what the pill shows: ";split=1" (two persistent activities),
-        /// ";group=5" („5 noutăți”), ";peek=1" (a Low activity).
+        /// ";group=5" („5 noutăți”), ";peek=1" (a Low activity); with the Command Bar (P14) open, ";cmd=1".
         /// </summary>
-        public static string Status(string mode, double pillWidth, double pillHeight, int split = 0, int group = 0, int peek = 0) =>
+        public static string Status(string mode, double pillWidth, double pillHeight, int split = 0, int group = 0, int peek = 0, int cmd = 0) =>
             "mode=" + mode + ";pill=" + Math.Round(pillWidth) + "x" + Math.Round(pillHeight) +
-            (split > 0 ? ";split=" + split : "") + (group > 0 ? ";group=" + group : "") + (peek > 0 ? ";peek=" + peek : "");
+            (split > 0 ? ";split=" + split : "") + (group > 0 ? ";group=" + group : "") + (peek > 0 ? ";peek=" + peek : "") + (cmd > 0 ? ";cmd=" + cmd : "");
 
         /// <summary>Reads <see cref="Status"/> back: false if it isn't one.</summary>
         public static bool TryParseStatus(string status, out string mode, out int width, out int height) =>
@@ -122,9 +128,9 @@ namespace WinNotch.Features.Smoke
         public static bool TryParseStatus(string status, out string mode, out int width, out int height, out IReadOnlyDictionary<string, int> extra)
         {
             mode = ""; width = height = 0;
-            var fields = new Dictionary<string, int>(StringComparer.Ordinal) { ["split"] = 0, ["group"] = 0, ["peek"] = 0 };
+            var fields = new Dictionary<string, int>(StringComparer.Ordinal) { ["split"] = 0, ["group"] = 0, ["peek"] = 0, ["cmd"] = 0 };
             extra = fields;
-            var m = Regex.Match(status ?? "", @"^mode=(\w+);pill=(\d+)x(\d+)((?:;(?:split|group|peek)=\d{1,4})*)$");
+            var m = Regex.Match(status ?? "", @"^mode=(\w+);pill=(\d+)x(\d+)((?:;(?:split|group|peek|cmd)=\d{1,4})*)$");
             if (!m.Success) return false;
             mode = m.Groups[1].Value;
             foreach (Match f in Regex.Matches(m.Groups[4].Value, @";(\w+)=(\d+)")) fields[f.Groups[1].Value] = int.Parse(f.Groups[2].Value);

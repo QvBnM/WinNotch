@@ -103,10 +103,34 @@ Verificările de mai jos sunt cu „Manager de activități” pornit (Setări �
 | P13.5 | Fluxurile se înlocuiesc pe loc | „Text din ecran” pe o zonă cu text; „Eliberează RAM” din Unelte. | „Citesc textul…” devine direct „Text copiat · N rânduri”; „Eliberez memoria…” devine direct „Eliberat X GB…”, fără să clipească standby-ul între ele. |
 | P13.6 | Notch deschis și ecran complet | Deschide notch-ul și schimbă volumul din tastatură; închide-l. Apoi un video YouTube pe tot ecranul (F) și schimbă volumul; scoate încărcătorul. | Cu notch-ul deschis nu apare nicio alertă și nici după închidere. Peste video: volumul nu apare (Normal), „Pe baterie” nu apare; o baterie descărcată (High) ar apărea. |
 | P13.7 | Butoanele alertelor | Așteaptă (sau provoacă) alerta de memorie; apasă „Mai târziu”. Imediat după, schimbă volumul. | Alerta se închide la click; volumul apare imediat (nu după 15 s). Hover-ul pe notch funcționează după închiderea alertei. |
-| P13.8 | Acțiunea `activity.dismiss-all` | (Până la Command Bar, P14, doar prin testele de fum.) | Acoperit de testul de fum „Pastila împărțită… apoi „activity.dismiss-all””. |
+| P13.8 | Acțiunea `activity.dismiss-all` | Cu „Command Bar” pornit (P14): `Win+Alt+Space`, scrie „închide activitățile”, Enter. Altfel, prin testele de fum. | Tot ce arăta managerul dispare. Cu managerul oprit, acțiunea nu apare în Command Bar. |
 | P13.9 | Consum în standby | Pornit, notch închis, 10 minute fără alerte; Task Manager › Detalii › WinNotch.exe. | CPU ca în 0.6.13 (aproape 0%); memoria nu crește. |
 | P13.10 | Mod sigur | Comutatorul pornit, apoi `WinNotch.exe --safe-mode`. | Log fără „Activity Manager: pornit.”; alertele merg pe calea veche. |
-| P13.11 | Formele noi (teste de fum) | GitHub › Actions › ultima rulare CI › pașii „Smoke tests (activity-manager off/on)”; artefactul „smoke-artifacts”. | Ambii pași verzi: „TEST DE FUM (activity-manager oprit): 12 PASS” și „(… pornit): 13 PASS”; în `activity-manager-on\log.txt` rândurile „activitate de test … Grouped/Shown” și „activity.dismiss-all → făcut”, fără erori. |
+| P13.11 | Formele noi (teste de fum) | GitHub › Actions › ultima rulare CI › pașii „Smoke tests (activity-manager off/on)”; artefactul „smoke-artifacts”. | Ambii pași verzi: „TEST DE FUM (activity-manager oprit): 15 PASS” și „(… pornit): 16 PASS” (12 / 13 până la P14); în `activity-manager-on\log.txt` rândurile „activitate de test … Grouped/Shown” și „activity.dismiss-all → făcut”, fără erori. |
+
+### P14 — Command Bar (experimental, oprit implicit)
+
+Cu comutatorul oprit nu se înregistrează nicio scurtătură: `Win+Alt+Space` face ce făcea înainte (nimic din WinNotch).
+Verificările de mai jos sunt cu „Command Bar” pornit (Setări › Funcții noi › bifează › Salvează), dacă nu scrie altfel.
+Fă-le o dată cu „Manager de activități” oprit și o dată pornit, unde scrie „ambele căi”.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P14.1 | Oprit = nimic | Comutatorul oprit (implicit). Apasă `Win+Alt+Space` într-un Notepad. | Nu se deschide nimic din WinNotch; în log nu apare „Command Bar: pornit.”. |
+| P14.2 | Pornire și oprire fără repornire | Bifează „Command Bar” › Salvează; apoi debifează › Salvează. | Log: „Command Bar: pornit.” și „scurtătura Win+Alt+Space e activă.”; la oprire „Command Bar: oprit.” și „… a fost eliberată.”. |
+| P14.3 | Se deschide cu tastatura | Scrie ceva în Notepad, apoi `Win+Alt+Space`. | Pastila devine un câmp de căutare (colțuri rotunjite, culorile temei) cu acțiunile folosite recent; poți scrie imediat, fără click. |
+| P14.4 | Parametri în text | Scrie „volum 30”, Enter. Apoi „volum 150”; apoi „volum”, Enter. | Volumul devine 30%, bara se închide și Notepad are din nou tastatura. „volum 150” nu leagă valoarea; „volum” + Enter arată „Scrie și „Volum” după comandă…” fără să schimbe volumul. |
+| P14.5 | Săgeți, Esc, focus | Scrie „setari”, mișcă selecția cu săgețile, apoi Esc. | Selecția se mută (circular); Esc închide bara și cursorul e înapoi în Notepad, exact unde era. |
+| P14.6 | Click în altă parte | Deschide bara, apoi dă click în altă fereastră (de exemplu browserul). | Bara se închide; browserul rămâne în față, cu tastatura. |
+| P14.7 | Confirmare dublă | Cu un stick USB conectat: scrie „scoate”, Enter; apoi o dată „scoate”, Enter, săgeată jos și sus, Enter. | Primul Enter arată „Apasă Enter din nou pentru a confirma” (stick-ul nu e scos); al doilea Enter îl scoate. După săgeți, Enter cere din nou confirmarea. |
+| P14.8 | Setări la o opțiune | Scrie „setari pozitie”, Enter; apoi „setari ochi”, Enter; apoi „setari spatii”. | Fereastra WinNotch se deschide la Setări, derulată la „Poziție” (cu focusul pe listă), apoi la „Pauză pentru ochi”; „Spații de lucru” se deschide la secțiune. |
+| P14.9 | Nimic peste ecran complet | Pornește un joc sau un video YouTube pe tot ecranul (F), apoi `Win+Alt+Space`. | Nu se deschide nimic, jocul / video-ul nu pierde tastatura; log: „nu se deschide peste o aplicație pe tot ecranul”. |
+| P14.10 | Alertele așteaptă (ambele căi) | Bara deschisă: schimbă volumul din tastatura media; cu managerul pornit, provoacă și o alertă importantă (baterie). Închide bara. | Cât e deschisă, pastila rămâne bara (nicio alertă nu o înlocuiește). După închidere: alertele obișnuite nu mai apar (ca la notch-ul deschis); cu managerul pornit, Critical / persistentele apar după închidere. |
+| P14.11 | Conflictul scurtăturii | Pornește o aplicație care ocupă `Win+Alt+Space` (de exemplu un alt launcher), apoi pornește comutatorul. Mergi în Setări › Comportament, alege `Win+Alt+K` › Salvează. | O singură alertă: „Win+Alt+Space e folosită de altă aplicație · Alege Win+Alt+K în Setări…”; același mesaj sub opțiune. După Salvează: `Win+Alt+K` deschide bara, mesajul dispare. Alerta nu reapare la fiecare salvare. |
+| P14.12 | Acțiuni periculoase | (Azi nu există niciuna.) | — Fixat de testele automate (CB12). |
+| P14.13 | Fără consum | Comutator pornit, bara închisă, 10 minute; Task Manager › WinNotch.exe. | CPU ca înainte (aproape 0%); memoria nu crește după 20 de deschideri / închideri. |
+| P14.14 | Log fără text | După P14.3–P14.8, deschide `%AppData%\WinNotch\log.txt`. | Doar „Command Bar: deschis/închis” și „Acțiune <id> (CommandBar): reușită”; niciun text scris, nicio valoare („30”). |
+| P14.15 | Mod sigur | Comutatorul pornit, apoi `WinNotch.exe --safe-mode`. | `Win+Alt+Space` nu deschide nimic; în log nu apare „Command Bar: pornit.”. |
 
 ### P02 — Teste de fum (CI)
 
@@ -114,8 +138,8 @@ Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai 
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
-| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 12 rânduri PASS și „TEST DE FUM (activity-manager oprit): 12 PASS, 0 FAIL”; WinNotch se închide singur. Cu `-- publish\WinNotch.exe smoke-artifacts --activity-manager=on`: 13 PASS (din 0.6.14). |
+| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 15 rânduri PASS și „TEST DE FUM (activity-manager oprit): 15 PASS, 0 FAIL”; WinNotch se închide singur. Cu `-- publish\WinNotch.exe smoke-artifacts --activity-manager=on`: 16 PASS (12 / 13 până la P14). În timpul rulării apare o fereastră mică a testului; nu da click în ea. |
 | P02.2 | Setările tale nu sunt atinse | După P02.1, compară `%AppData%\WinNotch\settings.json` și `log.txt` cu cele dinainte. | Neschimbate; testul a scris doar în `%AppData%\WinNotch\smoke\`. |
 | P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
 | P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
-| P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 12, respectiv 13 PASS (din 0.6.14). |
+| P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 15, respectiv 16 PASS (din P14; 12 / 13 în 0.6.14). |
