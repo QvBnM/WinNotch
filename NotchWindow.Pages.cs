@@ -84,7 +84,7 @@ namespace WinNotch
                 rb.Content = content;
                 if (hidden) rb.Opacity = 0.45;
                 var target = pane;
-                rb.Checked += (o, e) => { if (_pane != target && !(target == _home && _pane == _sources)) ShowPane(target); };
+                rb.Checked += (o, e) => { if (_pane != target && !(target == _home && _pane == _sources)) { ShowPane(target); ContextPagesManualChoice(); } };     // P27 hook: picked by hand, kept 10 min
                 rb.Tag = pane;
                 _tabs.Add(rb);
                 TabBar.Children.Add(rb);
@@ -305,6 +305,7 @@ namespace WinNotch
             S.Save();
             RebuildTabs();
             ShowPane(UserPane(pg));
+            ContextPagesManualChoice();                    // P27: a page just created counts as a manual choice
         }
 
         /// <summary>Opens the editor window (a page, a widget on it, or "themes").</summary>

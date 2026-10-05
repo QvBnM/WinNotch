@@ -39,6 +39,8 @@ namespace WinNotch.Core.Flags
         public const string ActivityManager = "activity-manager";
         /// <summary>Features/CommandBar: same id as CommandBarRules.FeatureId (the tests check they match).</summary>
         public const string CommandBar = "command-bar";
+        /// <summary>Features/ContextPages: same id as ContextPageRules.FeatureId (the tests check they match).</summary>
+        public const string ContextPages = "context-pages";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -52,6 +54,9 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Experimental, false),
             // P14: off by default (no 0.7.0 yet, see docs/PLAN.md); off = no shortcut registered, nothing changes
             new FeatureInfo(CommandBar, "Command Bar", "Win+Alt+Space (sau Win+Alt+K): pastila devine un câmp de căutare pentru orice acțiune („volum 30”, „captură”, „setări poziție”).",
+                            FeatureStage.Experimental, false),
+            // P27: off by default; off (or the context engine off) = the notch opens on the page it was on, as before
+            new FeatureInfo(ContextPages, "Pagina după context", "La deschidere, notch-ul alege pagina după ce faci (programare, browser, întâlnire, joc…), cum alegi în Setări. O pagină aleasă de tine rămâne 10 minute.",
                             FeatureStage.Experimental, false),
         };
 

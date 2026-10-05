@@ -28,8 +28,8 @@ namespace WinNotch.Features.CommandBar
         /// <summary>The Settings section it is in (its header text).</summary>
         public string Section { get; }
         public IReadOnlyList<string> Aliases { get; }
-        /// <summary>Lists (standby items, workspaces, accent colours, feature switches) open at their section, not one control.</summary>
-        public bool SectionOnly => Target is "WidgetRows" or "WorkspaceRows" or "AccentPanel" or "FeatureRows";
+        /// <summary>Lists (standby items, workspaces, accent colours, pages by context, feature switches) open at their section, not one control.</summary>
+        public bool SectionOnly => Target is "WidgetRows" or "WorkspaceRows" or "AccentPanel" or "ContextPageRows" or "FeatureRows";
     }
 
     /// <summary>
@@ -44,7 +44,8 @@ namespace WinNotch.Features.CommandBar
         internal const string GSettings = "";
 
         private const string Standby = "Ce apare în standby", Behaviour = "Comportament", Home = "Acasă și sănătate",
-            Tabs = "Tab-uri din browser", Spaces = "Spații de lucru", Accent = "Culoare accent", Weather = "Vremea", New = "Funcții noi (experimental)";
+            Tabs = "Tab-uri din browser", Spaces = "Spații de lucru", Accent = "Culoare accent", Weather = "Vremea", ContextPages = "Pagina după context",
+            New = "Funcții noi (experimental)";
 
         public static readonly IReadOnlyList<SettingsOption> All = new[]
         {
@@ -68,6 +69,7 @@ namespace WinNotch.Features.CommandBar
             new SettingsOption("settings.workspaces", "Setări: spațiile de lucru", "WorkspaceRows", Spaces, "setări spații", "spații de lucru", "workspaces"),
             new SettingsOption("settings.accent", "Setări: culoarea accent", "AccentPanel", Accent, "setări culoare", "accent", "accent color"),
             new SettingsOption("settings.weather", "Setări: vremea (orașul)", "CityBox", Weather, "setări vreme", "oraș", "coordonate", "weather"),
+            new SettingsOption("settings.context-pages", "Setări: pagina după context", "ContextPageRows", ContextPages, "setări pagină context", "pagina după context", "pagini după context", "context pages"),
             new SettingsOption("settings.features", "Setări: funcții noi (experimental)", "FeatureRows", New, "setări funcții noi", "experimental", "comutatoare", "feature flags"),
         };
 

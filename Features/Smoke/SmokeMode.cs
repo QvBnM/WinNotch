@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace WinNotch.Features.Smoke
 {
-    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar }
+    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage }
 
     /// <summary>One line of smoke-commands.txt, checked.</summary>
     public sealed class SmokeCommand
@@ -15,6 +15,8 @@ namespace WinNotch.Features.Smoke
         public string Argument { get; init; } = "";
         /// <summary>Which persistent activity (1–3) or how many alerts in the burst (1–10).</summary>
         public int Number { get; init; }
+        /// <summary>P27: the page id for <see cref="SmokeCommandKind.SetContextPage"/> ("" = „—”).</summary>
+        public string Page { get; init; } = "";
     }
 
     /// <summary>
@@ -49,10 +51,24 @@ namespace WinNotch.Features.Smoke
         public const int MaxPersistent = 3, MaxBurst = 10;
 
         /// <summary>
+        /// P27: the context categories the test commands accept, lowercase → the name of Core.Context.AppCategory (this file
+        /// is also compiled into the smoke project, which doesn't have the engine; the tests check the names match).
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, string> ContextCategories = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["dev"] = "Dev", ["browser"] = "Browser", ["meeting"] = "Meeting", ["game"] = "Game", ["media"] = "Media", ["office"] = "Office", ["creator"] = "Creator",
+        };
+
+        /// <summary>A page id in a test command or in the status: "home", "devices" or a page of yours (32 hex digits).</summary>
+        private static readonly Regex PageId = new Regex("^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.CultureInvariant);
+        private static readonly Regex StatusText = new Regex("^[A-Za-z0-9-]{1,40}$", RegexOptions.CultureInvariant);
+
+        /// <summary>
         /// "post-alert volume" (or "volum"), "post-alert track" (or "piesa", "piesă"), "toggle feature &lt;id&gt;", and for the
         /// Activity Manager (P13): "post-activity persistent &lt;1–3&gt;", "post-activity burst &lt;1–10&gt;", "post-activity low",
-        /// "dismiss-activities", and for the Command Bar (P14): "open-command-bar" (the same code path as its shortcut). Case and
-        /// extra spaces don't matter; anything else is null (ignored).
+        /// "dismiss-activities", for the Command Bar (P14): "open-command-bar" (the same code path as its shortcut), and for the
+        /// page by context (P27): "fake-context &lt;category|none&gt;" (into the context engine's snapshot) and
+        /// "set-context-page &lt;category&gt; &lt;page id|none&gt;". Case and extra spaces don't matter; anything else is null (ignored).
         /// </summary>
         public static SmokeCommand Parse(string line)
         {
@@ -75,6 +91,16 @@ namespace WinNotch.Features.Smoke
             if (w.Length == 2 && w[0] == "post-activity" && w[1] == "low") return new SmokeCommand { Kind = SmokeCommandKind.LowActivity };
             if (w.Length == 1 && w[0] == "dismiss-activities") return new SmokeCommand { Kind = SmokeCommandKind.DismissActivities };
             if (w.Length == 1 && w[0] == "open-command-bar") return new SmokeCommand { Kind = SmokeCommandKind.OpenCommandBar };
+            if (w.Length == 2 && w[0] == "fake-context")
+            {
+                if (w[1] == "none") return new SmokeCommand { Kind = SmokeCommandKind.FakeContext };
+                return ContextCategories.TryGetValue(w[1], out var cat) ? new SmokeCommand { Kind = SmokeCommandKind.FakeContext, Argument = cat } : null;
+            }
+            if (w.Length == 3 && w[0] == "set-context-page" && ContextCategories.TryGetValue(w[1], out var category))
+            {
+                if (w[2] == "none") return new SmokeCommand { Kind = SmokeCommandKind.SetContextPage, Argument = category };
+                return w[2].Length <= 40 && PageId.IsMatch(w[2]) ? new SmokeCommand { Kind = SmokeCommandKind.SetContextPage, Argument = category, Page = w[2] } : null;
+            }
             return null;
         }
 
@@ -114,26 +140,37 @@ namespace WinNotch.Features.Smoke
         /// <summary>
         /// "mode=Live;pill=360x54": what the smoke test reads from the notch window (UI Automation ItemStatus). With the
         /// Activity Manager (P13) it can go on with what the pill shows: ";split=1" (two persistent activities),
-        /// ";group=5" („5 noutăți”), ";peek=1" (a Low activity); with the Command Bar (P14) open, ";cmd=1".
+        /// ";group=5" („5 noutăți”), ";peek=1" (a Low activity); with the Command Bar (P14) open, ";cmd=1". P27 adds, at the
+        /// end, the page shown in the notch (";page=home") and the category in the context engine's snapshot (";ctx=Dev");
+        /// a value that isn't a plain id is left out.
         /// </summary>
-        public static string Status(string mode, double pillWidth, double pillHeight, int split = 0, int group = 0, int peek = 0, int cmd = 0) =>
+        public static string Status(string mode, double pillWidth, double pillHeight, int split = 0, int group = 0, int peek = 0, int cmd = 0,
+                                    string page = null, string ctx = null) =>
             "mode=" + mode + ";pill=" + Math.Round(pillWidth) + "x" + Math.Round(pillHeight) +
-            (split > 0 ? ";split=" + split : "") + (group > 0 ? ";group=" + group : "") + (peek > 0 ? ";peek=" + peek : "") + (cmd > 0 ? ";cmd=" + cmd : "");
+            (split > 0 ? ";split=" + split : "") + (group > 0 ? ";group=" + group : "") + (peek > 0 ? ";peek=" + peek : "") + (cmd > 0 ? ";cmd=" + cmd : "") +
+            (page != null && StatusText.IsMatch(page) ? ";page=" + page : "") + (ctx != null && StatusText.IsMatch(ctx) ? ";ctx=" + ctx : "");
 
         /// <summary>Reads <see cref="Status"/> back: false if it isn't one.</summary>
         public static bool TryParseStatus(string status, out string mode, out int width, out int height) =>
             TryParseStatus(status, out mode, out width, out height, out _);
 
         /// <summary>Reads <see cref="Status"/> back, with the activity fields (missing ones are 0).</summary>
-        public static bool TryParseStatus(string status, out string mode, out int width, out int height, out IReadOnlyDictionary<string, int> extra)
+        public static bool TryParseStatus(string status, out string mode, out int width, out int height, out IReadOnlyDictionary<string, int> extra) =>
+            TryParseStatus(status, out mode, out width, out height, out extra, out _, out _);
+
+        /// <summary>Reads <see cref="Status"/> back, with the P27 fields too (missing ones are "").</summary>
+        public static bool TryParseStatus(string status, out string mode, out int width, out int height, out IReadOnlyDictionary<string, int> extra,
+                                          out string page, out string ctx)
         {
-            mode = ""; width = height = 0;
+            mode = ""; width = height = 0; page = ""; ctx = "";
             var fields = new Dictionary<string, int>(StringComparer.Ordinal) { ["split"] = 0, ["group"] = 0, ["peek"] = 0, ["cmd"] = 0 };
             extra = fields;
-            var m = Regex.Match(status ?? "", @"^mode=(\w+);pill=(\d+)x(\d+)((?:;(?:split|group|peek|cmd)=\d{1,4})*)$");
+            var m = Regex.Match(status ?? "", @"^mode=(\w+);pill=(\d+)x(\d+)((?:;(?:split|group|peek|cmd)=\d{1,4})*)(;page=[A-Za-z0-9-]{1,40})?(;ctx=[A-Za-z0-9-]{1,40})?$");
             if (!m.Success) return false;
             mode = m.Groups[1].Value;
             foreach (Match f in Regex.Matches(m.Groups[4].Value, @";(\w+)=(\d+)")) fields[f.Groups[1].Value] = int.Parse(f.Groups[2].Value);
+            if (m.Groups[5].Success) page = m.Groups[5].Value.Substring(";page=".Length);
+            if (m.Groups[6].Success) ctx = m.Groups[6].Value.Substring(";ctx=".Length);
             return int.TryParse(m.Groups[2].Value, out width) && int.TryParse(m.Groups[3].Value, out height);
         }
     }

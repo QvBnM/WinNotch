@@ -29,7 +29,10 @@ namespace WinNotch.Smoke
     /// Win+Alt+Space opens nothing; switched on, the real shortcut opens the Command Bar over a window of the test (or, if
     /// the shortcut is taken on the machine or doesn't arrive, the "open-command-bar" test command, the same code path; the
     /// run says which), "volum" finds a result, an alert doesn't take the pill while it is open, Esc closes it and the
-    /// keyboard goes back to the test window, and Enter on "settings.position" opens the WinNotch window.
+    /// keyboard goes back to the test window, and Enter on "settings.position" opens the WinNotch window. P27, once (only
+    /// on the run with the Activity Manager off; the other run prints SKIP): a fake "Dev" context goes into the context
+    /// engine's snapshot ("fake-context dev"), "Dev" is mapped to the "devices" page; with "context-pages" off Win+Alt+N
+    /// opens on the old page, switched on it opens on "devices" (read from the notch's status, ";page=").
     /// log.txt is copied to the artifacts folder after every run; on a failure also a screenshot and the notch's state.
     /// </summary>
     public static class SmokeProgram
@@ -81,6 +84,8 @@ namespace WinNotch.Smoke
                 Run(step = _activityOn ? "„5 noutăți”: 5 alerte rapide se adună într-una" : "Fără Activity Manager: rafala de test e refuzată", Burst);
                 Run(step = _activityOn ? "Activitate Low: pastila se lărgește puțin 2 s („peek”)" : "Fără Activity Manager: activitatea Low e refuzată", Peek);
                 Run(step = "Win+Alt+N deschide și închide notch-ul", Hotkey);
+                if (!_activityOn) Run(step = "Pagina după context: contextul „Dev” din motor deschide notch-ul pe pagina mapată, doar cu „context-pages” pornit", ContextPages);
+                else Console.WriteLine("SKIP  Pagina după context (rulează o singură dată, în rularea cu activity-manager oprit)");
                 Run(step = "Command Bar oprit: Win+Alt+Space nu deschide nimic", CommandBarOff);
                 Run(step = "Command Bar: se deschide, „volum” găsește un rezultat, o alertă nu ia pastila, Esc închide și focusul revine", CommandBarSearchAndEscape);
                 Run(step = "Command Bar: Enter pe „settings.position” (sigură) deschide Setări în fereastra WinNotch", CommandBarRunsAction);
@@ -147,6 +152,8 @@ namespace WinNotch.Smoke
             public int Split, Group, Peek;
             /// <summary>P14: the Command Bar is open.</summary>
             public int Cmd;
+            /// <summary>P27: the page shown in the notch and the category in the context engine's snapshot ("" when not given).</summary>
+            public string Page = "", Ctx = "";
             public override string ToString() => Raw;
             public bool SameSize(Status o) => Math.Abs(W - o.W) <= 2 && Math.Abs(H - o.H) <= 2;
         }
@@ -154,8 +161,8 @@ namespace WinNotch.Smoke
         private static Status ReadStatus()
         {
             string raw = _notch.Properties.ItemStatus.ValueOrDefault ?? "";
-            return SmokeMode.TryParseStatus(raw, out var m, out int w, out int h, out var x)
-                ? new Status { Mode = m, W = w, H = h, Raw = raw, Split = x["split"], Group = x["group"], Peek = x["peek"], Cmd = x["cmd"] }
+            return SmokeMode.TryParseStatus(raw, out var m, out int w, out int h, out var x, out var page, out var ctx)
+                ? new Status { Mode = m, W = w, H = h, Raw = raw, Split = x["split"], Group = x["group"], Peek = x["peek"], Cmd = x["cmd"], Page = page, Ctx = ctx }
                 : new Status { Mode = "", Raw = raw };
         }
 
@@ -286,6 +293,68 @@ namespace WinNotch.Smoke
             Thread.Sleep(1000);
             Keyboard.TypeSimultaneously(VirtualKeyShort.LWIN, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
             WaitFor(ReadStatus, s => s.Mode != "Expanded", TimeSpan.FromSeconds(8), "notch-ul închis la a doua apăsare");
+        }
+
+        // ------------------------------------------------------------------ P27: the page by context
+
+        private const string ContextPagesFeature = "context-pages";
+        private const string ContextTargetPage = "devices";
+
+        private static Status OpenNotchByHotkey()
+        {
+            SettledIdle();
+            Keyboard.TypeSimultaneously(VirtualKeyShort.LWIN, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+            return WaitFor(ReadStatus, s => s.Mode == "Expanded" && s.Page.Length > 0, TimeSpan.FromSeconds(8), "notch-ul deschis (mode=Expanded, cu ;page=)");
+        }
+
+        private static void CloseNotchByHotkey()
+        {
+            Thread.Sleep(800);
+            Keyboard.TypeSimultaneously(VirtualKeyShort.LWIN, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+            WaitFor(ReadStatus, s => s.Mode != "Expanded", TimeSpan.FromSeconds(8), "notch-ul închis");
+        }
+
+        /// <summary>
+        /// What is exercised: the context category comes from the real ContextEngine (the test command forces the category
+        /// of the app in front inside the engine, through its normal debounce; the status shows the snapshot's category),
+        /// the mapping from the settings (as Settings saves it), the switch through FeatureFlags, and the open through the
+        /// real Win+Alt+N → Expand → the P27 hook. Not exercised here (unit tests only): the 10-minute manual window and
+        /// hidden pages.
+        /// </summary>
+        private static void ContextPages()
+        {
+            SettledIdle();
+            Command("fake-context dev");
+            WaitFor(ReadStatus, s => s.Ctx == "Dev", TimeSpan.FromSeconds(10), "categoria „Dev” în snapshot-ul motorului de context (;ctx=Dev)");
+            int mapped = LogCount("Test de fum: pagina pentru „Dev”: " + ContextTargetPage + ".");
+            Command("set-context-page dev " + ContextTargetPage);
+            WaitFor(() => LogCount("Test de fum: pagina pentru „Dev”: " + ContextTargetPage + "."), n => n > mapped, TimeSpan.FromSeconds(10), "maparea Dev → " + ContextTargetPage);
+
+            // switch off: the notch opens where it was
+            var off = OpenNotchByHotkey();
+            Thread.Sleep(500);
+            off = ReadStatus();
+            if (off.Page == ContextTargetPage) Fail("Cu „" + ContextPagesFeature + "” oprit, notch-ul s-a deschis pe pagina mapată (sau era deja pe ea): " + off);
+            Console.WriteLine("      (oprit: deschis pe „" + off.Page + "”)");
+            CloseNotchByHotkey();
+
+            int on = LogCount("Test de fum: funcția „" + ContextPagesFeature + "” pornită.");
+            int chosen = LogCount("Pagina după context: Dev.");
+            Command("toggle feature " + ContextPagesFeature);
+            WaitFor(() => LogCount("Test de fum: funcția „" + ContextPagesFeature + "” pornită."), n => n > on, TimeSpan.FromSeconds(10), "„" + ContextPagesFeature + "” pornit");
+            OpenNotchByHotkey();
+            WaitFor(ReadStatus, s => s.Mode == "Expanded" && s.Page == ContextTargetPage, TimeSpan.FromSeconds(5), "notch-ul deschis pe „" + ContextTargetPage + "” (;page=" + ContextTargetPage + ")");
+            WaitFor(() => LogCount("Pagina după context: Dev."), n => n > chosen, TimeSpan.FromSeconds(5), "„Pagina după context: Dev.” în log");
+            CloseNotchByHotkey();
+
+            // back as before: switch off, no mapping, the real context
+            int offAgain = LogCount("Test de fum: funcția „" + ContextPagesFeature + "” oprită.");
+            Command("toggle feature " + ContextPagesFeature);
+            WaitFor(() => LogCount("Test de fum: funcția „" + ContextPagesFeature + "” oprită."), n => n > offAgain, TimeSpan.FromSeconds(10), "„" + ContextPagesFeature + "” oprit");
+            Command("set-context-page dev none");
+            Command("fake-context none");
+            WaitFor(() => LogCount("Test de fum: context fals „niciunul”"), n => n > 0, TimeSpan.FromSeconds(10), "contextul fals scos");
+            SettledIdle();
         }
 
         // ------------------------------------------------------------------ P14: the Command Bar

@@ -106,7 +106,7 @@ Verificările de mai jos sunt cu „Manager de activități” pornit (Setări �
 | P13.8 | Acțiunea `activity.dismiss-all` | Cu „Command Bar” pornit (P14): `Win+Alt+Space`, scrie „închide activitățile”, Enter. Altfel, prin testele de fum. | Tot ce arăta managerul dispare. Cu managerul oprit, acțiunea nu apare în Command Bar. |
 | P13.9 | Consum în standby | Pornit, notch închis, 10 minute fără alerte; Task Manager › Detalii › WinNotch.exe. | CPU ca în 0.6.13 (aproape 0%); memoria nu crește. |
 | P13.10 | Mod sigur | Comutatorul pornit, apoi `WinNotch.exe --safe-mode`. | Log fără „Activity Manager: pornit.”; alertele merg pe calea veche. |
-| P13.11 | Formele noi (teste de fum) | GitHub › Actions › ultima rulare CI › pașii „Smoke tests (activity-manager off/on)”; artefactul „smoke-artifacts”. | Ambii pași verzi: „TEST DE FUM (activity-manager oprit): 15 PASS” și „(… pornit): 16 PASS” (12 / 13 până la P14); în `activity-manager-on\log.txt` rândurile „activitate de test … Grouped/Shown” și „activity.dismiss-all → făcut”, fără erori. |
+| P13.11 | Formele noi (teste de fum) | GitHub › Actions › ultima rulare CI › pașii „Smoke tests (activity-manager off/on)”; artefactul „smoke-artifacts”. | Ambii pași verzi: „TEST DE FUM (activity-manager oprit): 16 PASS” și „(… pornit): 16 PASS” (15 / 16 până la P27; 12 / 13 până la P14); în `activity-manager-on\log.txt` rândurile „activitate de test … Grouped/Shown” și „activity.dismiss-all → făcut”, fără erori. |
 
 ### P14 — Command Bar (experimental, oprit implicit)
 
@@ -132,14 +132,34 @@ Fă-le o dată cu „Manager de activități” oprit și o dată pornit, unde s
 | P14.14 | Log fără text | După P14.3–P14.8, deschide `%AppData%\WinNotch\log.txt`. | Doar „Command Bar: deschis/închis” și „Acțiune <id> (CommandBar): reușită”; niciun text scris, nicio valoare („30”). |
 | P14.15 | Mod sigur | Comutatorul pornit, apoi `WinNotch.exe --safe-mode`. | `Win+Alt+Space` nu deschide nimic; în log nu apare „Command Bar: pornit.”. |
 
+### P27 — Pagina după context (experimental, oprită implicit)
+
+Cu comutatorul oprit, notch-ul se deschide pe pagina de data trecută, ca înainte. Verificările de mai jos sunt cu „Pagina
+după context” pornită (Setări › Funcții noi › bifează › Salvează) și „Motorul de context” pornit (implicit), dacă nu scrie altfel.
+Pregătire: Setări › „Pagina după context”: Programare → Sistem, Browser → Dispozitive, Întâlnire → Unelte › Salvează.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P27.1 | Oprit = nimic | Comutatorul oprit (implicit), maparea de mai sus. Lucrează în VS Code, deschide notch-ul. | Se deschide pe pagina de data trecută; în log nu apare „Pagina după context”. |
+| P27.2 | Setările implicite | Pe un `settings.json` fără `ContextPages` (sau după „Renunță”), deschide Setări › „Pagina după context”. | Toate cele 7 rânduri (Programare, Browser, Întâlnire, Joc, Media, Birou, Creație) arată „—”. |
+| P27.3 | Categoria aleasă | Comutatorul pornit. Click în VS Code (sau Visual Studio), apoi hover pe notch; închide; click în Chrome, `Win+Alt+N`. | Prima dată notch-ul se deschide pe Sistem, a doua oară pe Dispozitive; în log „Pagina după context: Dev.” și „… Browser.” (fără numele aplicației sau titlu). |
+| P27.4 | „—” | Click în Word (Birou are „—”), deschide notch-ul. | Rămâne pe pagina de data trecută. |
+| P27.5 | Alegerea manuală, 10 minute | În Chrome, deschide notch-ul (Dispozitive), dă click pe tab-ul Acasă, închide. Redeschide de câteva ori în 9 minute (tot din Chrome); apoi după 10 minute. | În primele 10 minute se deschide pe Acasă; după 10 minute, din nou pe Dispozitive. |
+| P27.6 | Pagină ascunsă sau ștearsă | Ascunde pagina Sistem (ochiul din editare); deschide notch-ul din VS Code. Apoi mapează Programare pe o pagină a ta și șterge-o. | Notch-ul rămâne pe pagina de data trecută, fără mesaje și fără rânduri noi în log. La a doua, în Setări rândul Programare arată „—”. |
+| P27.7 | Întâlnire | Într-un apel Teams / Zoom sau Meet în browser (microfonul pornit), deschide notch-ul. | Se deschide pe Unelte (Întâlnire are prioritate față de Browser). |
+| P27.8 | Motorul de context oprit | Debifează „Motorul de context” › Salvează; deschide notch-ul din VS Code. Apoi `WinNotch.exe --safe-mode`. | Nicio schimbare de pagină în ambele cazuri. |
+| P27.9 | Fără consum | Comutator pornit, notch închis, 10 minute; Task Manager › WinNotch.exe. | CPU ca înainte (aproape 0%): funcția nu rulează nimic cât notch-ul e închis. |
+| P27.10 | Acțiunea de setări | Cu Command Bar pornit: `Win+Alt+Space`, „setari pagina context”, Enter. | Fereastra WinNotch se deschide la Setări, la secțiunea „Pagina după context”. |
+| P27.11 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Rularea cu activity-manager oprit are „PASS  Pagina după context…” (16 PASS); cea cu el pornit scrie „SKIP  Pagina după context…” (tot 16 PASS). |
+
 ### P02 — Teste de fum (CI)
 
 Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai jos sunt pentru rularea locală și pentru siguranța modului `--smoke`.
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
-| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 15 rânduri PASS și „TEST DE FUM (activity-manager oprit): 15 PASS, 0 FAIL”; WinNotch se închide singur. Cu `-- publish\WinNotch.exe smoke-artifacts --activity-manager=on`: 16 PASS (12 / 13 până la P14). În timpul rulării apare o fereastră mică a testului; nu da click în ea. |
+| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 16 rânduri PASS și „TEST DE FUM (activity-manager oprit): 16 PASS, 0 FAIL” (15 până la P27); WinNotch se închide singur. Cu `-- publish\WinNotch.exe smoke-artifacts --activity-manager=on`: 16 PASS și un rând „SKIP  Pagina după context” (12 / 13 până la P14). În timpul rulării apare o fereastră mică a testului; nu da click în ea. |
 | P02.2 | Setările tale nu sunt atinse | După P02.1, compară `%AppData%\WinNotch\settings.json` și `log.txt` cu cele dinainte. | Neschimbate; testul a scris doar în `%AppData%\WinNotch\smoke\`. |
 | P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
 | P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
-| P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 15, respectiv 16 PASS (din P14; 12 / 13 în 0.6.14). |
+| P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 16 PASS în ambele (din P27; 15 / 16 din P14; 12 / 13 în 0.6.14). |

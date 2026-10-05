@@ -16,6 +16,7 @@
     <Compile Include="AlertCharacterizationTests.cs" />
     <Compile Include="ActivityTests.cs" />
     <Compile Include="CommandBarTests.cs" />
+    <Compile Include="ContextPagesTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -54,5 +55,7 @@
     <Compile Include="..\Features\Activity\ActivityActions.cs" />
     <Compile Include="..\Features\CommandBar\CommandBarModel.cs" />
     <Compile Include="..\Features\CommandBar\SettingsActions.cs" />
+    <Compile Include="..\Features\ContextPages\ContextPages.cs" />
+    <Compile Include="..\Features\ContextPages\ContextPagesSettings.cs" />
   </ItemGroup>
 </Project>

@@ -252,7 +252,7 @@ namespace WinNotch
                 var inputs = names.Where(x => x.Type is "CheckBox" or "ComboBox" or "Slider" or "TextBox").Select(x => x.Name).ToList();
                 var uncovered = inputs.Where(nm => !covered.Contains(nm) && !opts.Any(o => o.Target == nm)).ToList();
                 Check("CB29", "Fiecare opțiune din SettingsWindow.xaml are acțiunea ei; fiecare țintă există (listele se deschid la secțiune)",
-                      missingTargets.Count == 0 && uncovered.Count == 0 && inputs.Count >= 18 && opts.Count(o => o.SectionOnly) == 4,
+                      missingTargets.Count == 0 && uncovered.Count == 0 && inputs.Count >= 18 && opts.Count(o => o.SectionOnly) == 5,
                       "fără țintă: " + string.Join(",", missingTargets) + " · fără acțiune: " + string.Join(",", uncovered));
                 Check("CB30", "Setarea scurtăturii: CmdKeyBox cu Win+Alt+Space („space”) și Win+Alt+K („k”); implicit „space” în AppSettings",
                       Regex.IsMatch(Norm(xaml), "x:Name=\"CmdKeyBox\".*Tag=\"space\" Content=\"Win\\+Alt\\+Space\".*Tag=\"k\" Content=\"Win\\+Alt\\+K\"") &&

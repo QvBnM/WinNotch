@@ -159,6 +159,7 @@ namespace WinNotch
             _workspaces = s.Workspaces.Select(x => (x, x.Name)).ToList();
             BuildWorkspaces();
             TabsBox.IsChecked = s.BrowserTabs;
+            BuildContextPages();                // P27 (Features/ContextPages)
             BuildFeatures();
             UpdateExtStatus();
             _extTimer.Tick += (o, e) => UpdateExtStatus();
@@ -380,6 +381,7 @@ namespace WinNotch
             _s.BrowserTabs = TabsBox.IsChecked == true;
             foreach (var (ws, nm) in _workspaces) ws.Name = string.IsNullOrWhiteSpace(nm) ? ws.Name : nm.Trim();
             _s.Workspaces = _workspaces.Select(x => x.Ws).ToList();
+            _s.ContextPages = ContextPagesChosen();         // P27 (Features/ContextPages)
             var flags = Core.Flags.FeatureFlags.Current;
             // only the switches you changed here (one switched off automatically meanwhile stays off); they start or stop right away
             flags?.ApplyChoices(_featuresShown, _features);
