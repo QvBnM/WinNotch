@@ -1,0 +1,33 @@
+# Build and tests for every pull request and every push to a branch other than main (main is handled by release.yml).
+# No signing and no publishing here.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Tests (app)
+        run: dotnet run --project tests/WinNotch.Tests.csproj -c Release
+
+      - name: Tests (extension)
+        run: |
+          node tests/extension/ext.test.js
+          node tests/extension/content.test.js
+          node --test tests/extension/controls.test.js
+
+      - name: Build
+        run: dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out

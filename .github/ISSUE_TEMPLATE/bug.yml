@@ -1,0 +1,100 @@
+name: Bug
+description: Ceva nu merge cum ar trebui în WinNotch
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Versiunea WinNotch
+      description: Setări → „Caută versiuni noi” (sau meniul iconiței).
+      placeholder: "0.6.6"
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Build-ul Windows
+      description: Win+R → winver
+      placeholder: "Windows 11 23H2 (22631.4317)"
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Zona
+      options:
+        - Notch (deschidere, formă, poziție)
+        - Alerte
+        - Muzică și surse audio
+        - Extensia de browser
+        - Sistem / temperaturi / test de viteză
+        - Dispozitive
+        - Unelte (captură, OCR, lansator, clipboard, spații de lucru)
+        - Widget-uri și pagini
+        - Teme
+        - Setări
+        - Actualizări
+        - Funcții noi (experimentale)
+        - Altceva
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severitate
+      options:
+        - Critic (se închide, pierde date, problemă de securitate)
+        - Major (o funcție nu merge)
+        - Minor (merge, dar greșit sau incomod)
+        - Cosmetic (aspect, text)
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pașii de reproducere
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ce te așteptai să se întâmple
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Ce s-a întâmplat de fapt
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: Cât de des
+      options:
+        - De fiecare dată
+        - Des
+        - Uneori
+        - O singură dată
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Configurația
+      description: Monitoare (câte, rezoluție, scalare), browser, dispozitive audio, alte detalii utile.
+      placeholder: |
+        Monitoare: 2 (2560×1440 @ 125%, 1920×1080 @ 100%)
+        Browser: Chrome 130 cu extensia WinNotch
+        Audio: căști Bluetooth + boxe USB
+  - type: textarea
+    id: log
+    attributes:
+      label: Log (ultimele 50 de rânduri)
+      description: Din %AppData%\WinNotch\log.txt. Log-ul nu conține parole, link-uri sau texte din clipboard, dar verifică-l înainte să-l trimiți.
+      render: text

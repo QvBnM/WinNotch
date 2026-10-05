@@ -74,7 +74,9 @@ Documentul descrie tot ce e implementat în cod până la versiunea 0.6.6: pagin
 | `build.bat`, `run.bat`, `tools/get-sdk.ps1` | Build, pornire, descărcarea SDK-ului |
 | `tests/` | Teste automate (C# și extensia) |
 | `README.md`, `AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md`, `DOCUMENTATIE.md` | Ghid scurt, cele trei audituri, acest document |
-| `CLAUDE.md` | Ghid pentru asistenții AI care lucrează la cod (structură, publicare, reguli de securitate) |
+| `CLAUDE.md` | Ghid pentru asistenții AI care lucrează la cod (structură, publicare, reguli de securitate, reguli pentru dezvoltarea 0.7+) |
+| `docs/ROADMAP.md`, `docs/adr/`, `docs/TESTE-MANUALE.md` | Planul versiunilor 0.7 → 1.0, deciziile de arhitectură (ADR), verificările manuale (lista scurtă de regresie și verificările per funcție) |
+| `.github/workflows/ci.yml`, `.github/ISSUE_TEMPLATE/bug.yml`, `.github/pull_request_template.md` | Build și teste la fiecare pull request și push pe alte ramuri decât `main`; formularul de bug; șablonul de pull request |
 
 ---
 
