@@ -147,20 +147,25 @@ namespace WinNotch.Features.Context
             lock (_lock)
             {
                 _cam = null;
+                string why = null;
                 try
                 {
                     _key = Registry.CurrentUser.OpenSubKey(WebcamKey);
-                    if (_key == null) throw new InvalidOperationException();          // no camera was ever used: nothing to watch
-                    _signal = new AutoResetEvent(false);
-                    if (!Arm()) throw new InvalidOperationException();
-                    _wait = ThreadPool.RegisterWaitForSingleObject(_signal, (st, timedOut) => OnCameraKey(), null, Timeout.Infinite, false);
-                    _camera = new CameraRefresh(watching: true);
+                    if (_key == null) why = "nicio cameră folosită până acum";      // nothing to watch yet
+                    else
+                    {
+                        _signal = new AutoResetEvent(false);
+                        if (!Arm()) why = "notificarea a fost refuzată";
+                        else _wait = ThreadPool.RegisterWaitForSingleObject(_signal, (st, timedOut) => OnCameraKey(), null, Timeout.Infinite, false);
+                    }
                 }
-                catch (Exception ex)
+                catch (Exception ex) { why = ex.GetType().Name; }
+                if (why == null) _camera = new CameraRefresh(watching: true);
+                else
                 {
                     CloseWatch();
                     _camera = new CameraRefresh(watching: false);
-                    App.Log("Context: camera nu poate fi urmărită prin notificări (" + ex.GetType().Name + "); o verific la 10 s, doar cu notch-ul deschis.");
+                    App.Log("Context: camera nu poate fi urmărită prin notificări (" + why + "); o verific la 10 s, doar cu notch-ul deschis.");
                 }
             }
         }

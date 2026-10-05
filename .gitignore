@@ -6,3 +6,4 @@ tests/bin/
 tests/obj/
 *.user
 .vs/
+smoke-artifacts/

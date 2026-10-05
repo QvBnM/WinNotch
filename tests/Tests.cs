@@ -328,6 +328,7 @@ namespace WinNotch
             UpdateTests();
             ActionTests();
             ContextTests();
+            SmokeModeTests();
 
             Console.WriteLine(string.Join("\n", lines));
             Console.WriteLine($"\nTOTAL {pass + fail}: {pass} PASS, {fail} FAIL");

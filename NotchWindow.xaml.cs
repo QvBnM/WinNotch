@@ -189,6 +189,7 @@ namespace WinNotch
 
         public void Cleanup()
         {
+            StopSmoke();
             _poll.Stop(); _sec.Stop(); _mon.Stop(); _audioTick.Stop();
             CompositionTarget.Rendering -= OnFrame;
             S.PinnedClips = Clips.Where(c => c.Pinned).Select(c => c.Text).ToList();
@@ -1297,11 +1298,14 @@ namespace WinNotch
             (_pane as WidgetPage)?.MediaChanged();
             if (_mode == Mode.Expanded && _pane == _sources) _pane.Refresh();
             var mi = Now.Info;
-            if (trackChanged && mi.Playing && _mode != Mode.Expanded && !SourceInFront(mi))
-            {
-                var art = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(8), Background = mi.Art != null ? new ImageBrush(mi.Art) { Stretch = Stretch.UniformToFill } : Ui.B("TrackBrush") };
-                ShowLive(LiveRow(art, mi.Title, mi.Artist, Equalizer()), 360, 54, 3200);
-            }
+            if (trackChanged && mi.Playing && _mode != Mode.Expanded && !SourceInFront(mi)) ShowTrackAlert(mi);
+        }
+
+        /// <summary>The "now playing" alert (also posted by the smoke tests).</summary>
+        private void ShowTrackAlert(MediaInfo mi)
+        {
+            var art = new Border { Width = 34, Height = 34, CornerRadius = new CornerRadius(8), Background = mi.Art != null ? new ImageBrush(mi.Art) { Stretch = Stretch.UniformToFill } : Ui.B("TrackBrush") };
+            ShowLive(LiveRow(art, mi.Title, mi.Artist, Equalizer()), 360, 54, 3200);
         }
 
         /// <summary>

@@ -12,6 +12,7 @@
   <ItemGroup>
     <Compile Include="Tests.cs" />
     <Compile Include="ContextTests.cs" />
+    <Compile Include="SmokeModeTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -42,5 +43,6 @@
     <Compile Include="..\Core\Context\ContextEngine.cs" />
     <Compile Include="..\Core\Context\CameraRefresh.cs" />
     <Compile Include="..\Features\Context\ContextActions.cs" />
+    <Compile Include="..\Features\Smoke\SmokeMode.cs" />
   </ItemGroup>
 </Project>
