@@ -1,8 +1,7 @@
 ## Nou
-- Actualizări automate: WinNotch verifică singur versiunile noi și te întreabă în notch înainte să instaleze.
-- La fiecare actualizare vezi ce e nou, ce s-a îmbunătățit și ce s-a reparat (și în fereastra WinNotch, la „Noutăți”).
-- Alertă când extensia din browser trebuie reîncărcată (↻) după o actualizare.
+- În Setări, secțiunea „Funcții noi (experimental)”: de aici vei porni și opri funcțiile noi din versiunile următoare, fără repornire. Deocamdată are doar „Funcție de test”, care nu face nimic vizibil.
+- O funcție nouă care dă erori repetate se oprește singură, iar în Setări vezi de ce.
+- Mod sigur: pornit cu WinNotch.exe --safe-mode, WinNotch rulează fără funcțiile experimentale, fără să-ți schimbe alegerile.
 
 ## Îmbunătățit
-- Fiecare versiune e construită, testată și semnată de GitHub; WinNotch instalează doar fișiere cu semnătura lui.
-- După o actualizare, notch-ul îți propune și actualizarea serviciului de temperatură, dacă e nevoie.
+- La fiecare 6 ore, WinNotch notează în jurnal cât RAM și procesor folosește, ca problemele de performanță să fie găsite mai ușor. Fără date personale.

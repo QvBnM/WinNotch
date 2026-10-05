@@ -128,6 +128,7 @@ namespace WinNotch
             _workspaces = s.Workspaces.Select(x => (x, x.Name)).ToList();
             BuildWorkspaces();
             TabsBox.IsChecked = s.BrowserTabs;
+            BuildFeatures();
             UpdateExtStatus();
             _extTimer.Tick += (o, e) => UpdateExtStatus();
             _extTimer.Start();
@@ -346,13 +347,57 @@ namespace WinNotch
             _s.BrowserTabs = TabsBox.IsChecked == true;
             foreach (var (ws, nm) in _workspaces) ws.Name = string.IsNullOrWhiteSpace(nm) ? ws.Name : nm.Trim();
             _s.Workspaces = _workspaces.Select(x => x.Ws).ToList();
+            var flags = Core.Flags.FeatureFlags.Current;
+            // only the switches you changed here (one switched off automatically meanwhile stays off); they start or stop right away
+            flags?.ApplyChoices(_featuresShown, _features);
             _s.Save();
+            BuildFeatures();                    // the page stays open: current states and reasons
 
             bool start = StartBox.IsChecked == true;
             if (start != AppSettings.StartWithWindows) AppSettings.StartWithWindows = start;
 
             Saved?.Invoke();
             Done();
+        }
+
+        private readonly Dictionary<string, bool> _features = new Dictionary<string, bool>();          // what the switches show now
+        private readonly Dictionary<string, bool> _featuresShown = new Dictionary<string, bool>();     // what they showed when built
+
+        /// <summary>One switch per entry of the feature catalog, with its stage; applied on "Salvează".</summary>
+        private void BuildFeatures()
+        {
+            FeatureRows.Children.Clear();
+            var flags = Core.Flags.FeatureFlags.Current;
+            if (flags == null) return;
+            SafeModeNote.Visibility = flags.SafeMode ? Visibility.Visible : Visibility.Collapsed;
+            var muted = new SolidColorBrush(Color.FromRgb(0x5B, 0x62, 0x6D));
+            foreach (var f in flags.Catalog)
+            {
+                string id = f.Id;
+                _features[id] = _featuresShown[id] = flags.IsSaved(id);
+                var (fg, bg) = f.Stage switch
+                {
+                    Core.Flags.FeatureStage.Experimental => (Color.FromRgb(0xB0, 0x4A, 0x00), Color.FromRgb(0xFD, 0xEB, 0xD9)),
+                    Core.Flags.FeatureStage.Beta => (Color.FromRgb(0x1F, 0x5F, 0xB8), Color.FromRgb(0xDF, 0xEC, 0xFB)),
+                    _ => (Color.FromRgb(0x1A, 0x8A, 0x4A), Color.FromRgb(0xDD, 0xF3, 0xE6)),
+                };
+                var tag = new Border
+                {
+                    CornerRadius = new CornerRadius(8), Padding = new Thickness(7, 1, 7, 1), Margin = new Thickness(8, 0, 0, 0),
+                    Background = new SolidColorBrush(bg), VerticalAlignment = VerticalAlignment.Center,
+                    Child = new TextBlock { Text = Core.Flags.FeatureCatalog.StageName(f.Stage), FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = new SolidColorBrush(fg) }
+                };
+                var head = new StackPanel { Orientation = Orientation.Horizontal };
+                head.Children.Add(new TextBlock { Text = f.Name, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
+                head.Children.Add(tag);
+                var cb = new CheckBox { Content = head, IsChecked = _features[id], Margin = new Thickness(0, 6, 0, 0) };
+                cb.Click += (o, e) => _features[id] = cb.IsChecked == true;
+                FeatureRows.Children.Add(cb);
+                FeatureRows.Children.Add(new TextBlock { Text = f.Description, Foreground = muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(22, 2, 0, 0) });
+                string why = flags.DisabledReason(id);
+                if (why != null)
+                    FeatureRows.Children.Add(new TextBlock { Text = "Oprită automat: " + why, Foreground = new SolidColorBrush(fg), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(22, 2, 0, 0) });
+            }
         }
 
         private void Cancel_Click(object sender, RoutedEventArgs e)

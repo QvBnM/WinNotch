@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic; using System.IO; using System.Linq; using System.Net; using System.Net.Sockets;
-using System.Text; using System.Threading; using System.Text.Json; using WinNotch.Services; using WinNotch.Widgets;
+using System.Text; using System.Threading; using System.Text.Json; using WinNotch.Services; using WinNotch.Widgets; using WinNotch.Core.Flags; using WinNotch.Core.Diagnostics;
 namespace WinNotch
 {
     public static class App { public static void Log(string s) { } public static bool IsAdmin => false; }
-    public class AppSettings { public static string Folder => T.TestFolder; public static bool SafeToWrite(string p) => true; public static IDisposable HoldFolder() => null; }
+    public partial class AppSettings { public static string Folder => T.TestFolder; public static bool SafeToWrite(string p) => true; public static IDisposable HoldFolder() => null; }
 
     /// <summary>
     /// Automated tests for the parts that don't need the WPF window: the extension bridge (real sockets), address
@@ -324,9 +324,138 @@ namespace WinNotch
                 Check("W8", "2000 de mutări/redimensionări aleatoare: niciodată suprapuneri sau ieșiri din grilă", ok7);
             }
 
+            FeatureFlagTests();
+
             Console.WriteLine(string.Join("\n", lines));
             Console.WriteLine($"\nTOTAL {pass + fail}: {pass} PASS, {fail} FAIL");
             Environment.ExitCode = fail == 0 ? 0 : 1;
+        }
+
+        /// <summary>Feature switches (P10): old settings, save/reload, Changed, automatic Disable, safe mode, health line.</summary>
+        static void FeatureFlagTests()
+        {
+            var cat = new[]
+            {
+                new FeatureInfo("exp", "Exp", "", FeatureStage.Experimental, false),
+                new FeatureInfo("beta", "Beta", "", FeatureStage.Beta, true),
+                new FeatureInfo("stable", "Stabil", "", FeatureStage.Stable, true),
+            };
+            var opts = new JsonSerializerOptions { WriteIndented = true };
+
+            // a settings.json from 0.6.6: no "Features" at all
+            string old = "{\"Standby\":[\"music\",\"clock\"],\"City\":\"Cluj\",\"Note\":\"dpapi:AAAA\",\"DwellMs\":300}";
+            var s0 = JsonSerializer.Deserialize<AppSettings>(old); s0.NormalizeFeatures();
+            var f0 = new FeatureFlags(s0.Features, cat);
+            Check("F1", "settings.json vechi fără „Features”: fiecare funcție are valoarea implicită",
+                  s0.Features.Count == 0 && !f0.IsEnabled("exp") && f0.IsEnabled("beta") && f0.IsEnabled("stable"));
+            var sNull = JsonSerializer.Deserialize<AppSettings>("{\"Features\":null}"); sNull.NormalizeFeatures();
+            Check("F2", "„Features”: null (fișier editat de mână) devine gol, fără eroare", sNull.Features != null && !new FeatureFlags(sNull.Features, cat).IsEnabled("exp"));
+            var real = new FeatureFlags(s0.Features);
+            Check("F3", "Catalogul are „demo-flag”, Experimental, oprit implicit",
+                  FeatureCatalog.Find(FeatureCatalog.DemoFlag) is { Stage: FeatureStage.Experimental, DefaultOn: false } && !real.IsEnabled(FeatureCatalog.DemoFlag));
+            Check("F4", "ID-urile din catalog sunt unice și scrise cu litere mici și liniuțe",
+                  FeatureCatalog.All.Select(f => f.Id).Distinct().Count() == FeatureCatalog.All.Count &&
+                  FeatureCatalog.All.All(f => System.Text.RegularExpressions.Regex.IsMatch(f.Id, "^[a-z0-9]+(-[a-z0-9]+)*$") && f.Name.Length > 0 && f.Description.Length > 0));
+
+            // demo-flag: on and off fire Changed exactly once each
+            var fired = new List<string>(); real.Changed += id => fired.Add(id);
+            real.Set(FeatureCatalog.DemoFlag, true);
+            bool onOnce = fired.Count == 1 && fired[0] == FeatureCatalog.DemoFlag && real.IsEnabled(FeatureCatalog.DemoFlag);
+            real.Set(FeatureCatalog.DemoFlag, true);
+            bool sameNoEvent = fired.Count == 1;
+            real.Set(FeatureCatalog.DemoFlag, false);
+            Check("F5", "„demo-flag”: pornirea declanșează Changed o singură dată", onOnce);
+            Check("F6", "Aceeași valoare din nou nu declanșează Changed", sameNoEvent);
+            Check("F7", "„demo-flag”: oprirea declanșează Changed o singură dată", fired.Count == 2 && !real.IsEnabled(FeatureCatalog.DemoFlag));
+            real.Set("nu-exista", true);
+            Check("F8", "Funcție necunoscută: ignorată, fără Changed, oprită", fired.Count == 2 && !real.IsEnabled("nu-exista"));
+
+            // save and reload
+            var s1 = new AppSettings(); var f1 = new FeatureFlags(s1.Features, cat);
+            f1.Set("exp", true); f1.Set("beta", false); f1.Set("stable", true);
+            string json = JsonSerializer.Serialize(s1, opts);
+            var s2 = JsonSerializer.Deserialize<AppSettings>(json); s2.NormalizeFeatures();
+            var f2 = new FeatureFlags(s2.Features, cat);
+            Check("F9", "Salvare și recitire: alegerile rămân", f2.IsEnabled("exp") && !f2.IsEnabled("beta") && f2.IsEnabled("stable"), json);
+            Check("F10", "Se salvează doar ce diferă de implicit", s2.Features.Count == 2 && !s2.Features.ContainsKey("stable"), json);
+            var s3 = JsonSerializer.Deserialize<AppSettings>("{\"Features\":{\"din-viitor\":true,\"exp\":true}}"); s3.NormalizeFeatures();
+            new FeatureFlags(s3.Features, cat).Set("exp", false);
+            Check("F11", "Cheile unor funcții din versiuni mai noi sunt păstrate la salvare", s3.Features.TryGetValue("din-viitor", out bool fut) && fut && !s3.Features.ContainsKey("exp"));
+
+            // automatic Disable
+            var logs = new List<string>(); int saves = 0; var now = new DateTime(2026, 1, 1, 12, 0, 0);
+            var s4 = new AppSettings();
+            var f4 = new FeatureFlags(s4.Features, cat, save: () => saves++, log: logs.Add, now: () => now);
+            int ch4 = 0; f4.Changed += _ => ch4++;
+            f4.Disable("beta", "API nedocumentat indisponibil");
+            Check("F12", "Disable: oprește funcția, Changed o dată, salvează, scrie motivul în log",
+                  !f4.IsEnabled("beta") && ch4 == 1 && saves == 1 && s4.Features.TryGetValue("beta", out bool b4) && !b4 &&
+                  logs.Any(l => l.Contains("beta") && l.Contains("API nedocumentat indisponibil")) && f4.DisabledReason("beta") == "API nedocumentat indisponibil");
+            f4.Set("exp", true); ch4 = 0; logs.Clear();
+            f4.ReportError("exp", new InvalidOperationException("C:\\Users\\ion\\secret.txt")); now = now.AddMinutes(4);
+            f4.ReportError("exp", new InvalidOperationException("x")); now = now.AddMinutes(4);
+            bool stillOn = f4.IsEnabled("exp");
+            f4.ReportError("exp", new InvalidOperationException("x"));
+            Check("F13", "3 erori în 10 minute: funcția se oprește singură (Changed o dată)", stillOn && !f4.IsEnabled("exp") && ch4 == 1 && f4.DisabledReason("exp") != null);
+            Check("F14", "Log-ul erorilor are doar tipul erorii, fără mesaj (fără căi sau date personale)",
+                  logs.Count > 0 && !logs.Any(l => l.Contains("secret") || l.Contains("Users")) && logs.Any(l => l.Contains("InvalidOperationException")));
+            f4.Set("stable", true); ch4 = 0;
+            f4.ReportError("stable", new Exception()); now = now.AddMinutes(11);
+            f4.ReportError("stable", new Exception()); now = now.AddMinutes(11);
+            f4.ReportError("stable", new Exception());
+            Check("F15", "Erori rare (peste 10 minute între ele) nu opresc funcția", f4.IsEnabled("stable") && ch4 == 0);
+            f4.Set("exp", true);
+            Check("F16", "Pornită din nou de utilizator după oprirea automată: motivul dispare", f4.IsEnabled("exp") && f4.DisabledReason("exp") == null);
+
+            // a handler that throws: logged, the others still run, Set and Disable don't throw (on a background thread it would end the app)
+            var logs6 = new List<string>();
+            var f6 = new FeatureFlags(new AppSettings().Features, cat, log: logs6.Add);
+            int after6 = 0;
+            f6.Changed += _ => throw new InvalidOperationException("C:\\Users\\ion\\x");
+            f6.Changed += _ => after6++;
+            bool threw6 = false;
+            try { f6.Set("exp", true); f6.Disable("exp", "test"); } catch { threw6 = true; }
+            Check("F24", "Un abonat la Changed care aruncă: nu oprește Set/Disable și nici ceilalți abonați", !threw6 && after6 == 2 && !f6.IsEnabled("exp"));
+            Check("F25", "Eroarea abonatului ajunge în log doar ca tip", logs6.Any(l => l.Contains("InvalidOperationException")) && !logs6.Any(l => l.Contains("Users")));
+            var t6 = new Thread(() => f6.Set("exp", true)); t6.Start(); t6.Join();
+            Check("F26", "Pe un fir de fundal, un abonat care aruncă nu oprește procesul", f6.IsEnabled("exp") && after6 == 3);
+
+            // Save in Settings re-applies only what you changed: a feature switched off automatically meanwhile stays off
+            var f7 = new FeatureFlags(new AppSettings().Features, cat);
+            f7.Set("exp", true);
+            var shown7 = new Dictionary<string, bool> { ["exp"] = true, ["beta"] = true, ["stable"] = true };   // the page, when built
+            f7.Disable("exp", "API lipsă");                                                                     // meanwhile, automatically
+            int ch7 = 0; f7.Changed += _ => ch7++;
+            f7.ApplyChoices(shown7, new Dictionary<string, bool> { ["exp"] = true, ["beta"] = false, ["stable"] = true });
+            Check("F27", "„Salvează” aplică doar ce ai schimbat: o funcție oprită automat între timp rămâne oprită, cu motivul",
+                  !f7.IsEnabled("exp") && f7.DisabledReason("exp") == "API lipsă" && !f7.IsEnabled("beta") && f7.IsEnabled("stable") && ch7 == 1);
+            f7.ApplyChoices(new Dictionary<string, bool> { ["exp"] = false }, new Dictionary<string, bool> { ["exp"] = true });
+            Check("F29", "Repornită de tine din Setări după oprirea automată: pornește și motivul dispare", f7.IsEnabled("exp") && f7.DisabledReason("exp") == null);
+            var f8 = new FeatureFlags(new AppSettings().Features, cat);
+            f8.Disable("exp", new string('x', 500) + "\nlinie");
+            Check("F28", "Motivul din Disable e limitat (120 de caractere, un singur rând)",
+                  f8.DisabledReason("exp").Length <= FeatureFlags.MaxReason + 1 && !f8.DisabledReason("exp").Contains('\n'));
+
+            // safe mode
+            var s5 = new AppSettings(); new FeatureFlags(s5.Features, cat).Set("exp", true);
+            string before5 = JsonSerializer.Serialize(s5);
+            var f5 = new FeatureFlags(s5.Features, cat, safeMode: true);
+            int ch5 = 0; f5.Changed += _ => ch5++;
+            Check("F17", "Mod sigur: Experimental și Beta sunt oprite, Stable rămâne", !f5.IsEnabled("exp") && !f5.IsEnabled("beta") && f5.IsEnabled("stable"));
+            Check("F18", "Mod sigur: ce e salvat nu se schimbă (și Setări arată alegerea ta)", JsonSerializer.Serialize(s5) == before5 && f5.IsSaved("exp") && f5.IsSaved("beta"));
+            f5.Set("exp", false); f5.Set("exp", true);
+            Check("F19", "Mod sigur: schimbarea unei funcții Experimental nu declanșează Changed (rămâne oprită)", ch5 == 0 && !f5.IsEnabled("exp"));
+
+            // health summary
+            HealthLog.TakeErrors();
+            HealthLog.CountError("exp"); HealthLog.CountError("exp"); HealthLog.CountError("beta");
+            var errs = HealthLog.TakeErrors();
+            string line = HealthLog.Line(142, 0.83, errs);
+            Check("F20", "Rezumatul de sănătate: RAM, CPU mediu și erorile pe funcții", line.Contains("RAM 142 MB") && line.Contains("CPU mediu 0.8%") && line.Contains("beta=1") && line.Contains("exp=2"), line);
+            Check("F21", "După rezumat, numărătoarea erorilor o ia de la zero", HealthLog.TakeErrors().Length == 0 && HealthLog.Line(1, 0, HealthLog.TakeErrors()).Contains("fără erori"));
+            Check("F22", "CPU mediu: 1 s de procesor în 10 s pe 4 nuclee = 2,5%", Math.Abs(HealthLog.Percent(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10), 4) - 2.5) < 0.001);
+            string written = null; HealthLog.Start(l => written = l); string now6 = HealthLog.WriteNow(); HealthLog.Stop();
+            Check("F23", "Rezumatul real se scrie în log", written != null && written == now6 && written.StartsWith("Sănătate (6 h): RAM "), written);
         }
 
         static bool SafeCalc(string q) { try { Launcher.Calculate(q); return true; } catch { return false; } }

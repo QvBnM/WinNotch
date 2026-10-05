@@ -81,6 +81,12 @@ namespace WinNotch
             AppDomain.CurrentDomain.UnhandledException += (s, ex) => Log("Eroare fatală: " + ex.ExceptionObject);
 
             Settings = AppSettings.Load();
+            // feature switches; --safe-mode runs without the Experimental and Beta ones (nothing saved changes)
+            bool safeMode = Array.IndexOf(e.Args, Core.Flags.FeatureFlags.SafeModeArg) >= 0;
+            if (safeMode) Log("Pornit în mod sigur: funcțiile Experimental și Beta sunt oprite.");
+            Core.Flags.FeatureFlags.Current = new Core.Flags.FeatureFlags(Settings.Features, safeMode: safeMode,
+                save: () => Dispatcher.BeginInvoke(new Action(() => Settings.Save())), log: Log);
+            Core.Diagnostics.HealthLog.Start(Log);
             try { ThemeManager.Apply(Settings); } catch (Exception ex) { Log("Tema: " + ex.Message); }
             if (JustUpdated) Services.Updater.CleanUp();
             _notch = new NotchWindow(Settings);
@@ -179,6 +185,7 @@ namespace WinNotch
         {
             try { _notch?.Cleanup(); } catch { }
             try { _tray?.Dispose(); } catch { }
+            Core.Diagnostics.HealthLog.Stop();
             Settings?.Save();
             ReleaseSingleInstance();
             Shutdown();

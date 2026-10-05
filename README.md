@@ -16,6 +16,11 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.7
+
+- **Funcții noi (experimental):** o secțiune nouă în Setări de unde vei porni și opri funcțiile noi, fără repornire. Cele care dau erori repetate se opresc singure.
+- **Mod sigur:** `WinNotch.exe --safe-mode` pornește fără funcțiile experimentale.
+
 ## Noutăți în 0.6.6
 
 - **Actualizări automate:** WinNotch verifică singur dacă există o versiune nouă și te întreabă în notch („Actualizează” / „Mai târziu”). Versiunile sunt construite și semnate de GitHub; WinNotch instalează doar fișiere cu semnătura lui. Fără zip-uri și fără build.bat.

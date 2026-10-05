@@ -34,3 +34,36 @@ Pushes that don't change the version only run the tests. Never put the private k
 ## Style
 - Keep UI smooth and rounded (radius 16–18, theme brushes via `DynamicResource` / `SetResourceReference`, no hard-coded colours in the notch).
 - The notch window is a transparent layered window: keep it small; avoid per-frame work when closed.
+
+## Reguli pentru dezvoltarea 0.7+
+Versiunile 0.7 → 1.0 sunt construite pe pași (ID-uri P00, P10, P11… în `docs/ROADMAP.md`). Arhitectura e în
+`docs/adr/0001-arhitectura-0.7.md`.
+- **Cod nou doar în foldere noi:** `Core/` (infrastructura: Context, Activity, Actions, Flags) și `Features/<NumeFuncție>/`.
+  Fișierele mari existente (`NotchWindow.xaml.cs`, `EditorWindow.cs`) se ating minim: doar puncte de legătură de câteva rânduri.
+- **Orice funcție nouă are comutator (feature flag),** oprit implicit până la versiunea în care e anunțată.
+- **Nu duplica sisteme:** înainte să creezi un serviciu, o alertă, o setare sau un registru, caută dacă există deja
+  (`Services/`, `AppSettings.cs`, alertele din `NotchWindow.xaml.cs`, `Widgets/Catalog.cs`).
+- **Teste:** fiecare schimbare vine cu teste automate în `tests/` care trec cu `tests\run-tests.bat`; fiecare bug reparat
+  vine cu un test care eșua înainte de reparație.
+- **Nimic nu rulează elevat;** regulile din secțiunea 14 a `DOCUMENTATIE.md` (și „Security rules” de mai sus) rămân obligatorii.
+- **Fără polling sub 2 secunde în standby;** preferă evenimentele Windows (WinEvent hooks, notificări WinRT, WMI events).
+- **UI doar pe Dispatcher;** fiecare abonare la un eveniment are dezabonarea ei (la oprirea funcției sau la închiderea ferestrei).
+- **La finalul fiecărei sarcini:** actualizează `DOCUMENTATIE.md`, `docs/ROADMAP.md` (starea sarcinii),
+  `docs/TESTE-MANUALE.md` (verificările noi) și, dacă e o decizie de arhitectură, scrie un ADR (`docs/adr/`, după `0000-template.md`).
+- **Definition of Done:** build fără avertismente noi, toate testele trec (C# și extensie), documentația e actualizată,
+  iar lista de verificări manuale noi e scrisă în `docs/TESTE-MANUALE.md`.
+- **Cum declari o funcție nouă (feature flag):**
+  1. Adaugă o intrare în `Core/Flags/FeatureCatalog.cs`: `new FeatureInfo("id-functie", "Nume în română", "Descriere de un rând.",
+     FeatureStage.Experimental, false)`. ID-ul e cu litere mici și liniuțe și nu se mai schimbă după publicare (e cheia din
+     `settings.json` → `Features`). Setări îi face singur comutatorul.
+  2. În funcție: pornește doar dacă `FeatureFlags.Current.IsEnabled(id)`; abonează-te la `FeatureFlags.Current.Changed` și
+     pornește/oprește-te când primești ID-ul tău, după `IsEnabled(id)` citit în handler (nu presupune direcția: două schimbări
+     de pe fire diferite pot sosi în orice ordine). Handler-ul poate veni de pe alt fir (UI doar prin Dispatcher); o excepție
+     din el e prinsă și scrisă în log, dar nu te baza pe asta. Dezabonează-te la închidere.
+  3. Erorile prinse în funcție merg în `FeatureFlags.Current.ReportError(id, ex)` (3 în 10 minute o opresc automat); pentru
+     o problemă sigură (ex. un API nedocumentat lipsă) apelează direct `Disable(id, "motiv")`. Motivul e un text fix scris de tine (max. 120 de caractere), niciodată
+     `ex.Message`: ajunge în log și în Setări.
+  4. `--safe-mode` tratează Experimental și Beta ca oprite: o funcție nu ocolește niciodată `IsEnabled`.
+  5. La anunț: schimbă `Stage` (Beta/Stable) și, dacă e cazul, `DefaultOn = true`. Adaugă teste în `tests/Tests.cs` și
+     verificările manuale în `docs/TESTE-MANUALE.md`.
+- CI (`.github/workflows/ci.yml`) rulează build-ul și testele la fiecare pull request și push pe alte ramuri decât `main`.
