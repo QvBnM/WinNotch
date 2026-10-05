@@ -110,6 +110,7 @@ namespace WinNotch
             _notch = new NotchWindow(Settings);
             _notch.Show();
             _tray = new TrayIcon(this);
+            RegisterActions();
             StartHealthTimer();
         }
 
@@ -197,6 +198,21 @@ namespace WinNotch
                 try { if (guard.CheckHealthy()) Services.Updater.DeletePrevious(); }
                 catch (Exception ex) { Log("Pornire, verificarea sănătății: " + ex.GetType().Name); }
             }, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        }
+
+        /// <summary>
+        /// Every capability as an action (Core/Actions), registered once, after the feature flags. Nothing calls them yet
+        /// (Command Bar comes in P14); a problem here is logged and never stops the app.
+        /// </summary>
+        private void RegisterActions()
+        {
+            try
+            {
+                var registry = new Core.Actions.ActionRegistry(Core.Flags.FeatureFlags.Current, new Features.Actions.WpfUiDispatcher(), Log);
+                Features.Actions.BuiltInActions.Register(registry, new Features.Actions.AppActionHost(this, _notch));
+                Core.Actions.ActionRegistry.Current = registry;
+            }
+            catch (Exception ex) { Log("Acțiuni: înregistrarea a eșuat: " + ex.GetType().Name); }
         }
 
         /// <summary>Manual test of the crash protection: with crash-test.flag in the settings folder, a crash 5 s after start.</summary>

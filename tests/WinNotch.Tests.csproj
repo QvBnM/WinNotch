@@ -28,5 +28,11 @@
     <Compile Include="..\Core\Update\StartupStore.cs" />
     <Compile Include="..\Core\Update\Rollback.cs" />
     <Compile Include="..\Core\Update\StartupCoordinator.cs" />
+    <Compile Include="..\Core\Actions\ActionDescriptor.cs" />
+    <Compile Include="..\Core\Actions\IUndoableAction.cs" />
+    <Compile Include="..\Core\Actions\IUiDispatcher.cs" />
+    <Compile Include="..\Core\Actions\ActionRegistry.cs" />
+    <Compile Include="..\Features\Actions\IBuiltInHost.cs" />
+    <Compile Include="..\Features\Actions\BuiltInActions.cs" />
   </ItemGroup>
 </Project>
