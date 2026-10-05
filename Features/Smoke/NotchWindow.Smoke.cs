@@ -27,11 +27,11 @@ namespace WinNotch
             _smokeTimer.Start();
         }
 
-        /// <summary>Mode, pill size and what the Activity Manager shows (split, group, peek), read by the smoke test from the window's ItemStatus.</summary>
+        /// <summary>Mode, pill size, what the Activity Manager shows (split, group, peek) and the open Command Bar, read by the smoke test from the window's ItemStatus.</summary>
         private void UpdateSmokeStatus()
         {
             var (split, group, peek) = ActivitySmokeFields();
-            AutomationProperties.SetItemStatus(this, SmokeMode.Status(_mode.ToString(), Pill.ActualWidth, Pill.ActualHeight, split, group, peek));
+            AutomationProperties.SetItemStatus(this, SmokeMode.Status(_mode.ToString(), Pill.ActualWidth, Pill.ActualHeight, split, group, peek, CommandBarOpen ? 1 : 0));
         }
 
         /// <summary>Reads smoke-commands.txt from the smoke folder, deletes it, runs the valid lines in order.</summary>
@@ -83,6 +83,10 @@ namespace WinNotch
                     break;
                 case SmokeCommandKind.DismissActivities:
                     _ = SmokeDismissActivities();
+                    break;
+                case SmokeCommandKind.OpenCommandBar:
+                    App.Log("Test de fum: Command Bar prin comandă (aceeași cale ca scurtătura).");
+                    OnCommandBarShortcut();
                     break;
             }
             UpdateSmokeStatus();

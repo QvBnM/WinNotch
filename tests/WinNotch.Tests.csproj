@@ -15,6 +15,7 @@
     <Compile Include="SmokeModeTests.cs" />
     <Compile Include="AlertCharacterizationTests.cs" />
     <Compile Include="ActivityTests.cs" />
+    <Compile Include="CommandBarTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -51,5 +52,7 @@
     <Compile Include="..\Core\Activity\ActivityManager.cs" />
     <Compile Include="..\Features\Activity\ActivityRouting.cs" />
     <Compile Include="..\Features\Activity\ActivityActions.cs" />
+    <Compile Include="..\Features\CommandBar\CommandBarModel.cs" />
+    <Compile Include="..\Features\CommandBar\SettingsActions.cs" />
   </ItemGroup>
 </Project>

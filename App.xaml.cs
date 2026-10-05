@@ -122,6 +122,7 @@ namespace WinNotch
             if (Features.Smoke.SmokeMode.On) _notch.StartSmoke();
             _tray = new TrayIcon(this);
             RegisterActions();
+            _notch.StartCommandBar();                                  // P14: the shortcut, only with its switch on
             Features.Context.ContextStartup.Start(_notch, Log);       // what the user is doing now (P12); off with its switch
             StartHealthTimer();
         }
@@ -215,8 +216,8 @@ namespace WinNotch
         }
 
         /// <summary>
-        /// Every capability as an action (Core/Actions), registered once, after the feature flags. Nothing calls them yet
-        /// (Command Bar comes in P14); a problem here is logged and never stops the app.
+        /// Every capability as an action (Core/Actions), registered once, after the feature flags; the Command Bar (P14)
+        /// searches and starts them. A problem here is logged and never stops the app.
         /// </summary>
         private void RegisterActions()
         {
@@ -226,6 +227,7 @@ namespace WinNotch
                 Features.Actions.BuiltInActions.Register(registry, new Features.Actions.AppActionHost(this, _notch));
                 Features.Context.ContextActions.Register(registry, () => Core.Context.ContextEngine.Current, new Features.Context.NotchContextHost(_notch));
                 Features.Activity.ActivityActions.Register(registry, new NotchActivityHost());
+                Features.CommandBar.SettingsActions.Register(registry, new Features.CommandBar.AppSettingsHost(this));
                 Core.Actions.ActionRegistry.Current = registry;
             }
             catch (Exception ex) { Log("Acțiuni: înregistrarea a eșuat: " + ex.GetType().Name); }
@@ -249,6 +251,13 @@ namespace WinNotch
 
         /// <summary>Settings are a page of the one WinNotch window (with the pages and the themes).</summary>
         public void OpenSettings() => OpenEditor("settings");
+
+        /// <summary>P14, the "settings.*" actions: Settings, scrolled to one option (x:Name in SettingsWindow.xaml) and focused.</summary>
+        public void OpenSettingsAt(string target)
+        {
+            OpenEditor("settings");
+            _editor?.RevealSetting(target);
+        }
 
         /// <summary>
         /// The WinNotch window: a page (a page id, "themes" or "settings"), optionally with a widget selected. Brought

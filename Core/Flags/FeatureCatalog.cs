@@ -37,6 +37,8 @@ namespace WinNotch.Core.Flags
         public const string ContextEngine = "context-engine";
         /// <summary>Core/Activity: same id as ActivityManager.FeatureId (the tests check they match).</summary>
         public const string ActivityManager = "activity-manager";
+        /// <summary>Features/CommandBar: same id as CommandBarRules.FeatureId (the tests check they match).</summary>
+        public const string CommandBar = "command-bar";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -47,6 +49,9 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Beta, true),
             // P13: off by default until 0.7.0; off = the alerts go the old way, untouched
             new FeatureInfo(ActivityManager, "Manager de activități", "Alertele trec printr-o coadă cu priorități: „N noutăți” la multe deodată, pastilă împărțită, alerte discrete.",
+                            FeatureStage.Experimental, false),
+            // P14: off by default (no 0.7.0 yet, see docs/PLAN.md); off = no shortcut registered, nothing changes
+            new FeatureInfo(CommandBar, "Command Bar", "Win+Alt+Space (sau Win+Alt+K): pastila devine un câmp de căutare pentru orice acțiune („volum 30”, „captură”, „setări poziție”).",
                             FeatureStage.Experimental, false),
         };
 

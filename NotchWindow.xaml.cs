@@ -186,12 +186,14 @@ namespace WinNotch
             _calendarAt = DateTime.MinValue;
             _tools?.Rebuild();
             Now?.Refresh();
+            CommandBarSettingsChanged();            // P14 hook (Features/CommandBar): the chosen shortcut; no-op before it starts
         }
 
         public void Cleanup()
         {
             StopSmoke();
             StopActivities();
+            StopCommandBar();
             _poll.Stop(); _sec.Stop(); _mon.Stop(); _audioTick.Stop();
             CompositionTarget.Rendering -= OnFrame;
             S.PinnedClips = Clips.Where(c => c.Pinned).Select(c => c.Text).ToList();
@@ -216,6 +218,7 @@ namespace WinNotch
             if (msg == Native.WM_HOTKEY && wParam.ToInt32() == 1) { ToggleByHotkey(); handled = true; }
             else if (msg == Native.WM_HOTKEY && wParam.ToInt32() == 2) { ScreenshotArea(); handled = true; }
             else if (msg == Native.WM_HOTKEY && wParam.ToInt32() == 3) { TextFromScreen(); handled = true; }
+            else if (msg == Native.WM_HOTKEY && wParam.ToInt32() == CommandBarHotkeyId) { OnCommandBarShortcut(); handled = true; }     // P14 hook (Features/CommandBar)
             else if (msg == Native.WM_CLIPBOARDUPDATE) OnClipboard();
             return IntPtr.Zero;
         }
@@ -464,6 +467,7 @@ namespace WinNotch
 
         private void ApplyMode()
         {
+            if (CommandBarApplyMode()) return;      // P14 hook (Features/CommandBar): its own layout while open; otherwise a no-op
             double w, h, r, top;
             bool mini = _mode == Mode.Idle && MiniNow();
             switch (_mode)

@@ -35,6 +35,7 @@ namespace WinNotch
             _embedded = true;
             var content = (FrameworkElement)Content;
             Content = null;
+            _content = content;
             content.Resources.MergedDictionaries.Add(Resources);
             // in the big window Esc and Enter must not cancel or save the settings behind your back
             void Walk(object o)
@@ -44,6 +45,33 @@ namespace WinNotch
             }
             Walk(content);
             return content;
+        }
+
+        private FrameworkElement _content;
+        private const string CmdKeyHintText = "Pentru Command Bar (îl pornești din „Funcții noi”, mai jos). Dacă scurtătura e folosită de altă aplicație, alege-o pe cealaltă.";
+
+        /// <summary>
+        /// P14 ("settings.*" actions): brings the option named <paramref name="name"/> (its x:Name) into view and focuses it
+        /// when it can take the keyboard (a list opens at its section). After the layout, so it works on a page just built.
+        /// </summary>
+        internal void Reveal(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var el = FindName(name) as FrameworkElement ?? LogicalTreeHelper.FindLogicalNode((DependencyObject)_content ?? this, name) as FrameworkElement;
+                if (el == null) return;
+                el.BringIntoView();
+                if (el.Focusable && el.IsEnabled && el.IsVisible) el.Focus();
+            }), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        /// <summary>The Command Bar's shortcut taken by another app: said under the option.</summary>
+        private void UpdateCmdKeyHint()
+        {
+            string problem = NotchWindow.Current?.CommandBarHotkeyProblem();
+            CmdKeyHint.Text = problem ?? CmdKeyHintText;
+            CmdKeyHint.Foreground = problem != null ? new SolidColorBrush(Color.FromRgb(0xB0, 0x4A, 0x00)) : new SolidColorBrush(Color.FromRgb(0x5B, 0x62, 0x6D));
         }
 
         /// <summary>Stops the extension-status timer of an embedded page (the window itself is never closed).</summary>
@@ -107,6 +135,8 @@ namespace WinNotch
             SelectTag(FsBox, s.Fullscreen);
             SelectTag(MiniBox, s.MiniAfterSec.ToString());
             SelectTag(ScaleBox, s.UiScale <= 0 ? "0" : s.UiScale.ToString(CultureInfo.InvariantCulture));
+            SelectTag(CmdKeyBox, Features.CommandBar.CommandBarHotkeys.ToSetting(Features.CommandBar.CommandBarHotkeys.Parse(s.CommandBarKey)));
+            UpdateCmdKeyHint();
             SlimBox.IsChecked = s.SlimOverMaximized;
             TempsBox.IsChecked = s.Temperatures;
             TempsHint.Visibility = Services.TempService.PawnIOInstalled ? Visibility.Collapsed : Visibility.Visible;
@@ -334,6 +364,7 @@ namespace WinNotch
             _s.MiniAfterSec = int.TryParse(TagOf(MiniBox), out int mini) ? mini : 10;
             _s.SlimOverMaximized = SlimBox.IsChecked == true;
             _s.UiScale = TryNum(TagOf(ScaleBox), out double sc) ? sc : 0;
+            _s.CommandBarKey = TagOf(CmdKeyBox) ?? Features.CommandBar.CommandBarHotkeys.SpaceSetting;
             _s.Temperatures = TempsBox.IsChecked == true;
             _s.Accent = _accent;
             _s.City = string.IsNullOrWhiteSpace(CityBox.Text) ? "Orașul meu" : CityBox.Text.Trim();
@@ -358,7 +389,8 @@ namespace WinNotch
             bool start = StartBox.IsChecked == true;
             if (start != AppSettings.StartWithWindows) AppSettings.StartWithWindows = start;
 
-            Saved?.Invoke();
+            Saved?.Invoke();                    // the notch applies it (also the Command Bar's shortcut)
+            UpdateCmdKeyHint();
             Done();
         }
 

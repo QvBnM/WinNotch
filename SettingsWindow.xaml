@@ -108,6 +108,19 @@
                                 <ComboBoxItem Tag="1.6" Content="160%"/>
                             </ComboBox>
                         </Grid>
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="170"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Scurtătura Command Bar" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                            <ComboBox x:Name="CmdKeyBox" Grid.Column="1">
+                                <ComboBoxItem Tag="space" Content="Win+Alt+Space"/>
+                                <ComboBoxItem Tag="k" Content="Win+Alt+K"/>
+                            </ComboBox>
+                        </Grid>
+                        <TextBlock x:Name="CmdKeyHint" Style="{StaticResource Hint}" Margin="170,4,0,0"
+                                   Text="Pentru Command Bar (îl pornești din „Funcții noi”, mai jos). Dacă scurtătura e folosită de altă aplicație, alege-o pe cealaltă."/>
                         <CheckBox x:Name="SlimBox" Margin="0,12,0,0" Content="Mic peste ferestre maximizate (tab-uri, bara de titlu)"/>
                         <CheckBox x:Name="TempsBox" Margin="0,8,0,0" Content="Citește temperaturile PC-ului"/>
                         <TextBlock x:Name="TempsHint" Style="{StaticResource Hint}" Margin="22,2,0,0"
