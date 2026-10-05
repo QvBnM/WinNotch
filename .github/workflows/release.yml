@@ -1,10 +1,12 @@
-# Builds, tests, signs and publishes WinNotch when a version tag (v0.6.6, …) is pushed.
+# Builds, tests, signs and publishes WinNotch whenever main gets a version (WinNotch.csproj <Version>) that has no
+# release yet; the release and its tag (v0.6.6, …) are created here. Other pushes to main only run the tests.
 # The app updates itself only from these releases, and only if the signature matches its built-in public key.
 name: Release
 
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -19,14 +21,17 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: The tag must match the version in WinNotch.csproj
+      - name: Version (and whether it's already released)
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "${{ github.ref_name }}".TrimStart('v')
           [xml]$p = Get-Content WinNotch.csproj
           $v = ($p.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
-          if ($v -ne $tag) { throw "WinNotch.csproj are versiunea $v, dar tag-ul e $tag" }
-          "VERSION=$tag" >> $env:GITHUB_ENV
+          "VERSION=$v" >> $env:GITHUB_ENV
+          gh release view "v$v" --repo "${{ github.repository }}" *> $null
+          if ($LASTEXITCODE -eq 0) { "NEW=false" >> $env:GITHUB_ENV; "v$v e deja publicată: doar testele." } else { "NEW=true" >> $env:GITHUB_ENV }
+          $global:LASTEXITCODE = 0
 
       - name: Tests (app)
         run: dotnet run --project tests/WinNotch.Tests.csproj -c Release
@@ -38,9 +43,11 @@ jobs:
           node --test tests/extension/controls.test.js
 
       - name: Build
+        if: env.NEW == 'true'
         run: dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out
 
       - name: Sign
+        if: env.NEW == 'true'
         shell: pwsh
         env:
           RELEASE_KEY: ${{ secrets.WINNOTCH_RELEASE_KEY }}
@@ -57,6 +64,7 @@ jobs:
           "SHA-256: $hash"
 
       - name: Publish the release
+        if: env.NEW == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${{ github.ref_name }}" out/WinNotch.exe out/WinNotch.exe.sig --title "WinNotch ${{ env.VERSION }}" --notes-file RELEASE_NOTES.md
+        run: gh release create "v${{ env.VERSION }}" out/WinNotch.exe out/WinNotch.exe.sig --target "${{ github.sha }}" --title "WinNotch ${{ env.VERSION }}" --notes-file RELEASE_NOTES.md

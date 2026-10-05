@@ -92,7 +92,7 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
 
 ### Actualizări automate
 
-- **De unde:** fiecare versiune nouă e pusă pe GitHub cu un tag (`v0.6.7`). GitHub Actions rulează toate testele, construiește `WinNotch.exe` și îl **semnează** cu cheia de lansare WinNotch (ECDSA P-256; partea privată stă doar în secretele criptate ale GitHub), apoi publică exe-ul și semnătura în Releases.
+- **De unde:** codul e pe GitHub (`QvBnM/WinNotch`). Când pe `main` ajunge o versiune nouă (`<Version>` din `WinNotch.csproj`), GitHub Actions rulează toate testele, construiește `WinNotch.exe` și îl **semnează** cu cheia de lansare WinNotch (ECDSA P-256; partea privată stă doar în secretele criptate ale GitHub), apoi publică exe-ul și semnătura în Releases.
 - **Verificare:** la 60 de secunde după pornire și apoi la 6 ore, WinNotch întreabă GitHub dacă există o versiune mai nouă. Nu trimite nimic despre tine (doar o cerere publică, cu versiunea în User-Agent).
 - **În notch:** „WinNotch 0.6.7 e gata” cu **lista schimbărilor**, fiecare marcată **Nou** (verde), **Îmbunătățit** (albastru), **Modificat** sau **Reparat** (portocaliu), și butoanele „Actualizează” / „Mai târziu” (amână 24 de ore). Nu apare peste jocuri sau video pe tot ecranul.
 - **Notele** vin din `RELEASE_NOTES.md` (un titlu `## Nou` / `## Îmbunătățit` / `## Modificat` / `## Reparat` și câte un rând `- ` pe schimbare); sunt și textul release-ului pe GitHub și sunt incluse în exe.
