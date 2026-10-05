@@ -40,6 +40,7 @@
     <Compile Include="..\Core\Context\AppCategories.cs" />
     <Compile Include="..\Core\Context\ContextRules.cs" />
     <Compile Include="..\Core\Context\ContextEngine.cs" />
+    <Compile Include="..\Core\Context\CameraRefresh.cs" />
     <Compile Include="..\Features\Context\ContextActions.cs" />
   </ItemGroup>
 </Project>

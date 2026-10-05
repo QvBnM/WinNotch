@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Win32;
+using Microsoft.Win32.SafeHandles;
 using NAudio.CoreAudioApi;
 using NAudio.CoreAudioApi.Interfaces;
 using WinNotch.Core.Context;
@@ -110,20 +114,106 @@ namespace WinNotch.Features.Context
         }
     }
 
-    /// <summary>Microphone and camera use, from PrivacyService (cached 2 s; the notch already reads the microphone every second).</summary>
+    /// <summary>
+    /// Microphone and camera use, from PrivacyService. The microphone is polled (its 2 s cache is read every second by the
+    /// notch anyway). The camera is not: Windows tells when its registry key changes (RegNotifyChangeKeyValue), and only
+    /// then is it read again (see <see cref="CameraRefresh"/>). If that can't be watched, it is read every 10 s while the
+    /// notch is open and never in standby.
+    /// </summary>
     internal sealed class PrivacySource : SourceBase, IPrivacyContextSource
     {
+        private const string WebcamKey = @"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam";
+        private const int REG_NOTIFY_CHANGE_NAME = 0x1, REG_NOTIFY_CHANGE_LAST_SET = 0x4, REG_NOTIFY_THREAD_AGNOSTIC = 0x10000000;
+
+        [DllImport("advapi32.dll")]
+        private static extern int RegNotifyChangeKeyValue(SafeRegistryHandle key, bool watchSubtree, int filter, SafeWaitHandle evt, bool async);
+
+        private readonly Func<bool> _standby;
+        private readonly object _lock = new object();
+        private CameraRefresh _camera = new CameraRefresh(watching: false);
+        private CapabilityUse _cam;
+        private RegistryKey _key;
+        private AutoResetEvent _signal;
+        private RegisteredWaitHandle _wait;
+
+        /// <param name="standby">The notch is closed.</param>
+        public PrivacySource(Func<bool> standby) { _standby = standby ?? (() => false); }
+
         public override string Name => "privacy";
         public override bool Polled => true;
+
+        public override void Start()
+        {
+            lock (_lock)
+            {
+                _cam = null;
+                try
+                {
+                    _key = Registry.CurrentUser.OpenSubKey(WebcamKey);
+                    if (_key == null) throw new InvalidOperationException();          // no camera was ever used: nothing to watch
+                    _signal = new AutoResetEvent(false);
+                    if (!Arm()) throw new InvalidOperationException();
+                    _wait = ThreadPool.RegisterWaitForSingleObject(_signal, (st, timedOut) => OnCameraKey(), null, Timeout.Infinite, false);
+                    _camera = new CameraRefresh(watching: true);
+                }
+                catch (Exception ex)
+                {
+                    CloseWatch();
+                    _camera = new CameraRefresh(watching: false);
+                    App.Log("Context: camera nu poate fi urmărită prin notificări (" + ex.GetType().Name + "); o verific la 10 s, doar cu notch-ul deschis.");
+                }
+            }
+        }
+
+        public override void Stop()
+        {
+            lock (_lock) CloseWatch();
+        }
+
+        /// <summary>Asks Windows for the next change (one notification per call; any thread may call it again).</summary>
+        private bool Arm() => _key != null && _signal != null &&
+            RegNotifyChangeKeyValue(_key.Handle, true, REG_NOTIFY_CHANGE_NAME | REG_NOTIFY_CHANGE_LAST_SET | REG_NOTIFY_THREAD_AGNOSTIC, _signal.SafeWaitHandle, true) == 0;
+
+        private void OnCameraKey()
+        {
+            lock (_lock)
+            {
+                if (_wait == null) return;                 // stopped meanwhile
+                _camera.Notified(DateTime.UtcNow);
+                if (!Arm()) App.Log("Context: notificarea pentru cameră nu a putut fi reînnoită.");
+            }
+            Raise();
+        }
+
+        private void CloseWatch()
+        {
+            try { _wait?.Unregister(null); } catch { }
+            _wait = null;
+            try { _key?.Dispose(); } catch { }             // closing the key also ends the pending notification
+            _key = null;
+            try { _signal?.Dispose(); } catch { }
+            _signal = null;
+        }
 
         public CaptureState Read()
         {
             var mic = PrivacyService.Microphone();
-            var cam = PrivacyService.Camera();
+            var now = DateTime.UtcNow;
+            bool standby = _standby();
+            CapabilityUse cam;
+            CameraRefresh policy;
+            lock (_lock) { policy = _camera; cam = _cam; }
+            if (policy.ShouldRead(now, standby))
+            {
+                cam = PrivacyService.Camera();
+                policy.MarkRead(now);
+                lock (_lock) if (ReferenceEquals(policy, _camera)) _cam = cam;
+            }
+            if (!policy.KnownNow(standby)) cam = null;     // not watched and not read in standby: unknown, not "in use"
             return new CaptureState
             {
                 MicrophoneInUse = mic.InUse, MicrophoneApps = mic.Apps.ToList(),
-                CameraInUse = cam.InUse, CameraApps = cam.Apps.ToList(),
+                CameraInUse = cam?.InUse ?? false, CameraApps = cam?.Apps.ToList() ?? new List<string>(),
             };
         }
     }
@@ -142,19 +232,29 @@ namespace WinNotch.Features.Context
 
         public override string Name => "audio";
 
-        public override void Start()
+        /// <summary>
+        /// The enumerator is made and released on a thread-pool (MTA) thread: made on the UI thread (STA), a later Stop from
+        /// a background thread would have to wait for the UI thread, which may itself be waiting to switch the engine.
+        /// </summary>
+        private static void OnMta(Action a)
+        {
+            if (Thread.CurrentThread.GetApartmentState() == ApartmentState.MTA) a();
+            else Task.Run(a).GetAwaiter().GetResult();
+        }
+
+        public override void Start() => OnMta(() =>
         {
             _enum = new MMDeviceEnumerator();
             _watcher = new EndpointWatcher(Raise);
             _enum.RegisterEndpointNotificationCallback(_watcher);
-        }
+        });
 
-        public override void Stop()
+        public override void Stop() => OnMta(() =>
         {
             try { if (_watcher != null) _enum?.UnregisterEndpointNotificationCallback(_watcher); } catch { }
             try { _enum?.Dispose(); } catch { }
             _enum = null; _watcher = null;
-        }
+        });
 
         public AudioOutputKind Read()
         {
@@ -312,7 +412,12 @@ namespace WinNotch.Features.Context
             var m = _now?.Info;
             if (m == null || !(m.HasSession || m.Tab != null) || !m.Playing) return MediaState.None;
             string app = m.Tab != null ? (string.IsNullOrEmpty(m.Tab.Site) ? AudioSessionsService.Friendly((m.Tab.Browser ?? "").ToLowerInvariant()) : m.Tab.Site) : m.App;
-            return new MediaState { Playing = true, App = app ?? "" };
+            return new MediaState
+            {
+                Playing = true, App = app ?? "",
+                Process = m.Tab?.Browser ?? "",                // the tab's browser process ("chrome", "msedge")
+                AppId = m.Tab == null ? m.AppId ?? "" : "",
+            };
         }
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using WinNotch.Core.Actions;
 using WinNotch.Core.Context;
 using WinNotch.Core.Flags;
@@ -19,23 +20,28 @@ namespace WinNotch
             private readonly List<Item> _items = new List<Item>();
             public DateTime UtcNow { get; private set; } = new DateTime(2026, 10, 5, 12, 0, 0, DateTimeKind.Utc);
 
-            public IDisposable Schedule(TimeSpan due, Action work) { var i = new Item { At = UtcNow + due, Work = work }; _items.Add(i); return i; }
-            public IDisposable Every(TimeSpan period, Action work) { var i = new Item { At = UtcNow + period, Work = work, Period = period }; _items.Add(i); return i; }
+            // locked: the concurrency test starts and stops the engine from several threads at once
+            public IDisposable Schedule(TimeSpan due, Action work) { lock (_items) { var i = new Item { At = UtcNow + due, Work = work }; _items.Add(i); return i; } }
+            public IDisposable Every(TimeSpan period, Action work) { lock (_items) { var i = new Item { At = UtcNow + period, Work = work, Period = period }; _items.Add(i); return i; } }
 
-            public int Active => _items.Count(i => !i.Off);
+            public int Active { get { lock (_items) return _items.Count(i => !i.Off); } }
 
             public void Advance(TimeSpan d)
             {
                 var end = UtcNow + d;
                 while (true)
                 {
-                    var next = _items.Where(i => !i.Off && i.At <= end).OrderBy(i => i.At).FirstOrDefault();
-                    if (next == null) break;
-                    if (next.At > UtcNow) UtcNow = next.At;
-                    if (next.Period is TimeSpan p) next.At += p; else next.Off = true;
+                    Item next;
+                    lock (_items)
+                    {
+                        next = _items.Where(i => !i.Off && i.At <= end).OrderBy(i => i.At).FirstOrDefault();
+                        if (next == null) break;
+                        if (next.At > UtcNow) UtcNow = next.At;
+                        if (next.Period is TimeSpan p) next.At += p; else next.Off = true;
+                    }
                     next.Work();
                 }
-                _items.RemoveAll(i => i.Off);
+                lock (_items) _items.RemoveAll(i => i.Off);
                 UtcNow = end;
             }
 
@@ -51,9 +57,15 @@ namespace WinNotch
             public TV Value;
             public Exception ThrowOnRead, ThrowOnStart;
             public int Starts, Stops, Reads, Subscribers;
-            public event Action Changed { add { _changed += value; Subscribers++; } remove { _changed -= value; Subscribers--; } }
-            public void Start() { if (ThrowOnStart != null) throw ThrowOnStart; Starts++; }
-            public void Stop() => Stops++;
+            /// <summary>Makes Start slow, to widen the window for the concurrency test.</summary>
+            public int StartDelayMs;
+            public event Action Changed
+            {
+                add { lock (this) { _changed += value; Subscribers++; } }
+                remove { lock (this) { if (_changed?.GetInvocationList().Contains(value) ?? false) Subscribers--; _changed -= value; } }
+            }
+            public void Start() { if (ThrowOnStart != null) throw ThrowOnStart; if (StartDelayMs > 0) System.Threading.Thread.Sleep(StartDelayMs); Interlocked.Increment(ref Starts); }
+            public void Stop() => Interlocked.Increment(ref Stops);
             public TV Read() { Reads++; if (ThrowOnRead != null) throw ThrowOnRead; return Value; }
             /// <summary>New value and "read me again" (as a Windows event would).</summary>
             public void Set(TV v) { Value = v; _changed?.Invoke(); }
@@ -101,6 +113,12 @@ namespace WinNotch
 
             public int Subscribers => Fg.Subscribers + Media.Subscribers + Privacy.Subscribers + Audio.Subscribers + Net.Subscribers + Power.Subscribers + Display.Subscribers + Usb.Subscribers + Idle.Subscribers;
             public int Starts => Fg.Starts + Media.Starts + Privacy.Starts + Audio.Starts + Net.Starts + Power.Starts + Display.Starts + Usb.Starts + Idle.Starts;
+            public IEnumerable<(int Starts, int Stops, int Subscribers)> Counters => new (int, int, int)[]
+            {
+                (Fg.Starts, Fg.Stops, Fg.Subscribers), (Media.Starts, Media.Stops, Media.Subscribers), (Privacy.Starts, Privacy.Stops, Privacy.Subscribers),
+                (Audio.Starts, Audio.Stops, Audio.Subscribers), (Net.Starts, Net.Stops, Net.Subscribers), (Power.Starts, Power.Stops, Power.Subscribers),
+                (Display.Starts, Display.Stops, Display.Subscribers), (Usb.Starts, Usb.Stops, Usb.Subscribers), (Idle.Starts, Idle.Stops, Idle.Subscribers),
+            };
             public int Reads => Fg.Reads + Media.Reads + Privacy.Reads + Audio.Reads + Net.Reads + Power.Reads + Display.Reads + Usb.Reads + Idle.Reads;
             public int Stops => Fg.Stops + Media.Stops + Privacy.Stops + Audio.Stops + Net.Stops + Power.Stops + Display.Stops + Usb.Stops + Idle.Stops;
 
@@ -148,7 +166,7 @@ namespace WinNotch
                   ids.Distinct().Count() == ids.Count, string.Join(",", ids.GroupBy(x => x).Where(g => g.Count() > 1).Select(g => g.Key)));
 
             // ---- rules
-            var playing = new MediaState { Playing = true, App = "YouTube" };
+            var playing = new MediaState { Playing = true, App = "YouTube", Process = "chrome" };
             Check("CX5", "Ecran complet: joc (cunoscut sau D3D exclusiv), video (player sau browser care redă), altceva, nimic",
                   ContextRules.Fullscreen(Fg("cs2", covers: true), AppCategory.Game, MediaState.None) == FullscreenKind.Game &&
                   ContextRules.Fullscreen(Fg("necunoscut", exclusive: true), AppCategory.Other, MediaState.None) == FullscreenKind.Game &&
@@ -376,6 +394,87 @@ namespace WinNotch
                   dt == "Context: Programare · code" && dd.Contains("ecran complet (joc)") && dd.Contains("întâlnire Teams") && dd.Contains("microfon: Teams") &&
                   dd.Contains("căști") && dd.Contains("Ethernet") && dd.Contains("baterie 42%") && dd.Contains("2 monitoare") && dd.Contains("stick USB") && dd.Contains("inactiv") &&
                   !dd.Contains("secret") && ContextActions.Describe(null).Title == "Context: nicio aplicație în față", dd);
+
+            // ---- R1 fixes
+            Check("CX33", "R1: întâlnire pe cuvânt întreg: „Calls”/„Apeluri” din Teams nu e întâlnire; „Call with…”/„Apel cu…” este",
+                  ContextRules.Meeting(Fg("ms-teams.exe", "Calls | Microsoft Teams"), CaptureState.None, cats) == null &&
+                  ContextRules.Meeting(Fg("ms-teams.exe", "Apeluri | Microsoft Teams"), CaptureState.None, cats) == null &&
+                  ContextRules.Meeting(Fg("msedge.exe", "Calls | Microsoft Teams"), CaptureState.None, cats) == null &&
+                  ContextRules.Meeting(Fg("zoom.exe", "Callisto - Zoom Workplace"), CaptureState.None, cats) == null &&
+                  ContextRules.Meeting(Fg("ms-teams.exe", "Call with Ana | Microsoft Teams"), CaptureState.None, cats) == "Teams" &&
+                  ContextRules.Meeting(Fg("ms-teams.exe", "Apel cu Ana | Microsoft Teams"), CaptureState.None, cats) == "Teams" &&
+                  ContextRules.Meeting(Fg("Teams.exe", "Ședința echipei (Meeting) | Microsoft Teams"), CaptureState.None, cats) == "Teams");
+            var micChrome = new CaptureState { MicrophoneInUse = true, MicrophoneApps = new[] { "Chrome" } };
+            Check("CX34", "R1: Meet doar cu codul în titlu („Meet - abc-defg-hij”) sau cu microfonul folosit de browser; pagina de start și căutările nu",
+                  ContextRules.Meeting(Fg("chrome.exe", "Google Meet"), CaptureState.None, cats) == null &&
+                  ContextRules.Meeting(Fg("chrome.exe", "google meet - Căutare Google"), CaptureState.None, cats) == null &&
+                  ContextRules.Meeting(Fg("chrome.exe", "Meet - Prezentare produs"), CaptureState.None, cats) == null &&
+                  ContextRules.Meeting(Fg("chrome.exe", "Meet - abc-defg-hij"), CaptureState.None, cats) == "Meet" &&
+                  ContextRules.Meeting(Fg("chrome.exe", "Meet – abc-defg-hij - Google Chrome"), CaptureState.None, cats) == "Meet" &&
+                  ContextRules.Meeting(Fg("chrome.exe", "Google Meet"), micChrome, cats) == "Meet" &&
+                  ContextRules.Meeting(Fg("chrome.exe", "Meet - Prezentare produs"), micChrome, cats) == "Meet" &&
+                  ContextRules.Meeting(Fg("chrome.exe", "Google Meet"), micDiscord, cats) == null);
+            var spotify = new MediaState { Playing = true, App = "Spotify", AppId = "Spotify.exe" };
+            var ytChrome = new MediaState { Playing = true, App = "YouTube", Process = "chrome" };
+            var edgeSession = new MediaState { Playing = true, App = "Edge", AppId = "MSEdge" };
+            Check("CX35", "R1: „Video” doar dacă media e a aplicației din față (Spotify + Chrome pe tot ecranul = altceva)",
+                  ContextRules.Fullscreen(Fg("chrome.exe", covers: true), AppCategory.Browser, spotify) == FullscreenKind.Other &&
+                  ContextRules.Fullscreen(Fg("chrome.exe", covers: true), AppCategory.Browser, ytChrome) == FullscreenKind.Video &&
+                  ContextRules.Fullscreen(Fg("msedge.exe", covers: true), AppCategory.Browser, edgeSession) == FullscreenKind.Video &&
+                  ContextRules.Fullscreen(Fg("msedge.exe", covers: true), AppCategory.Browser, ytChrome) == FullscreenKind.Other &&
+                  ContextRules.Fullscreen(Fg("chrome.exe", covers: true), AppCategory.Browser, new MediaState { Playing = false, Process = "chrome" }) == FullscreenKind.Other &&
+                  ContextRules.MediaBelongsTo(ytChrome, "C:\\Apps\\Chrome.exe") && !ContextRules.MediaBelongsTo(spotify, "chrome") && !ContextRules.MediaBelongsTo(spotify, "") &&
+                  !ContextRules.MediaBelongsTo(new MediaState { Playing = true, AppId = "Microsoft.ZuneMusic_8wekyb3d8bbwe!Microsoft.ZuneMusic" }, "explorer"));
+            var rv = new Rig().Started();
+            rv.Media.Set(spotify); rv.Fg.Set(Fg("chrome.exe", covers: true)); rv.Clock.Ms(400);
+            var fsSpotify = rv.Engine.Snapshot.Fullscreen;
+            rv.Media.Set(ytChrome); rv.Clock.Ms(400);
+            Check("CX36", "R1: prin motor: Spotify cântă + Chrome F11 → Other; YouTube în Chrome → Video, eveniment cu Fullscreen + Media",
+                  fsSpotify == FullscreenKind.Other && rv.Engine.Snapshot.Fullscreen == FullscreenKind.Video && rv.Events.Last().Fields == (ContextField.Fullscreen | ContextField.Media),
+                  fsSpotify + " / " + rv.Engine.Snapshot.Fullscreen);
+
+            // concurrent switch changes from several threads
+            var rcc = new Rig().Started();
+            rcc.Fg.StartDelayMs = rcc.Media.StartDelayMs = rcc.Privacy.StartDelayMs = rcc.Audio.StartDelayMs = rcc.Net.StartDelayMs =
+                rcc.Power.StartDelayMs = rcc.Display.StartDelayMs = rcc.Usb.StartDelayMs = rcc.Idle.StartDelayMs = 1;
+            string bad = null;
+            var rnd = new Random(12);
+            for (int i = 0; i < 150 && bad == null; i++)
+            {
+                bool firstOn = rnd.Next(2) == 0;
+                using var go = new Barrier(3);
+                var ts = new[]
+                {
+                    new Thread(() => { go.SignalAndWait(); rcc.Flags.Set(ContextEngine.FeatureId, firstOn); }),
+                    new Thread(() => { go.SignalAndWait(); rcc.Flags.Set(ContextEngine.FeatureId, !firstOn); }),
+                    new Thread(() => { go.SignalAndWait(); rcc.Flags.Set(ContextEngine.FeatureId, firstOn); }),
+                };
+                foreach (var t in ts) t.Start();
+                foreach (var t in ts) t.Join();
+                bool on = rcc.Flags.IsEnabled(ContextEngine.FeatureId);
+                int want = on ? 1 : 0;
+                if (rcc.Engine.Running != on || rcc.Counters.Any(c => c.Starts - c.Stops != want || c.Subscribers != want))
+                    bad = "iter " + i + ": on=" + on + " running=" + rcc.Engine.Running + " " + string.Join(" ", rcc.Counters.Select(c => (c.Starts - c.Stops) + "/" + c.Subscribers));
+            }
+            Check("CX37", "R1: pornire/oprire concurentă din 3 fire (150 de runde): motorul urmează ultima stare, fiecare sursă pornită o dată și abonată o dată, sau deloc",
+                  bad == null, bad ?? "");
+
+            // camera: registry notifications, or every 10 s and never in standby
+            var t0 = new DateTime(2026, 10, 5, 12, 0, 0, DateTimeKind.Utc);
+            var cw = new CameraRefresh(watching: true);
+            bool w1 = cw.ShouldRead(t0, standby: true); cw.MarkRead(t0);
+            bool w2 = !cw.ShouldRead(t0.AddMinutes(5), standby: false);
+            cw.Notified(t0.AddMinutes(6));
+            bool w3 = cw.ShouldRead(t0.AddMinutes(6).AddSeconds(0.3), true); cw.MarkRead(t0.AddMinutes(6).AddSeconds(0.3));
+            bool w4 = cw.ShouldRead(t0.AddMinutes(6).AddSeconds(3), true) && !cw.ShouldRead(t0.AddMinutes(6).AddSeconds(7), true);
+            Check("CX38", "R1: camera cu notificări din registru: citită la pornire, apoi doar după o notificare (și încă câteva secunde, peste cache-ul de 2 s), și în standby",
+                  w1 && w2 && w3 && w4 && cw.KnownNow(true) && CameraRefresh.RecheckWindow > ContextEngine.PollInterval + ContextEngine.Debounce + TimeSpan.FromSeconds(2));
+            var cf = new CameraRefresh(watching: false);
+            bool f1 = !cf.ShouldRead(t0, standby: true) && !cf.KnownNow(true);
+            bool f2 = cf.ShouldRead(t0, standby: false); cf.MarkRead(t0);
+            bool f3 = !cf.ShouldRead(t0.AddSeconds(9), false) && cf.ShouldRead(t0.AddSeconds(10), false) && !cf.ShouldRead(t0.AddSeconds(30), true);
+            Check("CX39", "R1: camera fără notificări: la 10 s cu notch-ul deschis, deloc în standby (atunci e „necunoscută”, nu „în uz”)",
+                  f1 && f2 && f3 && cf.KnownNow(false) && CameraRefresh.FallbackInterval == TimeSpan.FromSeconds(10));
         }
     }
 }

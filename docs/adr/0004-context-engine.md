@@ -23,16 +23,23 @@ reguli diferite pentru același lucru („e întâlnire?”) și titluri de fere
 - **Evenimente Windows, nu polling:** aplicația din față prin `SetWinEventHook(EVENT_SYSTEM_FOREGROUND)` (pus și scos pe firul
   UI, care are bucla de mesaje); ieșirea audio prin `IMMNotificationClient`; rețeaua prin `NetworkChange`; alimentarea și
   monitoarele prin `SystemEvents`; stick-urile prin WMI `Win32_VolumeChangeEvent`; media prin `NowPlaying.Changed`. Doar ce nu
-  are eveniment e citit la 3 s (`PollInterval`, regula: niciodată sub 2 s): inactivitatea (`GetLastInputInfo`), microfonul și
-  camera (din `PrivacyService`, cu cache de 2 s, pe care notch-ul îl citește oricum în standby) și dreptunghiul ferestrei din
-  față (pentru o fereastră care trece pe tot ecranul fără să-și schimbe locul).
+  are eveniment e citit la 3 s (`PollInterval`, regula: niciodată sub 2 s): inactivitatea (`GetLastInputInfo`), microfonul
+  (din `PrivacyService`, cu cache de 2 s, pe care notch-ul îl citește oricum în standby) și dreptunghiul ferestrei din față
+  (pentru o fereastră care trece pe tot ecranul fără să-și schimbe locul). Camera nu e citită periodic: `RegNotifyChangeKeyValue`
+  pe cheia ei din registru, apoi recitire câteva secunde (`CameraRefresh`); dacă notificarea nu merge, la 10 s doar cu
+  notch-ul deschis, iar în standby camera e „necunoscută” (nu „în uz”).
 - **Debounce de 300 ms** (trailing), dar cel mult 1 s după prima schimbare (`MaxDelay`): un Alt+Tab rapid prin zece ferestre
   dă un singur eveniment, iar o schimbare care nu se oprește tot ajunge la abonați. Sursele sunt citite după debounce, pe un
   fir de timer, nu pe UI.
 - **Reguli pure** în `ContextRules`: tipul de ecran complet (joc: D3D exclusiv sau joc cunoscut; video: player sau browser care
-  redă; altceva), întâlnirea (o aplicație de întâlniri folosește microfonul/camera; fereastra de ședință Teams/Zoom; Meet /
-  Teams / Zoom pe web) și ieșirea audio (form factor, dispozitivul Bluetooth din spate, apoi numele). Teams doar deschis nu e
-  întâlnire.
+  redă **el însuși** — `MediaBelongsTo`, după procesul tab-ului sau id-ul sesiunii media; altceva), întâlnirea (o aplicație de
+  întâlniri folosește microfonul/camera; fereastra de ședință Teams/Zoom, după **cuvinte întregi** fără diacritice, deci
+  „Calls”/„Apeluri” nu contează; Meet doar cu codul camerei în titlu sau cu un browser pe microfon; Teams / Zoom pe web) și
+  ieșirea audio (form factor, dispozitivul Bluetooth din spate, apoi numele). Teams doar deschis nu e întâlnire.
+- **Pornire/oprire serializate:** comutatorul se poate schimba din mai multe fire deodată; `Sync()` citește comutatorul în
+  interiorul unui lock dedicat (`_lifecycle`), așa că ultima schimbare câștigă și nicio sursă nu e pornită de două ori sau
+  lăsată pe jumătate. Lock-ul nu e luat niciodată sub `_lock`; obiectele COM audio sunt create și eliberate pe un fir MTA, ca
+  o oprire de pe alt fir să nu aștepte firul UI.
 - **Categorii** în `AppCategories`: tabel proces → Dev, Browser, Meeting, Game, Media, Office, Creator (necunoscut = Other),
   cu nume noi și vechi, comparat fără cale, majuscule și „.exe”; rânduri cu prefix pentru exe-uri cu versiune (`gimp-2.10`).
   Se extinde cu un rând în `DefaultEntries` sau cu `With(...)`.

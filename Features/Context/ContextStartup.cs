@@ -24,7 +24,7 @@ namespace WinNotch.Features.Context
                 {
                     Foreground = new ForegroundSource(OnUi),
                     Media = new MediaSource(notch?.Now),
-                    Privacy = new PrivacySource(),
+                    Privacy = new PrivacySource(() => !(notch?.IsOpen ?? false)),      // standby = notch closed (a plain read of its mode)
                     Audio = new AudioOutputSource(),
                     Network = new NetworkSource(),
                     Power = new PowerSource(),

@@ -73,6 +73,11 @@ namespace WinNotch.Core.Context
         private readonly Action<string> _log;
         private readonly object _lock = new object();
         private readonly object _flushLock = new object();
+        /// <summary>
+        /// Starting and stopping the sources, one at a time (the switch can change from several threads at once). Taken
+        /// before _lock, never while holding it; re-entered when a start failure switches the feature off.
+        /// </summary>
+        private readonly object _lifecycle = new object();
         private ContextSnapshot _snapshot = ContextSnapshot.Empty;
         private bool _running, _attached, _disposed;
         private int _generation;
@@ -118,15 +123,27 @@ namespace WinNotch.Core.Context
                 _attached = true;
             }
             if (_flags != null) _flags.Changed += OnFlagChanged;
-            if (Enabled) StartSources();
+            Sync();
         }
 
         private void OnFlagChanged(string id)
         {
-            if (id != FeatureId) return;
-            if (Enabled) StartSources(); else StopSources();       // read now: two changes may arrive in either order
+            if (id == FeatureId) Sync();
         }
 
+        /// <summary>
+        /// Brings the sources in line with the switch. The switch is read inside the lifecycle lock: of several changes
+        /// arriving together, the last one to get the lock sees the final state, whatever order the handlers ran in.
+        /// </summary>
+        private void Sync()
+        {
+            lock (_lifecycle)
+            {
+                if (Enabled) StartSources(); else StopSources();
+            }
+        }
+
+        /// <summary>Under _lifecycle.</summary>
         private void StartSources()
         {
             int gen;
@@ -174,6 +191,7 @@ namespace WinNotch.Core.Context
             catch (Exception ex) { _log?.Invoke("Context: oprirea sursei „" + s.Source.Name + "”: " + ex.GetType().Name); }
         }
 
+        /// <summary>Under _lifecycle (Dispose and Sync take it).</summary>
         private void StopSources()
         {
             lock (_lock)
@@ -353,7 +371,7 @@ namespace WinNotch.Core.Context
                 _disposed = true;
             }
             if (_flags != null) _flags.Changed -= OnFlagChanged;
-            StopSources();
+            lock (_lifecycle) StopSources();
         }
     }
 }

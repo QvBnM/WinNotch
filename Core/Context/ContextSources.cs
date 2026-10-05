@@ -24,6 +24,10 @@ namespace WinNotch.Core.Context
         public bool Playing { get; init; }
         /// <summary>App or site name ("Spotify", "YouTube"), never the song or video title.</summary>
         public string App { get; init; } = "";
+        /// <summary>Process that plays it, when known ("chrome" for a browser tab); "" otherwise.</summary>
+        public string Process { get; init; } = "";
+        /// <summary>Windows media session id (AUMID: "Spotify.exe", "MSEdge", "Chrome"); "" for browser tabs.</summary>
+        public string AppId { get; init; } = "";
     }
 
     /// <summary>Microphone and camera use (the same data as Windows' privacy indicator).</summary>
