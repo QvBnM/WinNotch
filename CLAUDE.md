@@ -99,3 +99,15 @@ Versiunile 0.7 → 1.0 sunt construite pe pași (ID-uri P00, P10, P11… în `do
      `IContextSource<T>` în `Features/Context/` (eveniment Windows; polling doar ≥ 2 s, cu `Polled = true`).
   5. `ForegroundTitle` e personal: nu-l scrie în log, nu-l trimite nicăieri; în log doar `ToLogString()` (proces și categorie).
 - CI (`.github/workflows/ci.yml`) rulează build-ul și testele la fiecare pull request și push pe alte ramuri decât `main`.
+
+## Revizie (R1)
+Planul aprobat e în `docs/PLAN.md`; jurnalul rulărilor de pilot automat în `docs/PROGRESS.md`. Fiecare sarcină trece prin
+revizia R1 înainte de merge în `main`:
+- Revizor independent, nu a scris codul. Pe `git diff main...ramura` și pe fișierele atinse în întregime.
+- Verifică: bug-uri și cazuri limită; fire de execuție (UI pe Dispatcher, async void, excepții); scurgeri de memorie
+  (evenimente, hook-uri, timere, COM); standby (polling sub 2 s); securitate (secțiunea 14 din `DOCUMENTATIE.md`, nimic
+  sensibil în log, intrări din extensie verificate); regulile din `docs/PLAN.md` și din acest fișier; teste lipsă sau goale;
+  cod WPF care nu compilează.
+- Nu modifică nimic.
+- Raport: verdict, teste, CI, apoi probleme (severitate · fișier:linie · reparație). Severități: Critic, Major, Mediu, Minor.
+- Dezvoltatorul repară tot ce e Critic, Major și Mediu, plus Minorele ieftine, și scrie sarcina în `docs/PROGRESS.md`.
