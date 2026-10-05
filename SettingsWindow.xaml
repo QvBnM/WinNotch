@@ -225,6 +225,14 @@
 
                 <Border Style="{StaticResource Section}">
                     <StackPanel>
+                        <TextBlock Style="{StaticResource H}" Text="Pagina după context"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Pe ce pagină se deschide notch-ul după ce faci acum. „—” = nicio schimbare (rămâne pagina de data trecută). O pagină aleasă de tine în notch e păstrată 10 minute; o pagină ascunsă sau ștearsă e sărită. Merge cu „Pagina după context” pornită în „Funcții noi”, mai jos."/>
+                        <StackPanel x:Name="ContextPageRows"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Section}">
+                    <StackPanel>
                         <TextBlock Style="{StaticResource H}" Text="Funcții noi (experimental)"/>
                         <TextBlock Style="{StaticResource Hint}" Text="Funcții încă în lucru. Le pornești sau le oprești aici, fără repornire. Una care dă erori repetate se oprește singură."/>
                         <TextBlock x:Name="SafeModeNote" Style="{StaticResource Hint}" Foreground="#B04A00" Visibility="Collapsed"

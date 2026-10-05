@@ -428,6 +428,7 @@ namespace WinNotch
             Fade(Pill, 1, 120);
             EndLiveInteractive();
             _liveTimer.Stop();
+            ContextPagesOnOpen();           // P27 hook (Features/ContextPages): the page for the current context; a no-op with the switch off
             _mode = Mode.Expanded;
             _leaveStart = null;
             SetClickThrough(false);

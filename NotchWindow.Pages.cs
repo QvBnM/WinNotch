@@ -84,7 +84,7 @@ namespace WinNotch
                 rb.Content = content;
                 if (hidden) rb.Opacity = 0.45;
                 var target = pane;
-                rb.Checked += (o, e) => { if (_pane != target && !(target == _home && _pane == _sources)) ShowPane(target); };
+                rb.Checked += (o, e) => { if (_pane != target && !(target == _home && _pane == _sources)) { ShowPane(target); ContextPagesManualChoice(); } };     // P27 hook: picked by hand, kept 10 min
                 rb.Tag = pane;
                 _tabs.Add(rb);
                 TabBar.Children.Add(rb);

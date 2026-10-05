@@ -27,11 +27,16 @@ namespace WinNotch
             _smokeTimer.Start();
         }
 
-        /// <summary>Mode, pill size, what the Activity Manager shows (split, group, peek) and the open Command Bar, read by the smoke test from the window's ItemStatus.</summary>
+        /// <summary>
+        /// Mode, pill size, what the Activity Manager shows (split, group, peek), the open Command Bar, the page shown (P27) and
+        /// the category in the context engine's snapshot (P27), read by the smoke test from the window's ItemStatus.
+        /// </summary>
         private void UpdateSmokeStatus()
         {
             var (split, group, peek) = ActivitySmokeFields();
-            AutomationProperties.SetItemStatus(this, SmokeMode.Status(_mode.ToString(), Pill.ActualWidth, Pill.ActualHeight, split, group, peek, CommandBarOpen ? 1 : 0));
+            string ctx = Core.Context.ContextEngine.Current?.Snapshot.ForegroundCategory.ToString();
+            AutomationProperties.SetItemStatus(this, SmokeMode.Status(_mode.ToString(), Pill.ActualWidth, Pill.ActualHeight, split, group, peek, CommandBarOpen ? 1 : 0,
+                                                                      CurrentPageId(), ctx));
         }
 
         /// <summary>Reads smoke-commands.txt from the smoke folder, deletes it, runs the valid lines in order.</summary>
@@ -88,6 +93,12 @@ namespace WinNotch
                     App.Log("Test de fum: Command Bar prin comandă (aceeași cale ca scurtătura).");
                     OnCommandBarShortcut();
                     break;
+                case SmokeCommandKind.FakeContext:
+                    SmokeFakeContext(c.Argument);
+                    break;
+                case SmokeCommandKind.SetContextPage:
+                    SmokeSetContextPage(c.Argument, c.Page);
+                    break;
             }
             UpdateSmokeStatus();
         }
@@ -131,6 +142,34 @@ namespace WinNotch
             }
             catch (Exception ex) { App.Log("Test de fum: comanda a dat eroare: " + ex.GetType().Name); }
             UpdateSmokeStatus();
+        }
+
+        /// <summary>
+        /// P27 "fake-context": the category goes into the context engine (its snapshot, through the normal flush), so the
+        /// notch reads it on open exactly like a real one. Nothing else can call this: only smoke mode runs these commands.
+        /// </summary>
+        private void SmokeFakeContext(string category)
+        {
+            Core.Context.AppCategory? forced = null;
+            if (!string.IsNullOrEmpty(category))
+            {
+                if (!Enum.TryParse(category, false, out Core.Context.AppCategory parsed)) { App.Log("Test de fum: categorie necunoscută."); return; }
+                forced = parsed;
+            }
+            var engine = Core.Context.ContextEngine.Current;
+            if (engine == null) { App.Log("Test de fum: motorul de context lipsește; contextul fals e ignorat."); return; }
+            bool now = engine.ForceCategoryForSmoke(forced);
+            App.Log("Test de fum: context fals „" + (forced?.ToString() ?? "niciunul") + "”" + (now ? "." : " (motorul de context e oprit; se aplică la pornirea lui)."));
+        }
+
+        /// <summary>P27 "set-context-page": the mapping category → page, as Settings would save it (only in the smoke folder).</summary>
+        private void SmokeSetContextPage(string category, string page)
+        {
+            var cat = Features.ContextPages.ContextPageRules.ParseKey(category);
+            if (cat == null) { App.Log("Test de fum: categorie necunoscută."); return; }
+            S.ContextPages = S.WithContextPage(cat.Value, page);
+            S.Save();
+            App.Log("Test de fum: pagina pentru „" + cat.Value + "”: " + (string.IsNullOrEmpty(page) ? "—" : page) + ".");
         }
 
         private void StopSmoke()

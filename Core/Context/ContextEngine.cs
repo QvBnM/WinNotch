@@ -83,6 +83,8 @@ namespace WinNotch.Core.Context
         private int _generation;
         private DateTime? _firstPending;
         private IDisposable _debounce, _poll;
+        /// <summary>Smoke tests only (<see cref="ForceCategoryForSmoke"/>); null in the app.</summary>
+        private AppCategory? _smokeCategory;
 
         public ContextEngine(ContextSources sources, FeatureFlags flags = null, IContextScheduler scheduler = null,
                              AppCategories categories = null, Action<string> log = null)
@@ -108,6 +110,23 @@ namespace WinNotch.Core.Context
         public ContextSnapshot Snapshot { get { lock (_lock) return _snapshot; } }
 
         public bool Running { get { lock (_lock) return _running; } }
+
+        /// <summary>
+        /// Smoke tests only (WinNotch.exe --smoke, the "fake-context" test command; ADR 0008): from now on the app in front
+        /// reads as <paramref name="category"/> (null = back to the real one). Goes through the normal flush, so the
+        /// snapshot, <see cref="Changed"/> and everyone reading <see cref="Snapshot"/> see it exactly like a real change.
+        /// False while the engine is off (it applies when the engine starts). The caller checks smoke mode.
+        /// </summary>
+        internal bool ForceCategoryForSmoke(AppCategory? category)
+        {
+            lock (_lock)
+            {
+                _smokeCategory = category;
+                if (!_running || _disposed) return false;
+                ScheduleFlush();
+                return true;
+            }
+        }
 
         /// <summary>Old snapshot, new snapshot and the fields that changed. Raised on a timer thread.</summary>
         public event EventHandler<ContextChangedEventArgs> Changed;
@@ -323,7 +342,9 @@ namespace WinNotch.Core.Context
             var net = Value(_sources.Network, NetworkState.Unknown) ?? NetworkState.Unknown;
             var power = Value(_sources.Power, PowerState.Unknown) ?? PowerState.Unknown;
             string proc = AppCategories.Normalize(fg.Process);
-            var cat = _categories.Categorize(proc);
+            AppCategory? forced;
+            lock (_lock) forced = _smokeCategory;
+            var cat = forced ?? _categories.Categorize(proc);
             string meeting = ContextRules.Meeting(fg, cap, _categories);
             return new ContextSnapshot
             {

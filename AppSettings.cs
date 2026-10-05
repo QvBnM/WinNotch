@@ -128,6 +128,7 @@ namespace WinNotch
                         s.Workspaces ??= new List<Services.Workspace>();
                         s.PinnedClips ??= new List<string>();
                         s.NormalizeFeatures();
+                        s.NormalizeContextPages();           // P27 (Features/ContextPages)
                         return s;
                     }
                 }
