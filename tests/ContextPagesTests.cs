@@ -221,9 +221,10 @@ namespace WinNotch
                   expand != null && expand.Contains("_liveTimer.Stop(); ContextPagesOnOpen(); _mode = Mode.Expanded;") && Count(NoComments(notch), "ContextPages") == 1 &&
                   !Norm(NoComments(MethodBody(notch, "private void Collapse()"))).Contains("ContextPages"));
             string pagesSrc = Norm(Src("NotchWindow.Pages.cs"));
-            Check("CP21", "Alegerea manuală: doar click-ul pe un tab (după ShowPane, când pagina chiar se schimbă) o marchează; NotchWindow.Pages.cs nu are alt cod P27",
+            Check("CP21", "Alegerea manuală: click-ul pe un tab (după ShowPane, când pagina chiar se schimbă) și o pagină nouă (NewPage) o marchează; NotchWindow.Pages.cs nu are alt cod P27",
                   pagesSrc.Contains("rb.Checked += (o, e) => { if (_pane != target && !(target == _home && _pane == _sources)) { ShowPane(target); ContextPagesManualChoice(); } };") &&
-                  Count(pagesSrc, "ContextPages") == 1);
+                  Norm(NoComments(MethodBody(Src("NotchWindow.Pages.cs"), "private void NewPage("))).Contains("ShowPane(UserPane(pg)); ContextPagesManualChoice();") &&
+                  Count(pagesSrc, "ContextPages") == 2);
             string onOpen = Norm(NoComments(MethodBody(part, "private void ContextPagesOnOpen()")));
             Check("CP22", "La deschidere: comutatorul citit atunci, apoi doar ContextEngine.Current?.Snapshot (null → Empty); paginile ascunse nu sunt oferite; erorile → ReportError(\"context-pages\")",
                   onOpen.Contains("flags.IsEnabled(ContextPageRules.FeatureId)") && onOpen.Contains("ContextEngine.Current?.Snapshot ?? ContextSnapshot.Empty") &&
@@ -259,14 +260,17 @@ namespace WinNotch
                 .Where(f => !f.StartsWith("tests/") && !f.Contains("/obj/") && !f.Contains("/bin/") && !f.StartsWith("obj/") && !f.StartsWith(".dotnet/") && !f.StartsWith("publish/"))
                 .ToList();
             var callers = appSources.Where(f => Src(f).Contains("ForceCategoryForSmoke(")).ToList();
-            string smokeSide = Norm(NoComments(Src("Features/Smoke/NotchWindow.Smoke.cs")));
+            string smokeSide0 = Src("Features/Smoke/NotchWindow.Smoke.cs");
+            string smokeSide = Norm(NoComments(smokeSide0));
             string smokeProgram = Src("tests/WinNotch.Smoke/SmokeProgram.cs");
             Check("CP27", "Injecția de context: definită în motor (internal), apelată doar din NotchWindow.Smoke.cs (comenzi citite doar cu --smoke); starea arată pagina și categoria",
                   callers.OrderBy(f => f).SequenceEqual(new[] { "Core/Context/ContextEngine.cs", "Features/Smoke/NotchWindow.Smoke.cs" }) &&
                   Src("Core/Context/ContextEngine.cs").Contains("internal bool ForceCategoryForSmoke(AppCategory? category)") &&
                   smokeSide.Contains("case SmokeCommandKind.FakeContext: SmokeFakeContext(c.Argument); break;") &&
                   smokeSide.Contains("case SmokeCommandKind.SetContextPage: SmokeSetContextPage(c.Argument, c.Page); break;") &&
-                  smokeSide.Contains("CurrentPageId(), ctx)") && smokeSide.Contains("ContextEngine.Current?.Snapshot.ForegroundCategory.ToString()"),
+                  smokeSide.Contains("CurrentPageId(), ctx)") && smokeSide.Contains("ContextPageRules.EffectiveCategory(snap).ToString()") &&
+                  Norm(NoComments(MethodBody(smokeSide0, "private void SmokeFakeContext("))).Contains("if (!SmokeMode.On) return;") &&
+                  Norm(NoComments(MethodBody(smokeSide0, "private void SmokeSetContextPage("))).Contains("if (!SmokeMode.On) return;"),
                   string.Join(",", callers));
             Check("CP28", "Testul de fum P27 rulează o singură dată (doar cu activity-manager oprit) și o spune; deschide cu Win+Alt+N și cere pagina mapată; repune starea",
                   smokeProgram.Contains("if (!_activityOn) Run(step = \"Pagina după context") && smokeProgram.Contains("SKIP  Pagina după context") &&

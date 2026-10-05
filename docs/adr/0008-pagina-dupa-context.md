@@ -56,3 +56,7 @@ calea reală, deși pe mașina de CI nu putem porni VS Code sau Teams.
 - Textul „Pagina după context: <categorie>.” din log, comenzile `fake-context` / `set-context-page` și câmpurile `;page=` /
   `;ctx=` sunt folosite de testul de fum.
 - Opțiunea nouă din Setări are acțiunea `settings.context-pages` (secțiune, ca listele).
+
+## Note după revizia R1
+- O pagină nouă creată în notch contează ca alegere manuală (ca un click pe tab). Testul de viteză deschis dintr-un widget și „înapoi” din Surse nu pornesc fereastra de 10 minute (rămas așa: sunt pagini de trecere, nu o alegere).
+- Comenzile de test `fake-context` și `set-context-page` verifică singure `SmokeMode.On`; starea pentru fum arată categoria efectivă (întâlnirea și jocul câștigă), aceeași pe care o folosește alegerea paginii.

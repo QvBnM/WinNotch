@@ -34,7 +34,8 @@ namespace WinNotch
         private void UpdateSmokeStatus()
         {
             var (split, group, peek) = ActivitySmokeFields();
-            string ctx = Core.Context.ContextEngine.Current?.Snapshot.ForegroundCategory.ToString();
+            var snap = Core.Context.ContextEngine.Current?.Snapshot;      // the category the page choice actually uses (meeting/game win)
+            string ctx = snap == null ? null : Features.ContextPages.ContextPageRules.EffectiveCategory(snap).ToString();
             AutomationProperties.SetItemStatus(this, SmokeMode.Status(_mode.ToString(), Pill.ActualWidth, Pill.ActualHeight, split, group, peek, CommandBarOpen ? 1 : 0,
                                                                       CurrentPageId(), ctx));
         }
@@ -150,6 +151,7 @@ namespace WinNotch
         /// </summary>
         private void SmokeFakeContext(string category)
         {
+            if (!SmokeMode.On) return;                     // test mode only, whoever calls it
             Core.Context.AppCategory? forced = null;
             if (!string.IsNullOrEmpty(category))
             {
@@ -165,6 +167,7 @@ namespace WinNotch
         /// <summary>P27 "set-context-page": the mapping category → page, as Settings would save it (only in the smoke folder).</summary>
         private void SmokeSetContextPage(string category, string page)
         {
+            if (!SmokeMode.On) return;                     // test mode only, whoever calls it
             var cat = Features.ContextPages.ContextPageRules.ParseKey(category);
             if (cat == null) { App.Log("Test de fum: categorie necunoscută."); return; }
             S.ContextPages = S.WithContextPage(cat.Value, page);

@@ -305,6 +305,7 @@ namespace WinNotch
             S.Save();
             RebuildTabs();
             ShowPane(UserPane(pg));
+            ContextPagesManualChoice();                    // P27: a page just created counts as a manual choice
         }
 
         /// <summary>Opens the editor window (a page, a widget on it, or "themes").</summary>
