@@ -10,7 +10,7 @@ iar jurnalul rulărilor în `docs/PROGRESS.md`.
 |---|---|---|
 | P00 | Reguli pentru agenți, roadmap, ADR, teste manuale, șabloane GitHub, CI | Gata |
 | P01 | Revenire automată la versiunea anterioară și pornire în mod sigur (`--safe-mode`), compararea versiunilor, canal beta, măsurători de bază | Gata |
-| P02 | Teste de fum în CI pe exe-ul publicat (FlaUI, `--smoke`): pornire, notch, alerte, comutator, scurtătură, meniul iconiței, ieșire curată, log | Gata |
+| P02 | Teste de fum în CI pe exe-ul publicat (FlaUI, `--smoke`): pornire, notch, alerte, comutator, scurtătură, meniul iconiței, ieșire curată, log; rulate și în `release.yml` înainte de semnare (revizia R1, 0.6.13) | Gata |
 
 ## 0.7 — Fundația
 

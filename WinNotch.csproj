@@ -12,7 +12,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>WinNotch</AssemblyName>
     <RootNamespace>WinNotch</RootNamespace>
-    <Version>0.6.12</Version>
+    <Version>0.6.13</Version>
     <!-- no code can be injected at start through DOTNET_STARTUP_HOOKS -->
     <StartupHookSupport>false</StartupHookSupport>
     <Product>WinNotch</Product>

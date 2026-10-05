@@ -46,6 +46,28 @@ jobs:
         if: env.NEW == 'true'
         run: dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o out
 
+      # P02: the exe that gets signed and published is first started with --smoke and driven like in ci.yml, so a push
+      # straight to main can't publish a version that fails the smoke tests
+      - name: Smoke tests
+        if: env.NEW == 'true'
+        timeout-minutes: 8
+        run: dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -c Release -- out\WinNotch.exe smoke-artifacts
+
+      - name: Smoke artifacts (log and screenshot)
+        if: failure() && env.NEW == 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force smoke-artifacts | Out-Null
+          $log = Join-Path $env:APPDATA 'WinNotch\smoke\log.txt'
+          if ((Test-Path $log) -and -not (Test-Path smoke-artifacts\log.txt)) { Copy-Item $log smoke-artifacts\log.txt }
+
+      - uses: actions/upload-artifact@v4
+        if: failure() && env.NEW == 'true'
+        with:
+          name: smoke-artifacts
+          path: smoke-artifacts
+          if-no-files-found: ignore
+
       - name: Sign
         if: env.NEW == 'true'
         shell: pwsh

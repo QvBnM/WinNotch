@@ -5,10 +5,12 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Capturing;
 using FlaUI.Core.Definitions;
+using FlaUI.Core.Exceptions;
 using FlaUI.Core.Input;
 using FlaUI.Core.WindowsAPI;
 using FlaUI.UIA3;
@@ -101,7 +103,7 @@ namespace WinNotch.Smoke
             while (true)
             {
                 Alive();
-                try { last = read(); if (ok(last)) return last; } catch (COMException) { } catch (TimeoutException) { }
+                try { last = read(); if (ok(last)) return last; } catch (COMException) { } catch (TimeoutException) { } catch (ElementNotAvailableException) { }
                 if (DateTime.UtcNow > until) Fail("Așteptat " + what + " în " + timeout.TotalSeconds + " s; ultima valoare: " + (last?.ToString() ?? "nimic"));
                 Thread.Sleep(100);
             }
@@ -204,6 +206,16 @@ namespace WinNotch.Smoke
             if (!_app.WaitForExit(20000)) Fail("WinNotch nu s-a închis în 20 s după „Ieșire”.");
             _app.WaitForExit();
             if (_app.ExitCode != 0) Fail("Cod de ieșire " + _app.ExitCode + " (așteptat 0).");
+            // "Ieșire" must also be recorded as a clean exit (StartupGuard.MarkCleanExit), or every exit counts as a crash
+            string state = Path.Combine(_dataDir, "startup.json");
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(state));
+                if (!doc.RootElement.TryGetProperty("Running", out var running) || running.GetBoolean())
+                    Fail("startup.json nu marchează ieșirea curată (Running ar trebui să fie false).");
+            }
+            catch (IOException) { Fail("startup.json lipsește după „Ieșire”: " + state); }
+            catch (JsonException) { Fail("startup.json nu poate fi citit după „Ieșire”."); }
         }
 
         private static void ClickMenuItem(string name)
@@ -233,6 +245,9 @@ namespace WinNotch.Smoke
             if (icon != null) { icon.RightClick(); Console.WriteLine("      (meniul iconiței: click dreapta pe iconiță)"); return; }
             PostTrayRightClick();
             Console.WriteLine("      (meniul iconiței: iconița nu e vizibilă în bara de activități; mesajul ei de click dreapta)");
+            // visible in the run summary: the icon itself wasn't checked this time
+            if (Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+                Console.WriteLine("::warning::Testul de fum nu a găsit iconița în bara de activități; meniul a fost deschis cu mesajul ei de click dreapta.");
         }
 
         private static AutomationElement FindTrayIcon()
@@ -317,8 +332,7 @@ namespace WinNotch.Smoke
         {
             var lines = LogLines();
             if (lines.Length == 0) Fail("log.txt lipsește sau e gol: " + _log);
-            string[] fatal = { "Eroare neprevăzută", "Eroare fatală", "Pornirea a eșuat", "Eroare în funcția", "Exception:", "Unhandled" };
-            var bad = lines.Where(l => fatal.Any(f => l.Contains(f, StringComparison.Ordinal)) || l.StartsWith("   at ", StringComparison.Ordinal)).ToList();
+            var bad = lines.Where(SmokeMode.IsFatalLogLine).ToList();
             foreach (var l in lines.Where(l => l.Contains("Exception", StringComparison.Ordinal) && !bad.Contains(l)))
                 Console.WriteLine("      (în log, tratat: " + l + ")");
             if (bad.Count > 0) Fail("Excepții în log.txt:\n" + string.Join("\n", bad.Take(20)));
