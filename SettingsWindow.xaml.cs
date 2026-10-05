@@ -112,6 +112,7 @@ namespace WinNotch
             TempsHint.Visibility = Services.TempService.PawnIOInstalled ? Visibility.Collapsed : Visibility.Visible;
             StartBox.IsChecked = AppSettings.StartWithWindows;
             UpdateBox.IsChecked = s.AutoUpdate;
+            BetaBox.IsChecked = s.BetaChannel;
             UpdateStatus.Text = "Versiunea ta: " + Services.Updater.Current + (Services.Updater.Configured ? "" : " · actualizările automate nu sunt încă configurate");
             UpdateStartHint();
             CityBox.Text = s.City;
@@ -342,6 +343,7 @@ namespace WinNotch
             _s.EyeBreak = EyeBox.IsChecked == true;
             _s.RamAlert = RamAlertBox.IsChecked == true;
             _s.AutoUpdate = UpdateBox.IsChecked == true;
+            _s.BetaChannel = BetaBox.IsChecked == true;
             _s.RamAlertPercent = int.TryParse(TagOf(RamPctBox), out int rp) ? rp : 80;
             _s.CalendarIcs = (IcsBox.Text ?? "").Trim();
             _s.BrowserTabs = TabsBox.IsChecked == true;

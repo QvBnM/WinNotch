@@ -36,6 +36,8 @@ namespace WinNotch
         public int EyeBreakMinutes { get; set; } = 20;
         public bool RamAlert { get; set; } = true;
         public bool AutoUpdate { get; set; } = true;
+        /// <summary>Also offer pre-release (test) versions.</summary>
+        public bool BetaChannel { get; set; }
         public DateTime UpdateSnoozeUntil { get; set; } = DateTime.MinValue;
         public int RamAlertPercent { get; set; } = 80;
         public List<Services.Workspace> Workspaces { get; set; } = new List<Services.Workspace>();

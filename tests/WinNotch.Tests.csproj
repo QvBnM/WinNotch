@@ -22,5 +22,11 @@
     <Compile Include="..\Core\Flags\FeatureFlags.cs" />
     <Compile Include="..\Core\Flags\FeatureSettings.cs" />
     <Compile Include="..\Core\Diagnostics\HealthLog.cs" />
+    <Compile Include="..\Core\Update\AppVersion.cs" />
+    <Compile Include="..\Core\Update\ReleaseFeed.cs" />
+    <Compile Include="..\Core\Update\StartupGuard.cs" />
+    <Compile Include="..\Core\Update\StartupStore.cs" />
+    <Compile Include="..\Core\Update\Rollback.cs" />
+    <Compile Include="..\Core\Update\StartupCoordinator.cs" />
   </ItemGroup>
 </Project>

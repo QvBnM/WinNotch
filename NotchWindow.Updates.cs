@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WinNotch.Core.Update;
 using WinNotch.Services;
 
 namespace WinNotch
@@ -23,6 +24,13 @@ namespace WinNotch
         private void UpdateTick()
         {
             if (App.JustUpdated && !_afterUpdateShown && _tick > 3 && _mode == Mode.Idle) { _afterUpdateShown = true; AfterUpdate(); return; }
+            if (App.RollbackMessage != null && _tick > 3 && _mode == Mode.Idle)      // once, after an automatic rollback to this version
+            {
+                string m = App.RollbackMessage;
+                App.RollbackMessage = null;
+                ToolAlert(Ui.GWarn, CWarn, m, "Versiunea refuzată nu îți mai e propusă; o versiune mai nouă, da.", 560);
+                return;
+            }
             if (Bridge.OldExtensionSeen && !_oldExtShown && _mode == Mode.Idle && !_hidden) { _oldExtShown = true; ShowOldExtension(); return; }
 
             if (!Updater.Configured || _updating) return;
@@ -32,13 +40,14 @@ namespace WinNotch
                 _nextUpdateCheck = DateTime.Now.AddHours(6);
                 _ = CheckUpdate();
             }
+            if (_update != null && _update.PreRelease && !S.BetaChannel) _update = null;     // beta channel switched off
             if (_update != null && !_updateOffered && _mode == Mode.Idle && !_hidden && DateTime.Now >= S.UpdateSnoozeUntil && !_liveInteractive)
                 if (ShowUpdateOffer(_update)) _updateOffered = true;
         }
 
         private async Task CheckUpdate()
         {
-            var u = await Updater.CheckAsync();
+            var u = await Updater.CheckAsync(S.BetaChannel, App.IsRefusedVersion);
             if (u == null) return;
             if (_update == null || u.Version > _update.Version) { _update = u; _updateOffered = false; }
         }
@@ -47,8 +56,8 @@ namespace WinNotch
         internal async Task<string> CheckUpdateNow()
         {
             if (!Updater.Configured) return "Actualizările nu sunt configurate încă în această versiune.";
-            var u = await Updater.CheckAsync();
-            if (u == null) return "Ai ultima versiune (" + Updater.Current + ").";
+            var u = await Updater.CheckAsync(S.BetaChannel, App.IsRefusedVersion);
+            if (u == null) { _update = null; return "Ai ultima versiune (" + Updater.Current + ")."; }     // e.g. beta channel switched off since
             _update = u;
             _updateOffered = false;
             S.UpdateSnoozeUntil = DateTime.MinValue;
@@ -138,8 +147,13 @@ namespace WinNotch
                 ShowLive(LiveRow(Spinner(), "Instalez WinNotch " + u.Version + "…", "Repornesc în câteva secunde", null), 420, 58, 60000, true);
                 await Task.Delay(600);
                 S.Save();
-                if (Updater.Apply(file, App.ReleaseSingleInstance)) ((App)Application.Current).ExitApp();
-                else ToolAlert(Ui.GWarn, CHot, "Nu am putut înlocui WinNotch.exe", "Detalii în log; versiunea de acum merge mai departe.", 480);
+                // the restart for the update is a clean exit (not counted as a crash), marked before the new version starts
+                if (Updater.Apply(file, () => { App.Guard?.MarkCleanExit(); App.ReleaseSingleInstance(); })) ((App)Application.Current).ExitApp();
+                else
+                {
+                    App.Guard?.Resume();          // this run goes on: protected again
+                    ToolAlert(Ui.GWarn, CHot, "Nu am putut înlocui WinNotch.exe", "Detalii în log; versiunea de acum merge mai departe.", 480);
+                }
             }
             catch (Exception ex)
             {

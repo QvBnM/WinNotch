@@ -9,18 +9,10 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using WinNotch.Core.Update;
 
 namespace WinNotch.Services
 {
-    /// <summary>A newer WinNotch published on GitHub.</summary>
-    public sealed class UpdateInfo
-    {
-        public Version Version;
-        public string Notes = "";
-        public string ExeUrl, SigUrl;
-        public long Size;
-    }
-
     /// <summary>
     /// Automatic updates from the project's GitHub Releases.
     ///
@@ -40,7 +32,8 @@ namespace WinNotch.Services
         public const string UpdatedArg = "--updated";
 
         public static bool Configured => Repo.Length > 0;
-        public static Version Current { get; } = Normalize(Assembly.GetExecutingAssembly().GetName().Version);
+        /// <summary>This version, with its pre-release suffix if any ("0.7.0-rc.1", from the informational version).</summary>
+        public static AppVersion Current { get; } = ReadCurrent();
 
         private static readonly HttpClient Http = CreateClient();
 
@@ -52,39 +45,35 @@ namespace WinNotch.Services
             return c;
         }
 
-        private static Version Normalize(Version v) => v == null ? new Version(0, 0, 0) : new Version(v.Major, v.Minor, Math.Max(0, v.Build));
+        private static AppVersion ReadCurrent()
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            string info = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (AppVersion.TryParse(info, out var v)) return v;
+            var a = asm.GetName().Version;
+            return a == null ? AppVersion.Zero : new AppVersion(a.Major, a.Minor, Math.Max(0, a.Build));
+        }
 
-        /// <summary>The latest release, if it's newer than this one; null otherwise (or offline).</summary>
-        public static async Task<UpdateInfo> CheckAsync()
+        /// <summary>
+        /// The newest release worth offering (see <see cref="ReleaseFeed.Pick"/>): newer than this one, not refused,
+        /// and a final version unless <paramref name="beta"/> (then pre-releases count too). Null otherwise (or offline).
+        /// </summary>
+        public static async Task<UpdateInfo> CheckAsync(bool beta = false, Func<AppVersion, bool> refused = null)
         {
             if (!Configured) return null;
             try
             {
-                using var req = new HttpRequestMessage(HttpMethod.Get, "https://api.github.com/repos/" + Repo + "/releases/latest");
+                // final versions only: GitHub's "latest" (never a pre-release); beta channel: the recent list
+                string url = "https://api.github.com/repos/" + Repo + (beta ? "/releases?per_page=20" : "/releases/latest");
+                using var req = new HttpRequestMessage(HttpMethod.Get, url);
                 req.Headers.Accept.ParseAdd("application/vnd.github+json");
                 using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
                 using var resp = await Http.SendAsync(req, cts.Token);
                 if (!resp.IsSuccessStatusCode) return null;
                 var text = await resp.Content.ReadAsStringAsync(cts.Token);
-                if (text.Length > 2_000_000) return null;
-                using var doc = JsonDocument.Parse(text);
-                var root = doc.RootElement;
-                string tag = root.TryGetProperty("tag_name", out var t) ? t.GetString() ?? "" : "";
-                if (!Version.TryParse(tag.TrimStart('v', 'V'), out var v)) return null;
-                v = Normalize(v);
-                if (v <= Current) return null;
-                var info = new UpdateInfo { Version = v, Notes = root.TryGetProperty("body", out var b) ? (b.GetString() ?? "") : "" };
-                if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
-                    foreach (var a in assets.EnumerateArray())
-                    {
-                        string name = a.GetProperty("name").GetString(), url = a.GetProperty("browser_download_url").GetString();
-                        if (url == null || !url.StartsWith("https://github.com/" + Repo + "/releases/download/", StringComparison.OrdinalIgnoreCase)) continue;
-                        if (name == "WinNotch.exe") { info.ExeUrl = url; info.Size = a.TryGetProperty("size", out var sz) ? sz.GetInt64() : 0; }
-                        else if (name == "WinNotch.exe.sig") info.SigUrl = url;
-                    }
-                return info.ExeUrl != null && info.SigUrl != null && info.Size > 0 && info.Size <= MaxExe ? info : null;
+                return ReleaseFeed.Pick(ReleaseFeed.Parse(text, Repo, MaxExe), Current, beta, refused);
             }
-            catch (Exception ex) { App.Log("Actualizare, verificare: " + ex.Message); return null; }
+            catch (Exception ex) { App.Log("Actualizare, verificare: " + ex.GetType().Name); return null; }
         }
 
         private static string UpdateFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinNotch", "update");
@@ -132,7 +121,7 @@ namespace WinNotch.Services
         }
 
         /// <summary>The release key signed "WinNotch-release|version|sha256 of the exe".</summary>
-        public static bool Verify(string file, Version version, byte[] signature)
+        public static bool Verify(string file, AppVersion version, byte[] signature)
         {
             try
             {
@@ -148,11 +137,12 @@ namespace WinNotch.Services
 
         /// <summary>
         /// Puts the verified exe in place of the running one and starts it. The running exe can't be overwritten but
-        /// can be renamed: it becomes WinNotch.old.exe (deleted by the new version on start).
+        /// can be renamed: it becomes WinNotch.old.exe, kept until the new version is declared healthy (StartupGuard),
+        /// so a version that keeps crashing can be rolled back.
         /// </summary>
         public static bool Apply(string newExe, Action beforeStart)
         {
-            string me = Environment.ProcessPath, old = Path.Combine(Path.GetDirectoryName(me), "WinNotch.old.exe");
+            string me = Environment.ProcessPath, old = Rollback.OldPath(me);
             try
             {
                 App.ReleaseOwnExe();
@@ -173,17 +163,43 @@ namespace WinNotch.Services
             }
         }
 
-        /// <summary>After an update: removes the previous version's exe and the download.</summary>
+        /// <summary>After an update: removes the download. The previous exe stays until <see cref="DeletePrevious"/>.</summary>
         public static void CleanUp()
         {
-            string old = Path.Combine(Path.GetDirectoryName(Environment.ProcessPath), "WinNotch.old.exe");
+            Task.Run(() =>
+            {
+                try { if (Directory.Exists(UpdateFolder)) foreach (var f in Directory.GetFiles(UpdateFolder)) File.Delete(f); } catch { }
+            });
+        }
+
+        /// <summary>
+        /// The version of WinNotch.old.exe (from its file version, set by the build), or null if it's missing or not a
+        /// WinNotch build. Only an older WinNotch is rolled back to (a leftover or foreign file is never started).
+        /// </summary>
+        public static AppVersion PreviousVersion()
+        {
+            try
+            {
+                string p = Rollback.OldPath(Environment.ProcessPath);
+                if (!File.Exists(p)) return null;
+                var fi = FileVersionInfo.GetVersionInfo(p);
+                if (fi.ProductName != "WinNotch") return null;
+                return AppVersion.TryParse(fi.ProductVersion, out var v) ? v : null;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>This version is healthy: the previous exe (and one refused earlier) are no longer needed.</summary>
+        public static void DeletePrevious()
+        {
+            string me = Environment.ProcessPath;
             Task.Run(async () =>
             {
-                for (int i = 0; i < 20 && File.Exists(old); i++)
-                {
-                    try { File.Delete(old); } catch { await Task.Delay(500); }
-                }
-                try { if (Directory.Exists(UpdateFolder)) foreach (var f in Directory.GetFiles(UpdateFolder)) File.Delete(f); } catch { }
+                foreach (var f in new[] { Rollback.OldPath(me), Rollback.RejectedPath(me) })
+                    for (int i = 0; i < 20 && File.Exists(f); i++)
+                    {
+                        try { File.Delete(f); } catch { await Task.Delay(500); }
+                    }
             });
         }
 

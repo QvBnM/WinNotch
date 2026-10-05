@@ -409,6 +409,12 @@ namespace WinNotch
             CompositionTarget.Rendering += OnFrame;
             Sessions.Scan();
             _audioTick.Start();
+            if (_dwellStart is DateTime hoverAt && Core.Diagnostics.PerfProbe.Enabled)        // perf.flag: hover → first frame
+            {
+                EventHandler first = null;
+                first = (s, e) => { CompositionTarget.Rendering -= first; App.Log(Core.Diagnostics.PerfProbe.OpenLine((DateTime.Now - hoverAt).TotalMilliseconds)); };
+                CompositionTarget.Rendering += first;
+            }
             _dwellStart = null;
             Fade(Pill, 1, 120);
             EndLiveInteractive();

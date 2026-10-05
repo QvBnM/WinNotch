@@ -114,7 +114,10 @@
                                    Text="Pentru temperatura procesorului e nevoie și de driverul gratuit PawnIO (pawnio.eu)."/>
                         <CheckBox x:Name="StartBox" Margin="0,4,0,0" Content="Pornește odată cu Windows"/>
                         <CheckBox x:Name="UpdateBox" Margin="0,8,0,0" Content="Caută singur versiuni noi (te întreabă în notch înainte să instaleze)"/>
-                        <StackPanel Orientation="Horizontal" Margin="22,4,0,0">
+                        <CheckBox x:Name="BetaBox" Margin="22,6,0,0" Content="Canal beta (versiuni de test)"/>
+                        <TextBlock Style="{StaticResource Hint}" Margin="44,2,0,0"
+                                   Text="Primești și versiunile de test, înaintea celor finale. Pot avea probleme; dacă una se închide des, WinNotch revine singur la versiunea anterioară."/>
+                        <StackPanel Orientation="Horizontal" Margin="22,0,0,0">
                             <Button x:Name="UpdateNowBtn" Content="Caută acum" Padding="10,3" Click="UpdateNow_Click"/>
                             <TextBlock x:Name="UpdateStatus" Margin="10,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="330" Foreground="#5B626D"/>
                         </StackPanel>

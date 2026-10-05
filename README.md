@@ -16,6 +16,11 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.9
+
+- **Protecție la o versiune stricată:** dacă o versiune nouă se tot închide, WinNotch încearcă întâi modul sigur, apoi revine singur la versiunea anterioară și nu ți-o mai propune pe cea stricată.
+- **Canal beta** (Setări › Comportament): primești și versiunile de test, înaintea celor finale.
+
 ## Noutăți în 0.6.8
 
 - **„Caută actualizări”** în meniul iconiței de lângă ceas: verifici tu când vrei, chiar dacă ai oprit căutarea automată.
