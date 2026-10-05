@@ -85,4 +85,15 @@ Versiunile 0.7 → 1.0 sunt construite pe pași (ID-uri P00, P10, P11… în `do
   5. Adaugă teste (id unic, titlu, alias, apelul corect, disponibilitate, parametri) și rândul ei în lista din DOCUMENTATIE.md.
   Pornește acțiunile doar prin `ActionRegistry.Current.InvokeAsync` (verificările nu se ocolesc) și nu pune în log valorile parametrilor.
   Pentru Confirm/Dangerous, întreabă utilizatorul și abia apoi apelează cu `confirmed: true`; fără el, registrul refuză.
+- **Cum folosești contextul** („ce face utilizatorul acum”, P12, `docs/adr/0004-context-engine.md`):
+  1. Nu citi singur fereastra din față, microfonul, media, rețeaua, bateria sau monitoarele: abonează-te la
+     `ContextEngine.Current.Changed` (poate fi null în modurile ajutătoare) și citește `ContextEngine.Current.Snapshot`.
+  2. `Changed(Old, New, Fields)` vine pe un fir de timer, după un debounce de 300 ms: UI doar prin Dispatcher; verifică
+     `e.Has(ContextField.Meeting)` etc. și reacționează doar la câmpurile tale. Dezabonează-te la oprirea funcției.
+  3. Cu comutatorul „context-engine” oprit (sau în `--safe-mode`) snapshot-ul e `ContextSnapshot.Empty` și nu vine nimic:
+     funcția ta trebuie să meargă și așa (fără context, comportamentul implicit).
+  4. Lipsește ceva? Extinde motorul, nu face un sistem paralel: o aplicație nouă = un rând în `AppCategories.DefaultEntries`;
+     o regulă = `ContextRules` (pură, cu teste); o stare nouă = câmp în `ContextSnapshot` + `ContextField` + `Diff` + o sursă
+     `IContextSource<T>` în `Features/Context/` (eveniment Windows; polling doar ≥ 2 s, cu `Polled = true`).
+  5. `ForegroundTitle` e personal: nu-l scrie în log, nu-l trimite nicăieri; în log doar `ToLogString()` (proces și categorie).
 - CI (`.github/workflows/ci.yml`) rulează build-ul și testele la fiecare pull request și push pe alte ramuri decât `main`.

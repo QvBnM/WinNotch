@@ -68,3 +68,19 @@ Fișierele de test se creează în `%AppData%\WinNotch\` (Win+R → `%AppData%\W
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
 | P11.1 | Pornește normal, fără regresii | Instalează 0.6.10, pornește WinNotch, apoi parcurge lista scurtă de regresie R1–R15. Deschide `%AppData%\WinNotch\log.txt`. | Totul merge ca în 0.6.9 (butoanele din Unelte, Dispozitive, media, volum, capturi, spații de lucru). În log nu apare „Acțiuni: înregistrarea a eșuat” și nici rânduri „Acțiune …” (încă nu pornește nimeni acțiunile). |
+
+### P12 — Context Engine (fără schimbări vizibile)
+
+Motorul nu are interfață: verificările se fac în `%AppData%\WinNotch\log.txt` (rândurile „Context: …”) și în Task Manager.
+`context.show` nu are încă un buton (va fi pornită din Command Bar, P14); logica ei e acoperită de testele automate CX30–CX32.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P12.1 | Pornește normal, fără regresii | Instalează 0.6.11, pornește WinNotch, parcurge lista scurtă de regresie R1–R15. | Totul merge ca în 0.6.10. În log: „Context: pornit (9 surse).”, fără „Context: pornirea a eșuat”. În Setări › Funcții noi apare „Motorul de context” (Beta, bifat). |
+| P12.2 | Ecran complet și rețea în log | Pornește un video pe YouTube și apasă F; apoi ieși din ecran complet. Deconectează Wi-Fi-ul / cablul câteva secunde și conectează-l la loc. | În log apar rânduri „Context: aplicație chrome (Browser), ecran complet Video…”, apoi „…ecran complet None…”; la rețea „rețea Offline”, apoi „rețea WiFi” / „Ethernet”. **Niciun rând nu conține titlul videoclipului sau al ferestrei.** |
+| P12.3 | Întâlnire | Intră într-o ședință Teams (sau Zoom, sau Google Meet în browser) cu microfonul pornit; apoi ieși din ea. | Log: „…întâlnire Teams…” (Zoom / Meet) cât ține ședința, apoi „întâlnire nu”. Cu Teams doar deschis, fără ședință, nu apare „întâlnire Teams”. |
+| P12.4 | Ieșire audio, monitoare, stick USB | Conectează căști Bluetooth (sau schimbă ieșirea din Windows pe căști); conectează / deconectează un al doilea monitor; introdu și scoate un stick USB. | În câteva secunde, log: „ieșire Bluetooth” / „Headphones”, apoi „Speakers” la revenire; „monitoare 2” / „monitoare 1”; „stick USB” apare și dispare. |
+| P12.5 | Alt+Tab rapid nu umple log-ul | Apasă Alt+Tab repede prin 10 ferestre, de câteva ori. | Log-ul nu crește cu un rând pe fereastră (aplicația din față nu se scrie în log); WinNotch rămâne fluid. |
+| P12.6 | Comutatorul oprit | Setări › Funcții noi: debifează „Motorul de context” › Salvează; repetă P12.2. Apoi bifează-l la loc. | La oprire: „Context: oprit.”, iar P12.2 nu mai scrie nimic „Context: aplicație…”. La pornire: „Context: pornit (9 surse).” din nou, fără repornirea aplicației. |
+| P12.7 | Mod sigur | Pornește `WinNotch.exe --safe-mode`. | În log nu apare „Context: pornit”; restul aplicației merge normal. |
+| P12.8 | Consum în standby | Notch închis, 10 minute fără să atingi nimic; Task Manager › Detalii › WinNotch.exe. | CPU rămâne ca în 0.6.10 (aproape 0%); memoria nu crește în timp. După 2 minute fără input nu apar erori în log. |

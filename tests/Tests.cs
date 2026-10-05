@@ -10,7 +10,7 @@ namespace WinNotch
     /// Automated tests for the parts that don't need the WPF window: the extension bridge (real sockets), address
     /// safety, site names, the speed verdict, the calculator and the calendar. Run: tests\run-tests.bat
     /// </summary>
-    public static class T
+    public static partial class T
     {
         public static readonly string TestFolder = Path.Combine(Path.GetTempPath(), "winnotch-tests");
         static int pass, fail; static readonly List<string> lines = new List<string>();
@@ -327,6 +327,7 @@ namespace WinNotch
             FeatureFlagTests();
             UpdateTests();
             ActionTests();
+            ContextTests();
 
             Console.WriteLine(string.Join("\n", lines));
             Console.WriteLine($"\nTOTAL {pass + fail}: {pass} PASS, {fail} FAIL");

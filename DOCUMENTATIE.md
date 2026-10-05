@@ -1,6 +1,6 @@
 # WinNotch — documentație completă
 
-Versiune: **0.6.10**. Ultima actualizare: 5 octombrie 2026.
+Versiune: **0.6.11**. Ultima actualizare: 5 octombrie 2026.
 
 WinNotch este un „Dynamic Island” pentru Windows 10 și 11: o pastilă neagră în partea de sus a ecranului.
 - **Cât e închisă,** arată informații scurte.
@@ -8,7 +8,7 @@ WinNotch este un „Dynamic Island” pentru Windows 10 și 11: o pastilă neagr
 - **Când se întâmplă ceva** (volum, piesă nouă, baterie, temperatură, memorie plină), afișează alerte scurte.
 - **Se personalizează** cu pagini proprii din widget-uri (ca pe iPhone) și cu teme întunecate, luminoase sau automate.
 
-Documentul descrie tot ce e implementat în cod până la versiunea 0.6.10: paginile din widget-uri, editarea în notch, fereastra WinNotch (pagini, teme, setări) și temele sunt în secțiunea 16.
+Documentul descrie tot ce e implementat în cod până la versiunea 0.6.11: paginile din widget-uri, editarea în notch, fereastra WinNotch (pagini, teme, setări) și temele sunt în secțiunea 16.
 
 ---
 
@@ -72,6 +72,8 @@ Documentul descrie tot ce e implementat în cod până la versiunea 0.6.10: pagi
 | `Core/Update/*` | Logica actualizărilor, fără WPF: compararea versiunilor (`AppVersion.cs`), alegerea versiunii de oferit și canalul beta (`ReleaseFeed.cs`), pornirea monitorizată și decizia mod sigur / revenire (`StartupGuard.cs`), `startup.json` / `rollback.json` (`StartupStore.cs`), schimbarea fișierelor la revenire (`Rollback.cs`), ordinea pașilor la pornire (`StartupCoordinator.cs`) |
 | `Core/Actions/*` | Registrul de acțiuni, fără WPF: descrierea unei acțiuni, parametrii și siguranța (`ActionDescriptor.cs`), anularea (`IUndoableAction.cs`), firul de interfață (`IUiDispatcher.cs`), înregistrarea, căutarea și pornirea cu toate verificările (`ActionRegistry.cs`) |
 | `Features/Actions/*` | Acțiunile incluse: lista (`BuiltInActions.cs`, cu spațiile de lucru și stick-urile USB ca liste dinamice), legătura cu aplicația (`IBuiltInHost.cs`, `AppActionHost.cs`) |
+| `Core/Context/*` | Motorul de context, fără WPF: starea curentă, imutabilă (`ContextSnapshot.cs`), interfețele surselor (`ContextSources.cs`), tabelul proces → categorie (`AppCategories.cs`), regulile pentru ecran complet, întâlnire și ieșire audio (`ContextRules.cs`), combinarea surselor cu debounce și evenimentul `Changed` (`ContextEngine.cs`) |
+| `Features/Context/*` | Sursele Windows ale contextului (`WindowsSources.cs`: hook pentru aplicația din față, notificări audio, rețea, alimentare, monitoare, stick-uri, inactivitate), pornirea (`ContextStartup.cs`), acțiunea `context.show` (`ContextActions.cs`, `NotchWindow.Context.cs`) |
 | `Core/Flags/*` | Comutatoarele funcțiilor noi: catalogul (`FeatureCatalog.cs`), starea, modul sigur și oprirea automată (`FeatureFlags.cs`), cheia `Features` din setări (`FeatureSettings.cs`) |
 | `Core/Diagnostics/HealthLog.cs`, `PerfProbe.cs` | Rezumatul de sănătate din log, la fiecare 6 ore; măsurarea opțională a deschiderii (`perf.flag`) |
 | `tools/measure-perf.ps1`, `docs/perf/` | Măsurătorile de bază (memorie, CPU la repaus, 10 minute) și rezultatele lor, pe versiuni |
@@ -108,6 +110,20 @@ Tot ce poate face WinNotch e și o **acțiune** cu un id stabil, în formatul `z
 | `device.eject-<literă>` | Scoate stick-ul USB (câte una pentru fiecare unitate detașabilă) | Cu confirmare |
 | `settings.bluetooth`, `settings.sound`, `settings.display`, `settings.wifi`, `settings.update` | Setările Windows: Bluetooth, Sunet, Ecran, Wi-Fi, Windows Update | Sigură |
 | `winnotch.open`, `winnotch.settings`, `winnotch.speed-test` | Deschide notch-ul, setările WinNotch, testul de viteză | Sigură |
+| `context.show` | Arată contextul curent în notch (pentru depanare: categoria și procesul aplicației din față, ecran complet, întâlnire, media, microfon, ieșire audio, rețea, alimentare, monitoare, stick USB, inactivitate; niciodată titlul ferestrei). Doar cu „Motorul de context” pornit | Sigură |
+
+### Context (infrastructură, din 0.6.11)
+
+Un singur loc știe **ce face utilizatorul acum** (`Core/Context/ContextEngine.cs`, ADR 0004) și anunță schimbările ca evenimente. Peste el vor veni Quick Actions, Game Mode, Dev Mode și paginile alese după context. **În 0.6.11 nu se schimbă nimic vizibil;** motorul are comutatorul „Motorul de context” (`context-engine`, Beta, pornit implicit fiindcă nu are interfață; oprit în `--safe-mode`).
+
+- **Ce știe** (o stare imutabilă, `ContextSnapshot`): aplicația din față (procesul, titlul ferestrei și categoria: Programare, Browser, Întâlnire, Joc, Media, Birou, Creație sau Altele), ecranul complet (joc, video sau altceva), ce se redă (doar aplicația sau site-ul, nu titlul piesei), microfonul și camera în uz și de cine, ieșirea audio (căști, boxe, Bluetooth), întâlnirea activă (Teams, Zoom, Meet, Webex…), rețeaua (online, Wi-Fi / Ethernet / offline), alimentarea (baterie sau priză, procentul), numărul de monitoare, stick USB conectat și inactivitatea (fără tastatură și mouse de cel puțin 2 minute).
+- **Întâlnire:** o aplicație de întâlniri folosește microfonul sau camera; sau e în față fereastra de ședință Teams / Zoom; sau un browser e pe Google Meet, Teams ori Zoom pe web. Teams doar deschis nu înseamnă întâlnire.
+- **Ecran complet:** fereastra din față acoperă tot monitorul (nu doar maximizată). Joc: Windows raportează un joc pe tot ecranul (Direct3D exclusiv) sau aplicația e un joc cunoscut; video: un player sau un browser care redă ceva; altfel „altceva” (o prezentare, F11).
+- **Cum află:** din evenimentele Windows (schimbarea ferestrei din față, a ieșirii audio, a rețelei, a alimentării, a monitoarelor, conectarea unui stick, schimbările din media), fără verificări dese. Doar ce nu are eveniment e citit la 3 secunde: inactivitatea, microfonul și camera (din aceeași sursă cu indicatorul Windows, cu cache de 2 s) și dacă fereastra din față a trecut pe tot ecranul.
+- **Fără rafale:** schimbările sunt adunate 300 ms (un Alt+Tab rapid prin zece ferestre e un singur eveniment) și publicate cel târziu la 1 s; fiecare eveniment spune exact ce câmpuri s-au schimbat.
+- **Erori:** o sursă care dă erori își păstrează ultima valoare bună și e încercată din nou după 30 s, apoi tot mai rar; se numără o singură dată la rezumatul de sănătate, iar motorul merge mai departe. Trei surse diferite stricate opresc funcția (motivul apare în Setări).
+- **Oprit din Setări:** toate sursele se opresc (inclusiv hook-ul ferestrei din față), starea se golește și nu mai pleacă niciun eveniment.
+- **Log:** doar procesul și categoria (de exemplu „Context: aplicație zoom (Meeting), ecran complet Other, întâlnire Zoom…”), și doar la schimbările rare (ecran complet, întâlnire, ieșire audio, rețea, monitoare, stick); niciodată titlul ferestrei sau mesajul unei erori.
 
 ---
 
@@ -370,7 +386,7 @@ Setările sunt pagina „Setări” din fereastra WinNotch (o singură fereastr�
 | Funcții noi (experimental) | Un comutator pentru fiecare funcție nouă din catalog, cu numele, o descriere de un rând și eticheta de stadiu (**Experimental**, **Beta**, **Stabil**); se aplică la „Salvează”, fără repornire. Dacă o funcție a fost oprită automat, apare și motivul |
 
 **Funcții noi și comutatoare (feature flags, din 0.7)**
-- Fiecare funcție nouă e declarată într-un singur loc, `Core/Flags/FeatureCatalog.cs` (ID, nume, descriere, stadiu, valoare implicită) și e oprită implicit până la versiunea în care e anunțată. Prima intrare e „Funcție de test” (`demo-flag`, Experimental, oprită), care nu face nimic vizibil.
+- Fiecare funcție nouă e declarată într-un singur loc, `Core/Flags/FeatureCatalog.cs` (ID, nume, descriere, stadiu, valoare implicită) și e oprită implicit până la versiunea în care e anunțată. Prima intrare e „Funcție de test” (`demo-flag`, Experimental, oprită), care nu face nimic vizibil. A doua e „Motorul de context” (`context-engine`, Beta, pornită implicit, fiindcă nu are interfață proprie).
 - Starea se salvează în `settings.json`, în cheia `Features` (ID → pornit/oprit). Se păstrează doar ce diferă de valoarea implicită; un fișier mai vechi, fără `Features`, înseamnă „toate la valoarea implicită”. Cheile funcțiilor necunoscute (de exemplu dintr-o versiune mai nouă) rămân neatinse.
 - Funcțiile pornesc și se opresc pe loc: ascultă evenimentul `Changed` al `FeatureFlags`, care se declanșează o singură dată la fiecare schimbare reală.
 - **Oprire automată:** o funcție care prinde 3 erori în 10 minute se oprește singură; motivul (cel mult 120 de caractere) apare în log și în Setări. „Salvează” aplică doar comutatoarele pe care le-ai schimbat, deci nu repornește din greșeală o funcție oprită automat cât pagina era deschisă. O pornești din nou bifând-o și apăsând „Salvează”.
@@ -538,6 +554,7 @@ Detaliile sunt în `AUDIT.md`. Pe scurt:
 | 0.5.2 | Descărcarea SDK-ului arată pașii, progresul și timpul rămas |
 | 0.5.4 | SDK-ul descărcat de `build.bat` e păstrat o singură dată pentru contul tău și folosit de toate versiunile (nu mai întreabă la fiecare arhivă nouă) |
 | 0.6.0 | Widget-uri pe grilă 6×4, pagini proprii (goale sau copiate), paginile standard cu ascundere și duplicare, editare în notch (drag, resize, galerie, manager de pagini), fereastra Editor cu inspector, widget-uri personalizate, teme (întunecat/luminos/automat, 6 teme, culori proprii, colțuri, transparență, teme salvate); notch-ul se dă la o parte peste ferestre maximizate; alerta de piesă nouă nu se mai repetă la YouTube și nu apare când sursa e fereastra din față; alerta de volum doar la schimbări reale; next/previous în browser prin handler-ele media ale paginii (extensia 1.5); widget-uri ca pe iPhone (tragi din galerie la mărimea implicită, click pentru toate mărimile, click pe widget pentru redimensionare); o singură fereastră pentru pagini, teme și setări; ochi pe tab-uri în editare; colțuri rotunjite peste tot și widget-ul Muzică aliniat ca pagina Acasă; fereastra notch-ului din nou mică (animații fluide), crește doar cât e deschisă galeria; alertă de memorie cu cine consumă și „Optimizează” |
+| 0.6.11 | Pregătire internă pentru funcțiile care se adaptează la ce faci: motorul de context (aplicația din față și categoria ei, ecran complet, media, microfon și cameră, ieșire audio, întâlniri, rețea, alimentare, monitoare, stick USB, inactivitate), cu evenimente, debounce și comutatorul „Motorul de context”; acțiunea `context.show`; nimic schimbat vizibil |
 | 0.6.10 | Pregătire internă pentru Command Bar: registrul de acțiuni (căutare, verificări, anulare), cu toate capabilitățile existente ca acțiuni; nimic schimbat vizibil |
 | 0.6.9 | Protecție la o versiune stricată: după 3 închideri bruște în 5 minute repornește în modul sigur, apoi revine singur la versiunea anterioară (cel mult o dată la 30 de minute); versiunea anterioară e păstrată până când cea nouă rulează 10 minute fără erori; versiunile refuzate nu mai sunt propuse; canal beta pentru versiunile de test; compararea corectă a versiunilor (inclusiv 0.6.10 și sufixe -rc); măsurători de performanță (`tools/measure-perf.ps1`) |
 | 0.6.8 | „Caută actualizări” în meniul iconiței; o versiune găsită manual e oferită în notch și cu verificarea automată oprită |
