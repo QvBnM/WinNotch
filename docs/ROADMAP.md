@@ -20,13 +20,14 @@ iar jurnalul rulărilor în `docs/PROGRESS.md`.
 | P11 | Action Registry: registru central de acțiuni (nume, iconiță, execuție) folosit de notch, scurtături și Command Bar | Gata |
 | P12 | Context Engine: ce faci acum (aplicația din față, media, întâlniri, rețea), publicat ca evenimente | Gata |
 | P13 | Activity Manager: activitățile live din notch (prioritate, coadă, durată), peste alertele existente; întâi testele de caracterizare ale celor 27 de alerte; „N noutăți”, pastilă împărțită, peek, `activity.dismiss-all`; teste de fum cu comutatorul oprit și pornit. În 0.6.14, comutatorul `activity-manager` Experimental, oprit implicit (ADR 0006) | Gata |
-| P14 | Command Bar: bară de comenzi din notch, peste Action Registry | De făcut |
+| P14 | Command Bar: `Win+Alt+Space` (sau `Win+Alt+K`, conflictul semnalat o dată) transformă pastila în câmp de căutare peste Action Registry; parametri în text („volum 30”), săgeți / Enter / Esc, confirmare dublă, fără acțiuni periculoase; focusul înapoi la fereastra anterioară, nimic peste ecran complet; alertele așteaptă ca la notch-ul deschis; fiecare setare e o acțiune `settings.<nume>`; teste de fum pe ambele căi. Comutatorul `command-bar` Experimental, oprit implicit (ADR 0007) | Gata |
 
 ## După 0.7 — planul suplu (`docs/PLAN.md`, aprobat 5 oct 2026)
 
 Lista veche 0.8 → 1.0 (planificări pe versiuni: P20, P30, P40, P50, P60) e înlocuită de sarcinile de mai jos; ID-urile P20 și P30
 au acum sensul din plan. Fiecare sarcină se face într-o rulare de pilot automat: 1. Pasul 0 + P02 · 2. P13 · 3. P14 + P27 ·
-4. P20 + P21 · 5. P23 + P30 · 6. P44 + P46. Versiuni 0.6.x pe sarcină; 0.7.0 după P14.
+4. P20 + P21 · 5. P23 + P30 · 6. P44 + P46. Versiuni 0.6.x, o publicare pe rulare; 0.7.0 (pornirea implicită a
+„activity-manager” și „command-bar”) e un pas separat, după ce autorul le folosește câteva zile (PLAN, „Modificare de plan”).
 
 | ID | Sarcină | Comutator | Stare |
 |---|---|---|---|
