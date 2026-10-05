@@ -16,6 +16,10 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.12
+
+- Fiecare versiune e încercată automat înainte de publicare (pornire, notch, alerte, meniul iconiței, închidere); nimic nu se schimbă la ce vezi.
+
 ## Noutăți în 0.6.11
 
 - Pregătire internă pentru funcțiile care se adaptează la ce faci: nimic nu se schimbă la ce vezi („Motorul de context”, în Setări › Funcții noi).
