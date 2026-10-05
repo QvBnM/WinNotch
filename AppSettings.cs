@@ -85,8 +85,8 @@ namespace WinNotch
             ("bat", "Baterie"), ("vol", "Volum"), ("net", "Internet")
         };
 
-        public static string Folder => Features.Smoke.SmokeMode.On     // smoke tests never touch the real settings, log or startup records
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WinNotch", Features.Smoke.SmokeMode.FolderName)
+        public static string Folder => global::WinNotch.Features.Smoke.SmokeMode.On     // smoke tests never touch the real settings, log or startup records
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WinNotch", global::WinNotch.Features.Smoke.SmokeMode.FolderName)
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "WinNotch");
         private static string FilePath => Path.Combine(Folder, "settings.json");
 
