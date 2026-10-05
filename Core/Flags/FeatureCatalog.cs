@@ -35,6 +35,8 @@ namespace WinNotch.Core.Flags
         public const string DemoFlag = "demo-flag";
         /// <summary>Core/Context: same id as ContextEngine.FeatureId (the tests check they match).</summary>
         public const string ContextEngine = "context-engine";
+        /// <summary>Core/Activity: same id as ActivityManager.FeatureId (the tests check they match).</summary>
+        public const string ActivityManager = "activity-manager";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -43,6 +45,9 @@ namespace WinNotch.Core.Flags
             // no UI of its own: on by default (Beta, so --safe-mode turns it off); the features built on it have their own switches
             new FeatureInfo(ContextEngine, "Motorul de context", "Urmărește ce faci acum (aplicația din față, ecran complet, întâlniri, media) pentru funcțiile care se adaptează.",
                             FeatureStage.Beta, true),
+            // P13: off by default until 0.7.0; off = the alerts go the old way, untouched
+            new FeatureInfo(ActivityManager, "Manager de activități", "Alertele trec printr-o coadă cu priorități: „N noutăți” la multe deodată, pastilă împărțită, alerte discrete.",
+                            FeatureStage.Experimental, false),
         };
 
         public static FeatureInfo Find(string id) => All.FirstOrDefault(f => string.Equals(f.Id, id, StringComparison.Ordinal));

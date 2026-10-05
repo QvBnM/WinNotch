@@ -14,7 +14,7 @@ namespace WinNotch
         // ------------------------------------------------------------------ fakes for the context engine
 
         /// <summary>Hand-driven clock: nothing runs until <see cref="Advance"/>.</summary>
-        sealed class FakeClock : IContextScheduler
+        sealed class FakeClock : IContextScheduler, Core.Activity.IActivityScheduler
         {
             sealed class Item : IDisposable { public DateTime At; public Action Work; public TimeSpan? Period; public bool Off; public void Dispose() => Off = true; }
             private readonly List<Item> _items = new List<Item>();

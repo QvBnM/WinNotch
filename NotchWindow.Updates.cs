@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WinNotch.Core.Update;
+using WinNotch.Features.Activity;
 using WinNotch.Services;
 
 namespace WinNotch
@@ -28,7 +29,7 @@ namespace WinNotch
             {
                 string m = App.RollbackMessage;
                 App.RollbackMessage = null;
-                ToolAlert(Ui.GWarn, CWarn, m, "Versiunea refuzată nu îți mai e propusă; o versiune mai nouă, da.", 560);
+                ToolAlert(LegacyAlerts.Rollback, Ui.GWarn, CWarn, m, "Versiunea refuzată nu îți mai e propusă; o versiune mai nouă, da.", 560);
                 return;
             }
             if (Bridge.OldExtensionSeen && !_oldExtShown && _mode == Mode.Idle && !_hidden) { _oldExtShown = true; ShowOldExtension(); return; }
@@ -75,7 +76,7 @@ namespace WinNotch
             {
                 if (ShowUpdateOffer(_update)) _updateOffered = true;     // otherwise as soon as the notch is free
             }
-            else ToolAlert("\uE73E", COk, result, null, 440);
+            else ToolAlert(LegacyAlerts.UpdateCheck, "\uE73E", COk, result, null, 440);
         }
 
         /// <summary>What a version brought, one line per change, each with its kind (Nou / Îmbunătățit / Modificat / Reparat).</summary>
@@ -116,7 +117,7 @@ namespace WinNotch
             later.Margin = new Thickness(0, 0, 6, 0);
             var head = LiveRow(LiveIcon("\uE896", COk), "WinNotch " + u.Version + " e gata", "Ce aduce versiunea nouă:", Ui.H(0, later, go));
             var notes = NotesList(u.Notes, 6, out int rows);
-            if (!ShowLive(Ui.V(0, head, notes), 580, 64 + rows * 22, 45000)) return false;
+            if (!Alert(LegacyAlerts.UpdateOffer, Ui.V(0, head, notes), 580, 64 + rows * 22, 45000)) return false;
             _liveInteractive = true;
             LiveLayer.IsHitTestVisible = true;
             SetClickThrough(false);
@@ -136,15 +137,15 @@ namespace WinNotch
                 var sub = Ui.T("pornesc…", 12, "MutedBrush");
                 var content = LiveRow(Spinner(), "Descarc WinNotch " + u.Version + "…", null, bar);
                 ((StackPanel)content.Children[1]).Children.Add(sub);
-                ShowLive(content, 470, 60, 600000, true);
+                Alert(LegacyAlerts.UpdateDownload, content, 470, 60, 600000, true);
                 var progress = new Progress<double>(p => { fill.ScaleX = p; sub.Text = Math.Round(p * 100) + "%"; });
                 string file = await Task.Run(() => Updater.DownloadAsync(u, progress, CancellationToken.None));
                 if (file == null)
                 {
-                    ToolAlert(Ui.GWarn, CHot, "Actualizarea a fost refuzată", "Fișierul descărcat nu are semnătura WinNotch: nu am instalat nimic.", 520);
+                    ToolAlert(LegacyAlerts.UpdateRefused, Ui.GWarn, CHot, "Actualizarea a fost refuzată", "Fișierul descărcat nu are semnătura WinNotch: nu am instalat nimic.", 520);
                     return;
                 }
-                ShowLive(LiveRow(Spinner(), "Instalez WinNotch " + u.Version + "…", "Repornesc în câteva secunde", null), 420, 58, 60000, true);
+                Alert(LegacyAlerts.UpdateInstalling, LiveRow(Spinner(), "Instalez WinNotch " + u.Version + "…", "Repornesc în câteva secunde", null), 420, 58, 60000, true);
                 await Task.Delay(600);
                 S.Save();
                 // the restart for the update is a clean exit (not counted as a crash), marked before the new version starts
@@ -152,13 +153,13 @@ namespace WinNotch
                 else
                 {
                     App.Guard?.Resume();          // this run goes on: protected again
-                    ToolAlert(Ui.GWarn, CHot, "Nu am putut înlocui WinNotch.exe", "Detalii în log; versiunea de acum merge mai departe.", 480);
+                    ToolAlert(LegacyAlerts.UpdateReplaceFailed, Ui.GWarn, CHot, "Nu am putut înlocui WinNotch.exe", "Detalii în log; versiunea de acum merge mai departe.", 480);
                 }
             }
             catch (Exception ex)
             {
                 App.Log("Actualizare: " + ex.Message);
-                ToolAlert(Ui.GWarn, CWarn, "Actualizarea nu a reușit", "Probabil fără internet; încerc din nou mai târziu.", 460);
+                ToolAlert(LegacyAlerts.UpdateFailed, Ui.GWarn, CWarn, "Actualizarea nu a reușit", "Probabil fără internet; încerc din nou mai târziu.", 460);
             }
             finally { _updating = false; }
         }
@@ -177,7 +178,7 @@ namespace WinNotch
             var ok = Ui.PillBtn("Am înțeles", null, true);
             var head = LiveRow(LiveIcon("\uE73E", COk), "Actualizat la WinNotch " + Updater.Current, "Ce e nou:", ok);
             var notes = NotesList(Updater.OwnNotes(), 6, out int rows);
-            if (!ShowLive(Ui.V(0, head, notes), 580, 64 + rows * 22, 25000, true)) { then?.Invoke(); return; }
+            if (!Alert(LegacyAlerts.WhatsNew, Ui.V(0, head, notes), 580, 64 + rows * 22, 25000, true)) { then?.Invoke(); return; }
             _liveInteractive = true;
             LiveLayer.IsHitTestVisible = true;
             SetClickThrough(false);
@@ -190,7 +191,7 @@ namespace WinNotch
             var go = Ui.PillBtn("Actualizează", null, true);
             later.Margin = new Thickness(0, 0, 6, 0);
             var content = LiveRow(LiveIcon("\uE7BA", CWarn), "Serviciul de temperatură e de la versiunea veche", "Se actualizează cu o confirmare Windows", Ui.H(0, later, go));
-            if (!ShowLive(content, 560, 58, 30000, true)) return;
+            if (!Alert(LegacyAlerts.HelperUpdate, content, 560, 58, 30000, true)) return;
             _liveInteractive = true;
             LiveLayer.IsHitTestVisible = true;
             SetClickThrough(false);
@@ -203,7 +204,7 @@ namespace WinNotch
         {
             var copy = Ui.PillBtn("Copiază adresa", null, true);
             var content = LiveRow(LiveIcon("", CWarn), "Extensia din browser e veche", "Deschide chrome://extensions și apasă ↻ la WinNotch", copy);
-            if (!ShowLive(content, 540, 58, 20000)) { _oldExtShown = false; return; }
+            if (!Alert(LegacyAlerts.OldExtension, content, 540, 58, 20000)) { _oldExtShown = false; return; }
             _liveInteractive = true;
             LiveLayer.IsHitTestVisible = true;
             SetClickThrough(false);

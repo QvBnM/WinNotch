@@ -89,14 +89,33 @@ Motorul nu are interfață: verificările se fac în `%AppData%\WinNotch\log.txt
 | P12.11 | Video doar de la aplicația din față (R1) | Pornește muzica în Spotify, apoi pune o pagină fără video în Chrome pe F11. Apoi pornește un video YouTube în Chrome pe tot ecranul. | Primul caz: „ecran complet Other”. Al doilea: „ecran complet Video”. |
 | P12.12 | Camera prin notificări (R1) | Notch închis. Pornește camera (aplicația Cameră sau o ședință), apoi oprește-o. Uită-te în log după „camera nu poate fi urmărită”. | Fără acel rând în log: schimbarea camerei apare în câteva secunde și cu notch-ul închis (de exemplu „întâlnire Teams” când doar camera e pornită de Teams). Cu rândul în log: camera e verificată doar cu notch-ul deschis, la 10 s. CPU în standby ca în P12.8. |
 
+### P13 — Activity Manager (experimental, oprit implicit)
+
+Cu comutatorul oprit, alertele trebuie să arate și să se comporte exact ca în 0.6.13 (aceeași cale de cod; testele AC* o fixează).
+Verificările de mai jos sunt cu „Manager de activități” pornit (Setări › Funcții noi › bifează › Salvează), dacă nu scrie altfel.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P13.1 | Oprit = neschimbat | Comutatorul oprit (implicit). Parcurge lista scurtă de regresie R1–R15 și declanșează volumul, o piesă nouă, o captură de zonă și „Text din ecran”. | Totul ca în 0.6.13; în log nu apare „Activity Manager: pornit.”. |
+| P13.2 | Pornire fără repornire | Bifează „Manager de activități” › Salvează. Apoi debifează-l › Salvează. | Log: „Activity Manager: pornit.”, apoi „Activity Manager: oprit.”; o alertă afișată în acel moment dispare la oprire. |
+| P13.3 | Alertele arată la fel | Pornit: schimbă volumul (trage de bară câteva secunde), pornește o piesă nouă, scoate încărcătorul (laptop), fă o captură de zonă, „Text din ecran”. | Aceleași alerte, aceeași mărime și durată ca cu el oprit; bara de volum se actualizează lin și dispare la ~1,6 s după ultima schimbare; după captură butoanele „Deschide” / „Folder” merg și închid alerta. |
+| P13.4 | O alertă nu o acoperă pe una importantă | Laptop sub 20%, pe baterie: când apare „Baterie descărcată”, pornește repede o piesă nouă. | Bateria rămâne cele 5 s; piesa apare imediat după ea. Cu comutatorul oprit, piesa o acoperea imediat. |
+| P13.5 | Fluxurile se înlocuiesc pe loc | „Text din ecran” pe o zonă cu text; „Eliberează RAM” din Unelte. | „Citesc textul…” devine direct „Text copiat · N rânduri”; „Eliberez memoria…” devine direct „Eliberat X GB…”, fără să clipească standby-ul între ele. |
+| P13.6 | Notch deschis și ecran complet | Deschide notch-ul și schimbă volumul din tastatură; închide-l. Apoi un video YouTube pe tot ecranul (F) și schimbă volumul; scoate încărcătorul. | Cu notch-ul deschis nu apare nicio alertă și nici după închidere. Peste video: volumul nu apare (Normal), „Pe baterie” nu apare; o baterie descărcată (High) ar apărea. |
+| P13.7 | Butoanele alertelor | Așteaptă (sau provoacă) alerta de memorie; apasă „Mai târziu”. Imediat după, schimbă volumul. | Alerta se închide la click; volumul apare imediat (nu după 15 s). Hover-ul pe notch funcționează după închiderea alertei. |
+| P13.8 | Acțiunea `activity.dismiss-all` | (Până la Command Bar, P14, doar prin testele de fum.) | Acoperit de testul de fum „Pastila împărțită… apoi „activity.dismiss-all””. |
+| P13.9 | Consum în standby | Pornit, notch închis, 10 minute fără alerte; Task Manager › Detalii › WinNotch.exe. | CPU ca în 0.6.13 (aproape 0%); memoria nu crește. |
+| P13.10 | Mod sigur | Comutatorul pornit, apoi `WinNotch.exe --safe-mode`. | Log fără „Activity Manager: pornit.”; alertele merg pe calea veche. |
+| P13.11 | Formele noi (teste de fum) | GitHub › Actions › ultima rulare CI › pașii „Smoke tests (activity-manager off/on)”; artefactul „smoke-artifacts”. | Ambii pași verzi: „TEST DE FUM (activity-manager oprit): 12 PASS” și „(… pornit): 13 PASS”; în `activity-manager-on\log.txt` rândurile „activitate de test … Grouped/Shown” și „activity.dismiss-all → făcut”, fără erori. |
+
 ### P02 — Teste de fum (CI)
 
 Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai jos sunt pentru rularea locală și pentru siguranța modului `--smoke`.
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
-| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 9 rânduri PASS și „TEST DE FUM: 9 PASS, 0 FAIL”; WinNotch se închide singur. |
+| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 12 rânduri PASS și „TEST DE FUM (activity-manager oprit): 12 PASS, 0 FAIL”; WinNotch se închide singur. Cu `-- publish\WinNotch.exe smoke-artifacts --activity-manager=on`: 13 PASS (din 0.6.14). |
 | P02.2 | Setările tale nu sunt atinse | După P02.1, compară `%AppData%\WinNotch\settings.json` și `log.txt` cu cele dinainte. | Neschimbate; testul a scris doar în `%AppData%\WinNotch\smoke\`. |
 | P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
 | P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
-| P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pasul „Smoke tests” e verde și e înaintea pasului „Sign”; „TEST DE FUM: 9 PASS, 0 FAIL”. |
+| P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 12, respectiv 13 PASS (din 0.6.14). |
