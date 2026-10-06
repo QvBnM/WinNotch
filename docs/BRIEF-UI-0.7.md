@@ -289,6 +289,85 @@ justifică închiderea, și atunci se scrie motivul.
 - Închiderea Windows-ului → „Închidere: Windows se închide”, fără alertă la pornirea următoare.
 - Omorârea procesului din Task Manager → la pornire apare „Închidere anterioară: neexplicată”; a doua oară, alerta.
 
+## P53 — Pe tot ecranul, notch-ul dispare
+
+**Problema raportată:** video pe tot ecranul pe YouTube — notch-ul rămâne „cocoțat” acolo (micșorat, dar vizibil).
+Comportamentul dorit: **invizibil complet**, și revine doar pentru ceva important (popup scurt), apoi dispare la loc.
+
+### Ipoteza principală (de verificat prima)
+
+`Services/MonitorService.cs:80`: `mon.Busy = covers && !Native.IsZoomed(h);`
+Un browser **maximizat** care intră în fullscreen păstrează, în multe cazuri, stilul `WS_MAXIMIZE`, deci `IsZoomed`
+rămâne `true`. Rezultat: fereastra acoperă tot monitorul, dar e clasificată `Maximized`, nu `Busy` → notch-ul doar
+trece în forma mică (`PillRules.OverMaximized`) în loc să se ascundă. Asta explică exact „rămâne cocoțat”.
+
+**Reparația:** „ocupat” se decide după **geometrie și stil**, nu după `IsZoomed`:
+- fereastra acoperă tot dreptunghiul monitorului (deja se calculează, `covers`), **și**
+- nu are ramă/bară de titlu vizibile: `WS_CAPTION` / `WS_THICKFRAME` lipsesc din stil, sau fereastra acoperă și zona
+  barei de activități (`Bounds` vs `Work`).
+O fereastră maximizată normală lasă bara de activități liberă → `covers` e fals pentru ea. Deci regula devine:
+`Busy = acoperă tot ecranul (inclusiv zona barei de activități) && fără ramă`. `IsZoomed` rămâne doar pentru `Maximized`.
+
+**De verificat și:** exclude ferestrele proprii și desktop-ul (`Progman`, `WorkerW`), ferestrele de 0 px, și cazul
+„Chrome maximizat fără bară de titlu” (nu trebuie să devină „ocupat”, altfel notch-ul dispare degeaba).
+
+### Ce înseamnă „ascuns” și ce îl scoate din ascundere
+
+Setarea există: Setări → „Peste jocuri / fullscreen”, cu `ascuns` (implicit) și `mereu vizibil`. Rămâne așa.
+Când e ascuns (`_hidden`, `ApplyHidden()`), pastila iese din ecran în sus. **Ce se schimbă:**
+
+1. **Nimic nu-l scoate din ascundere decât ceva important.** Azi, `ShowLive(..., important)` filtrează corect
+   (`NotchWindow.xaml.cs:877`), dar hover-ul tot îl poate deschide. Cât e ascuns: hover-ul nu-l deschide, drag-ul nu-l
+   deschide, alertele neimportante nu apar. Scurtătura `Win+Alt+N` și Command Bar îl deschid în continuare — e o
+   intenție explicită a utilizatorului.
+2. **Ce e „important”** (apare peste fullscreen, scurt, apoi dispare):
+   - baterie sub 20 % și sub 10 %;
+   - temperatură peste prag;
+   - memorie plină (alerta cu „Optimizează”);
+   - rezultatul unei unelte pornite de utilizator (captură, text din ecran, RAM);
+   - actualizarea gata de instalat — **nu**: se amână până iese din fullscreen;
+   - pauza pentru ochi — **nu**: se amână, nu se întrerupe un film;
+   - piesă nouă, volum, dispozitiv conectat, extensie veche — **nu**.
+   Lista se scrie o singură dată, ca regulă pură, și se folosește și de `ActivityManager` (prioritățile existente),
+   nu se dublează: dacă o alertă are prioritate ≥ `Important`, trece; altfel nu.
+3. **Popup-ul peste fullscreen e discret:** apare 2,5 s (nu 4–5), fără butoane care cer click, fără sunet,
+   coboară din marginea de sus cu 120 ms și se retrage singur. Dacă utilizatorul trece cu mouse-ul peste el, rămâne
+   cât timp e cursorul pe el.
+4. **Alertele amânate** (pauză ochi, actualizare, piesă nouă) se arată la 2 secunde după ce fullscreen-ul s-a încheiat,
+   o singură dată, cea mai recentă de fiecare fel. Nu se adună o coadă lungă.
+5. **Multi-monitor:** comportamentul de azi rămâne — dacă există un monitor liber, notch-ul se mută acolo în loc să se
+   ascundă (`MonitorTick`). Ascunderea e doar pentru cazul „toate monitoarele ocupate” sau un singur monitor.
+
+### Unde se leagă
+
+- `Services/MonitorService.cs:66-81` — detecția (partea principală).
+- `NotchWindow.xaml.cs:596-625` (`MonitorTick`), `:874` (`ShowLive`), `ApplyHidden()`.
+- `PollTick` (`:340`) — cât `_hidden` e adevărat, hover-ul și drag-ul nu deschid notch-ul (azi `_hidden` oprește
+  dwell-ul doar parțial).
+- `Features/Activity/` — prioritatea alertelor și coada celor amânate.
+
+**Comutator:** `fullscreen-hide`, `Beta`, `DefaultOn = true` (reparație de comportament, comutatorul ca plasă).
+
+### Teste (`tests/FullscreenTests.cs`, reguli pure)
+
+1. Clasificare, pe dreptunghiuri și stiluri date: fereastră maximizată normală → `Maximized`;
+   fereastră care acoperă tot ecranul fără ramă → `Busy`; fereastră maximizată **cu** `WS_MAXIMIZE` care acoperă tot
+   ecranul fără ramă → `Busy` (testul care pică azi, cazul YouTube);
+   fereastră mică, desktop, fereastra proprie → niciuna.
+2. Alerte: fiecare tip → trece / nu trece peste fullscreen; lista se potrivește cu prioritățile din `ActivityManager`.
+3. Alertele amânate se arată o singură dată după ieșirea din fullscreen, cea mai recentă de fiecare fel.
+4. Cât e ascuns: hover și drag nu deschid; `Win+Alt+N` deschide.
+5. Multi-monitor: cu un monitor liber se mută, nu se ascunde.
+
+### Verificări manuale
+
+- YouTube fullscreen pe un singur monitor → notch-ul dispare complet în ~1 s; nu reapare la mișcarea mouse-ului sus.
+- În fullscreen, scoate încărcătorul la sub 20 % → apare scurt alerta de baterie, apoi dispare.
+- În fullscreen, pornește o captură cu `Win+Alt+S` → previzualizarea apare (e cerută de tine), apoi dispare.
+- Ieși din fullscreen → pauza pentru ochi amânată apare o dată, la 2 s.
+- Joc pe tot ecranul (nu browser) → același comportament.
+- Două monitoare, fullscreen pe unul → notch-ul se mută pe celălalt, nu dispare.
+
 ## P52 — Fereastra WinNotch, redesign
 
 **Comutator:** `window-v2`, `Experimental`, `DefaultOn = false`, până e gata. Cod nou în `Features/WindowV2/`.
@@ -365,7 +444,7 @@ Cine deschide fereastra recunoaște instant obiectul din marginea ecranului. Ast
 
 ## Ordinea și livrarea
 
-1. **P51c** primul (investigația: fără ea nu știm dacă restul se construiește pe ceva instabil), apoi **P51** + **P51b**.
+1. **P51c** primul (investigația: fără ea nu știm dacă restul se construiește pe ceva instabil), apoi **P53**, apoi **P51** + **P51b**.
 2. **P50** al doilea (vizual, comutator, ușor de comparat).
 3. **P52** ultimul (cel mai mare).
 
