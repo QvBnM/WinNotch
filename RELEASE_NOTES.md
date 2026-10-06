@@ -1,9 +1,9 @@
 ## Nou
-- În Setări › Funcții noi apare „Quick Actions” (experimental, oprit implicit): când deschizi notch-ul, sub pastilă apar câteva butoane potrivite cu ce faci acum — într-o întâlnire cu căști: mută / pornește microfonul și volum 40%; la muzică: pauză și următoarea piesă; cu un stick USB: deschide-l; cu bateria sub 20%: economisirea bateriei. După click vezi pentru câteva secunde ce s-a întâmplat.
-- Dacă ai pornit și „Manager de activități”, Quick Actions îți poate sugera singur butoanele (pastila se lărgește puțin), cel mult o dată la 10 minute; cu „Nu mai arăta” nu mai vezi sugestia aceea.
-- În Setări › Funcții noi apare „Smart Clipboard” (experimental, oprit implicit): în widget-ul Clipboard apar butoane pentru ce ai copiat — JSON formatat sau compact, link fără parametrii de urmărire (utm, fbclid, gclid…), token JWT decodat, culoare în RGB, e-mail, IP, telefon, deschiderea folderului unei căi.
-- Opțional, la copiere poți vedea o scurtă notificare în pastilă (oprită implicit, în Setări › Smart Clipboard).
+- În Setări › Funcții noi apare „Raft” (experimental, oprit implicit): trage fișiere peste notch — se deschide singur când ajungi cu ele deasupra — și le lași în raft. Raftul ține minte până la 20 de fișiere (doar unde sunt, nu copii), și după repornire, până îl golești.
+- Pentru fiecare fișier din raft: copiază calea, deschide folderul, arhivează zip, text din imagine (OCR) și conversie PNG ↔ JPG; fișierele noi apar alături, nimic nu e suprascris. Poți trage un fișier din raft direct în altă aplicație.
+- În Setări › Funcții noi apare „Căști/boxe” (experimental, oprit implicit): pe pagina Acasă, butonul de lângă volum arată ieșirile audio, cu cea folosită acum bifată; un click trece sunetul pe căști sau pe boxe. Le găsești și în Command Bar („căști”, „boxe”).
+- Dacă Windows refuză schimbarea ieșirii audio, „Căști/boxe” se oprește singur și îți spune în pastilă; îl poți porni din nou din Setări.
 
 ## Îmbunătățit
-- Parolele copiate din managerele de parole sunt în continuare ignorate, iar conținutul copiat nu ajunge niciodată în jurnalul aplicației.
-- Testele automate de pornire verifică acum și Quick Actions și Smart Clipboard.
+- Fișierele din rețea și scurtăturile spre ele nu sunt primite în raft, ca să nu se conecteze Windows singur la alte calculatoare.
+- Testele automate de pornire verifică acum și raftul și lista ieșirilor audio.

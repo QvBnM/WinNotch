@@ -62,3 +62,15 @@
 - **Revizia R1:** 1 Major (drop-urile netratate pe notch-ul deschis lăsau efectul implicit cu Move), 2 Medii (symlink local spre rețea acceptat; imagine blocată/OCR → eroare de funcție, raftul oprit după 3), 7 Minore; reparate în a391dd3 + 3ba33da: Major, Medii, zip gol = eșec, stick scos nu golește raftul, overlay doar la DragEnter cu fișiere, SM_SWAPBUTTON citit rar, fumul oprește comutatorul la eșec; rămase (ADR): mutarea de fereastră peste pastilă o deschide, codarea PNG pentru OCR pe firul UI, teste SH27–33 pe text.
 - **CI:** run 37 și run 38 verzi din prima; fumul Raft o singură dată (AM oprit; cealaltă scrie SKIP): fișier local adăugat prin `smoke-shelf-add` → apare → „Copiază calea” → exact calea în clipboard → „Golește” → gol.
 - **Teste:** 616 C# (39 noi, SH1–SH39) + 23 extensie + fum 19 / 17 (+3 SKIP).
+- **Abateri:** planul B (fără drop pe pastila închisă); al 21-lea element refuzat (nu scos cel mai vechi); raftul e un overlay în notch-ul deschis; cheia veche `Shelf` din settings.json refolosită; refuz în plus pentru .scf/.library-ms/.searchconnector-ms.
+
+### P30 Căști/boxe
+- **Făcut:** `Features/AudioSwitch` (logică pură + `PolicyConfigSwitcher` izolat, singurul cod COM: IPolicyConfig pe fir MTA, rolurile eConsole/eMultimedia/eCommunications, obiectele eliberate); buton lângă volum (Acasă) → lista ieșirilor active, implicita bifată, „Nicio ieșire audio” fără dispozitive; acțiuni dinamice `audio.output-<10 hex>` (Safe, și în Command Bar) printr-un provider, reîmprospătat la notificările Windows (debounce 400 ms, fără polling); la prima eroare `FeatureFlags.Disable("audio-switch", motiv fix)` + mesaj în pastilă; fără rutare per aplicație; comutatorul „audio-switch” Experimental, oprit; ADR 0012.
+- **Revizia R1:** aprobat, 0 Critic/Major/Mediu (vtable-ul IPolicyConfig verificat), 6 Minore, toate reparate în ec4af3e (dispozitiv scos în timpul schimbării nu mai oprește funcția, SetDefault mereu, oprirea COM în fundal, nume ilizibil → generic, microfoanele ignorate, debounce injectabil).
+- **CI:** run 40 roșu (testul de fum: AutomationId pe un Border fără peer UIA, lista negăsită; run 41 la fel, fără reparație), reparat în 9a5ff9f (id pe titlu, cadru cu peer, linie de diagnostic fixă); run 42 verde — 2 încercări din 3.
+- **Teste:** 641 C# (25 noi, AS1–AS25) + 23 extensie + fum 20 / 17 (+4 SKIP).
+- **Abateri:** id-ul `audio.output-<id>` în loc de `audio.output.<id>` (registrul acceptă un singur punct); lista se deschide dintr-un buton lângă volum (alerta de volum e click-through), nu prin ActivityManager.
+
+### Publicare
+- 0.6.17 (P23 + P30), un singur push pe `main`.
+
