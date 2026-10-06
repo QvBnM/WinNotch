@@ -16,6 +16,10 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.18
+
+- Reparat: notch-ul care se deschidea uneori gol și pastila care părea să arate doar ora; o plasă de siguranță îl reface singur dacă se mai întâmplă.
+
 ## Noutăți în 0.6.17
 
 - „Raft” (fișiere trase peste notch, cu acțiuni rapide) și „Căști/boxe” (alegi ieșirea audio de lângă volum) în Setări › Funcții noi (experimentale, oprite implicit).
