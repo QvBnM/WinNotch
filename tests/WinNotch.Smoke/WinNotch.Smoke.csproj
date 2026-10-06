@@ -22,6 +22,7 @@
     <Compile Include="SmokeClipboard.cs" />
     <Compile Include="SmokeShelf.cs" />
     <Compile Include="SmokeAudio.cs" />
+    <Compile Include="SmokeB1.cs" />
     <!-- the same status format and file names as the app -->
     <Compile Include="..\..\Features\Smoke\SmokeMode.cs" />
   </ItemGroup>

@@ -29,8 +29,8 @@ namespace WinNotch
 
         /// <summary>
         /// Mode, pill size, what the Activity Manager shows (split, group, peek), the open Command Bar, the page shown (P27),
-        /// the category in the context engine's snapshot (P27) and the Quick Actions counters (P20), read by the smoke test
-        /// from the window's ItemStatus.
+        /// the category in the context engine's snapshot (P27), the Quick Actions counters (P20) and what the safety net sees
+        /// (B1: ";b1=" problems on screen now, ";b1r=" repairs so far), read by the smoke test from the window's ItemStatus.
         /// </summary>
         private void UpdateSmokeStatus()
         {
@@ -38,7 +38,7 @@ namespace WinNotch
             var snap = Core.Context.ContextEngine.Current?.Snapshot;      // the category the page choice actually uses (meeting/game win)
             string ctx = snap == null ? null : Features.ContextPages.ContextPageRules.EffectiveCategory(snap).ToString();
             AutomationProperties.SetItemStatus(this, SmokeMode.Status(_mode.ToString(), Pill.ActualWidth, Pill.ActualHeight, split, group, peek, CommandBarOpen ? 1 : 0,
-                                                                      CurrentPageId(), ctx) + SmokeMode.QuickActionsStatus(_qaInvoked, _qaSuggested));
+                                                                      CurrentPageId(), ctx) + SmokeMode.QuickActionsStatus(_qaInvoked, _qaSuggested) + NotchGuardSmokeStatus());
         }
 
         /// <summary>Reads smoke-commands.txt from the smoke folder, deletes it, runs the valid lines in order.</summary>
@@ -112,6 +112,12 @@ namespace WinNotch
                     break;
                 case SmokeCommandKind.AudioOutputs:
                     SmokeAudioOutputs();
+                    break;
+                case SmokeCommandKind.EmptyPanel:
+                    SmokeEmptyPanel();
+                    break;
+                case SmokeCommandKind.EmptyPill:
+                    SmokeEmptyPill();
                     break;
             }
             UpdateSmokeStatus();
@@ -253,6 +259,30 @@ namespace WinNotch
             if (!_shOn) { App.Log("Test de fum: raftul e oprit; comanda e ignorată."); return; }
             App.Log("Test de fum: un fișier pentru raft (aceleași verificări ca la tragere).");
             _ = ShelfAddPathsAsync(new[] { path });
+        }
+
+        /// <summary>
+        /// B1 "smoke-empty-panel": with the notch open, the panel's layer hidden and its tabs removed on purpose (the state
+        /// the author saw), then checked as after an opening: the safety net must find it and rebuild the page. Test mode only.
+        /// </summary>
+        private void SmokeEmptyPanel()
+        {
+            if (!SmokeMode.On) return;                     // test mode only, whoever calls it
+            if (_mode != Mode.Expanded || _cmdOpen) { App.Log("Test de fum: notch-ul nu e deschis; panoul nu se golește."); return; }
+            NotchGuardHide(ExpLayer);
+            TabBar.Children.Clear();
+            App.Log("Test de fum: panoul golit intenționat.");
+            NotchGuardOpened();
+        }
+
+        /// <summary>B1 "smoke-empty-pill": in standby, its layer hidden on purpose, then checked: the safety net must show it again. Test mode only.</summary>
+        private void SmokeEmptyPill()
+        {
+            if (!SmokeMode.On) return;                     // test mode only, whoever calls it
+            if (_mode != Mode.Idle) { App.Log("Test de fum: pastila nu e în standby; nu se golește."); return; }
+            NotchGuardHide(_miniApplied ? MiniLayer : IdleLayer);
+            App.Log("Test de fum: pastila golită intenționat.");
+            NotchGuardLaidOut();
         }
 
         private void StopSmoke()

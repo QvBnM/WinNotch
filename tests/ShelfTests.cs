@@ -442,7 +442,7 @@ namespace WinNotch
             string pages = Norm(NoComments(Src("NotchWindow.Pages.cs"))), app = Norm(NoComments(Src("App.xaml.cs")));
             Check("SH27", "Legăturile: PollTick (1 rând + condiția click-ului), la finalul Expand, în Collapse, StopShelf în Cleanup; PanelH și UpdateHeader în Pages; App: înregistrarea și pornirea după Smart Clipboard; WidgetPage moștenește din nou AllowDrop",
                   Count(notch, "Shelf") == 4 && notch.Contains("bool shelfDrag = ShelfDragHover(ins); if (ins && !shelfDrag && (Native.GetAsyncKeyState(0x01) < 0 || Native.GetAsyncKeyState(0x02) < 0)) _clickedThrough = true;") &&
-                  expand.EndsWith("ApplyHidden(); UpdateVisualizer(); ShelfOnOpen(); }", StringComparison.Ordinal) && collapse.Contains("_leaveStart = null; ShelfOnClose(); StopTyping();") &&
+                  expand.EndsWith("ApplyHidden(); UpdateVisualizer(); ShelfOnOpen(); NotchGuardOpened(); }", StringComparison.Ordinal) /* B1: the safety net's hook after it */ && collapse.Contains("_leaveStart = null; ShelfOnClose(); StopTyping();") &&
                   Norm(NoComments(MethodBody(notch0, "public void Cleanup()"))).Contains("StopQuickActions(); StopSmartClipboard(); StopShelf();") &&
                   Count(pages, "Shelf") == 2 && Norm(NoComments(MethodBody(Src("NotchWindow.Pages.cs"), "private double PanelH()"))).Contains("h = Math.Max(h, ShelfPanelHeight());") &&
                   Norm(NoComments(MethodBody(Src("NotchWindow.Pages.cs"), "private void UpdateHeader()"))).EndsWith("ShelfHeaderChanged(); QuickActionsHeaderChanged(); }", StringComparison.Ordinal) &&

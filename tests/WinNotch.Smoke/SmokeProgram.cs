@@ -49,9 +49,12 @@ namespace WinNotch.Smoke
     /// of outputs opens on the Home page ("smoke-audio-outputs"), says „Nicio ieșire audio” on a machine without audio (or
     /// shows the rows, at most one default), the button beside the volume ("audio-outputs-toggle") closes and reopens it,
     /// and the switch doesn't turn itself off; nothing is chosen (that would change the machine's default output).
+    /// B1, on both runs: the safety net repairs a panel and a pill emptied on purpose ("B1 recover" in the log); then, with every
+    /// new switch on, 20 openings mixed with an alert, the Command Bar, the shelf and the page by context, and after each the
+    /// content is seen (";b1=" absent from the status) without any repair (";b1r=" unchanged).
     /// log.txt is copied to the artifacts folder after every run; on a failure also a screenshot and the notch's state.
     /// This file: Main, the order of the checks, the shared helpers and the basic checks; the areas are in SmokeAlerts.cs,
-    /// SmokeCommandBar.cs, SmokeContext.cs (P27, P20), SmokeClipboard.cs (P21), SmokeShelf.cs (P23) and SmokeAudio.cs (P30), the same partial class.
+    /// SmokeCommandBar.cs, SmokeContext.cs (P27, P20), SmokeClipboard.cs (P21), SmokeShelf.cs (P23), SmokeAudio.cs (P30) and SmokeB1.cs (B1), the same partial class.
     /// </summary>
     public static partial class SmokeProgram
     {
@@ -113,6 +116,7 @@ namespace WinNotch.Smoke
                 else Console.WriteLine("SKIP  Raft (rulează o singură dată, în rularea cu activity-manager oprit)");
                 if (!_activityOn) Run(step = "Căști/boxe: lista ieșirilor audio de lângă volum se deschide și fără niciun dispozitiv („Nicio ieșire audio”), butonul o închide și o redeschide, comutatorul nu se oprește singur", AudioOutputs);
                 else Console.WriteLine("SKIP  Căști/boxe (rulează o singură dată, în rularea cu activity-manager oprit)");
+                Run(step = "B1: plasa de siguranță repară un panou și o pastilă golite intenționat; 20 de deschideri cu toate comutatoarele noi pornite (alertă, Command Bar, raft, pagina după context), conținutul vizibil de fiecare dată, fără reparații", B1EmptyNotch);
                 Run(step = "Command Bar oprit: Win+Alt+Space nu deschide nimic", CommandBarOff);
                 Run(step = "Command Bar: se deschide, „volum” găsește un rezultat, o alertă nu ia pastila, Esc închide și focusul revine", CommandBarSearchAndEscape);
                 Run(step = "Command Bar: Enter pe „settings.position” (sigură) deschide Setări în fereastra WinNotch", CommandBarRunsAction);
@@ -183,6 +187,8 @@ namespace WinNotch.Smoke
             public string Page = "", Ctx = "";
             /// <summary>P20: Quick Actions buttons that ran with success, unasked suggestions posted.</summary>
             public int Qa, Qs;
+            /// <summary>B1: what the safety net sees wrong on screen now (0 = the content is visible), its repairs since start.</summary>
+            public int B1, B1r;
             public override string ToString() => Raw;
             public bool SameSize(Status o) => Math.Abs(W - o.W) <= 2 && Math.Abs(H - o.H) <= 2;
         }
@@ -191,7 +197,7 @@ namespace WinNotch.Smoke
         {
             string raw = _notch.Properties.ItemStatus.ValueOrDefault ?? "";
             return SmokeMode.TryParseStatus(raw, out var m, out int w, out int h, out var x, out var page, out var ctx)
-                ? new Status { Mode = m, W = w, H = h, Raw = raw, Split = x["split"], Group = x["group"], Peek = x["peek"], Cmd = x["cmd"], Page = page, Ctx = ctx, Qa = x["qa"], Qs = x["qs"] }
+                ? new Status { Mode = m, W = w, H = h, Raw = raw, Split = x["split"], Group = x["group"], Peek = x["peek"], Cmd = x["cmd"], Page = page, Ctx = ctx, Qa = x["qa"], Qs = x["qs"], B1 = x["b1"], B1r = x["b1r"] }
                 : new Status { Mode = "", Raw = raw };
         }
 

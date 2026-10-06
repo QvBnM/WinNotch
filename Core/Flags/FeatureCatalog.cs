@@ -49,6 +49,8 @@ namespace WinNotch.Core.Flags
         public const string Shelf = "shelf";
         /// <summary>Features/AudioSwitch: same id as AudioOutputRules.FeatureId (the tests check they match).</summary>
         public const string AudioSwitch = "audio-switch";
+        /// <summary>Features/NotchGuard: same id as NotchGuardInfo.FeatureId (the tests check they match).</summary>
+        public const string NotchGuard = "notch-guard";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -78,6 +80,9 @@ namespace WinNotch.Core.Flags
             // P30: off by default; off = no button beside the volume, no list, no "audio.output-*" actions, nothing subscribed
             new FeatureInfo(AudioSwitch, "Căști/boxe", "Un buton lângă volum (pagina Acasă) și în Command Bar: alegi ieșirea audio implicită (căști, boxe, Bluetooth). Folosește o interfață Windows nedocumentată; la prima eroare se oprește singur.",
                             FeatureStage.Experimental, false),
+            // B1 (0.6.18): a repair, announced with it, so Stable and on (also in --safe-mode); off = no checks, nothing repaired
+            new FeatureInfo(NotchGuard, "Plasa de siguranță a notch-ului", "Dacă notch-ul se deschide gol sau pastila rămâne fără conținut, îl reface singur (pagina curentă, apoi Acasă) și scrie în log un rând „B1 recover”.",
+                            FeatureStage.Stable, true),
         };
 
         public static FeatureInfo Find(string id) => All.FirstOrDefault(f => string.Equals(f.Id, id, StringComparison.Ordinal));

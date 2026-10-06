@@ -198,6 +198,7 @@ namespace WinNotch
             StopSmartClipboard();
             StopShelf();
             StopAudioSwitch();
+            StopNotchGuard();
             _poll.Stop(); _sec.Stop(); _mon.Stop(); _audioTick.Stop();
             CompositionTarget.Rendering -= OnFrame;
             S.PinnedClips = Clips.Where(c => c.Pinned).Select(c => c.Text).ToList();
@@ -447,6 +448,7 @@ namespace WinNotch
             ApplyHidden();
             UpdateVisualizer();
             ShelfOnOpen();                  // P23 hook (Features/Shelf): the shelf when a drag opened the notch; a no-op with the switch off
+            NotchGuardOpened();             // B1 hook (Features/NotchGuard): the panel checked 300 ms later; a no-op with the switch off
         }
 
         private void Collapse()
@@ -511,6 +513,7 @@ namespace WinNotch
             FadeLayer(MiniLayer, mini, 140);
             FadeLayer(LiveLayer, _mode == Mode.Live, 120);
 
+            int expFade = LayerFades.Next(ExpLayer);            // B1: a newer fade wins over this one
             if (_mode == Mode.Expanded)
             {
                 ExpLayer.Visibility = Visibility.Visible;
@@ -519,16 +522,13 @@ namespace WinNotch
             else
             {
                 var a = new DoubleAnimation(0, TimeSpan.FromMilliseconds(140));
-                a.Completed += (o, e) => { if (_mode != Mode.Expanded) ExpLayer.Visibility = Visibility.Collapsed; };
+                a.Completed += (o, e) => { if (_mode != Mode.Expanded && LayerFades.IsLatest(ExpLayer, expFade)) ExpLayer.Visibility = Visibility.Collapsed; };
                 ExpLayer.BeginAnimation(OpacityProperty, a);
             }
+            NotchGuardLaidOut();            // B1 hook (Features/NotchGuard): the pill checked once its fades are over; a no-op with the switch off
         }
 
-        private bool MiniNow()
-        {
-            if (_slim) return true;
-            return S.MiniAfterSec > 0 && (DateTime.Now - _lastActive).TotalSeconds >= S.MiniAfterSec;
-        }
+        private bool MiniNow() => Features.NotchGuard.PillRules.IsMini(_slim, S.MiniAfterSec, _lastActive, DateTime.Now);
 
         private void Touch()
         {
@@ -565,9 +565,14 @@ namespace WinNotch
                 new DoubleAnimation(y, TimeSpan.FromMilliseconds(320)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
         }
 
-        /// <summary>Fades a layer in or out; a faded-out layer is collapsed, so nothing inside it animates or renders.</summary>
+        /// <summary>
+        /// Fades a layer in or out; a faded-out layer is collapsed, so nothing inside it animates or renders. B1: only the
+        /// newest fade may collapse it (a fade-in waiting its delay keeps the opacity it found, often 0; the replaced fade-out
+        /// still raises Completed and used to collapse the layer being shown: an empty standby, small pill or alert).
+        /// </summary>
         private static void FadeLayer(UIElement el, bool show, int delayMs)
         {
+            int token = LayerFades.Next(el);
             if (show)
             {
                 el.Visibility = Visibility.Visible;
@@ -575,7 +580,7 @@ namespace WinNotch
                 return;
             }
             var a = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
-            a.Completed += (o, e) => { if (el.Opacity < 0.01) el.Visibility = Visibility.Collapsed; };
+            a.Completed += (o, e) => { if (Features.NotchGuard.FadeTokens.MayCollapse(LayerFades.IsLatest(el, token), el.Opacity)) el.Visibility = Visibility.Collapsed; };
             el.BeginAnimation(OpacityProperty, a);
         }
 
@@ -608,7 +613,7 @@ namespace WinNotch
             if (log != _monLog) { _monLog = log; App.Log("Monitoare: " + log); }
 
             bool hidden = !always && t.Busy;
-            bool slim = S.SlimOverMaximized && t.Maximized && !t.Busy;
+            bool slim = Features.NotchGuard.PillRules.OverMaximized(S.SlimOverMaximized, t.Maximized, t.Busy);
             _overMax = t.Maximized && !t.Busy;
 
             if (_toolHidden) return;
@@ -763,7 +768,9 @@ namespace WinNotch
         }
 
         internal string WeatherGlyph() => !Weather.Ok ? Ui.GCloud : Weather.Code <= 1 ? (Weather.IsDay ? Ui.GSun : Ui.GMoon) : Ui.GCloud;
-        internal Brush WeatherBrush() => Weather.Code <= 1 && Weather.IsDay ? Ui.Rgb(0xFF, 0xD2, 0x7A) : Ui.Rgb(0xCF, 0xD3, 0xFF);
+        /// <summary>B1: on a light theme the fixed light colors can't be seen (standby showed just the time), so a theme color.</summary>
+        internal Brush WeatherBrush() => Features.NotchGuard.PillRules.WeatherBrushKey(_themeLight, Weather.Ok, Weather.Code, Weather.IsDay) is string key ? Ui.B(key)
+            : Weather.Code <= 1 && Weather.IsDay ? Ui.Rgb(0xFF, 0xD2, 0x7A) : Ui.Rgb(0xCF, 0xD3, 0xFF);
 
         private static StackPanel Row(params UIElement[] kids) => Ui.H(5, kids);
 
@@ -816,7 +823,7 @@ namespace WinNotch
         {
             var now = DateTime.Now;
             SetIdle("clock", now.ToString("HH:mm"));
-            SetIdle("date", now.ToString("ddd d MMM", Ro).Replace(".", ""));
+            SetIdle("date", Features.NotchGuard.PillRules.MiniDate(now, Ro));
             SetIdle("weather", Weather.Ok ? Math.Round(Weather.Temp) + "°" : "—");
             SetIdle("cpu", Math.Round(Stats.Cpu) + "%");
             SetIdle("ram", Stats.RamUsedGb.ToString("0.0", Ro) + " GB");
@@ -830,7 +837,7 @@ namespace WinNotch
 
             // small pill: time · date, song progress, a marker while the microphone is in use
             MiniTime.Text = now.ToString("HH:mm");
-            MiniDate.Text = now.ToString("ddd d MMM", Ro).Replace(".", "");
+            MiniDate.Text = Features.NotchGuard.PillRules.MiniDate(now, Ro);     // never empty: the time alone is a bug (B1)
             var mi = Now.Info;
             bool prog = mi.HasSession && mi.Playing && mi.Duration > TimeSpan.Zero;
             MiniProgress.Visibility = prog ? Visibility.Visible : Visibility.Collapsed;

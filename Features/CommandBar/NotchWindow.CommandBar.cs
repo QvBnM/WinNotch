@@ -237,6 +237,7 @@ namespace WinNotch
             }
             if (!_cmdOpen || _cmdLayer == null) return false;
             LayoutCommandBar();
+            NotchGuardLaidOut();                           // B1 hook (Features/NotchGuard): the bar checked once it is laid out
             return true;
         }
 
