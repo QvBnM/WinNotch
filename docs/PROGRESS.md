@@ -51,3 +51,14 @@
 
 ### Publicare
 - 0.6.16 (P20 + P21), un singur push pe `main` (12923df); release.yml run 16 verde (fum de două ori înainte de „Sign”); release v0.6.16 cu WinNotch.exe (SHA-256 67d7e994…854c) + WinNotch.exe.sig, semnătura ECDSA verificată cu cheia publică din `Services/Updater.cs`.
+
+## Rularea 5 — Curățenie + P23 Raft + P30 Căști/boxe (6 oct 2026)
+
+### Curățenie
+- Rândul de publicare 0.6.16 ajuns în `main`; `tests/WinNotch.Smoke/SmokeProgram.cs` împărțit pe zone (bază, alerte, Command Bar, context, clipboard; 63 de metode, aceleași), fără schimbări de comportament; CI run 36 verde, aceleași rânduri PASS (18 / 17 + 2 SKIP).
+
+### P23 Raft drag & drop
+- **Făcut:** spike în ADR 0011 — pastila închisă (WS_EX_TRANSPARENT) nu poate primi un drop (OLE o sare la WindowFromPoint) → **planul B**: fișierele se lasă pe notch-ul deschis, deschis și prin hover cât tragi (`ShelfDragHover`: tragerea adusă din afară nu mai e luată drept click). `Features/Shelf`: doar căi, max. 20 (al 21-lea refuzat), fără dubluri, păstrate în setări; dispărutele ies discret; rețea/unități mapate/symlink-uri/.lnk-.url spre rețea refuzate înainte de disc, fără iconița Shell; 7 acțiuni `shelf.*` (copiază calea, deschide folderul, zip, OCR, PNG↔JPG, scoate, golește) fără suprascriere (`FileMode.CreateNew`); tragerea în afară ca FileDrop; comutatorul „shelf” Experimental, oprit.
+- **Revizia R1:** 1 Major (drop-urile netratate pe notch-ul deschis lăsau efectul implicit cu Move), 2 Medii (symlink local spre rețea acceptat; imagine blocată/OCR → eroare de funcție, raftul oprit după 3), 7 Minore; reparate în a391dd3 + 3ba33da: Major, Medii, zip gol = eșec, stick scos nu golește raftul, overlay doar la DragEnter cu fișiere, SM_SWAPBUTTON citit rar, fumul oprește comutatorul la eșec; rămase (ADR): mutarea de fereastră peste pastilă o deschide, codarea PNG pentru OCR pe firul UI, teste SH27–33 pe text.
+- **CI:** run 37 și run 38 verzi din prima; fumul Raft o singură dată (AM oprit; cealaltă scrie SKIP): fișier local adăugat prin `smoke-shelf-add` → apare → „Copiază calea” → exact calea în clipboard → „Golește” → gol.
+- **Teste:** 616 C# (39 noi, SH1–SH39) + 23 extensie + fum 19 / 17 (+3 SKIP).
