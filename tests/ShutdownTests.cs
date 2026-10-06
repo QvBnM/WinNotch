@@ -250,9 +250,9 @@ namespace WinNotch
                   exitApp.IndexOf("LogShutdown(", StringComparison.Ordinal) < exitApp.IndexOf("MarkCleanExit()", StringComparison.Ordinal),
                   exitApp ?? "ExitApp nu a fost găsit");
 
-            Check("SD19", "Oprirea sesiunii Windows și eroarea fatală își scriu motivul",
+            Check("SD19", "Oprirea sesiunii Windows și eroarea fatală își scriu motivul (eroarea fatală îl și salvează)",
                   Norm(NoComments(app)).Contains("LogShutdown(Core.Diagnostics.ShutdownKind.WindowsShutdown)", StringComparison.Ordinal) &&
-                  Norm(NoComments(app)).Contains("LogShutdown(Core.Diagnostics.ShutdownKind.FatalError)", StringComparison.Ordinal));
+                  Norm(NoComments(app)).Contains("LogShutdown(Core.Diagnostics.ShutdownKind.FatalError, remember: true)", StringComparison.Ordinal));
 
             string coord = Norm(NoComments(Src("Core/Update/StartupCoordinator.cs")));
             Check("SD20", "Predarea către alt proces (revenire, mod sigur, a doua instanță) își scrie motivul în coordonator",

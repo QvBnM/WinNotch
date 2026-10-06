@@ -683,8 +683,12 @@ namespace WinNotch
             for (int i = 0; i < 3; i++) { StartupCoordinator.Run(G(c1), h1, false, "--safe-mode"); now = now.AddMinutes(1); }
             h1.Steps.Clear();
             var o1 = StartupCoordinator.Run(G(c1), h1, false, "--safe-mode");
+            // Steps without the log entries: these tests pin the ORDER of the real steps. That the hand-over also writes
+            // its reason in the log (P51c) is pinned separately, by SD20 / SD20b.
+            string RealSteps(FakeHost h) => string.Join("|", h.Steps.Where(x => x != "log"));
             Check("SC1", "Repornirea în modul sigur: mutex-ul se eliberează abia înainte de pornire, cu --safe-mode",
-                  o1 == StartupOutcome.HandedOver && string.Join("|", h1.Steps) == "release-mutex|start WinNotch.exe --safe-mode");
+                  o1 == StartupOutcome.HandedOver && RealSteps(h1) == "release-mutex|start WinNotch.exe --safe-mode" &&
+                  h1.Steps.Last() == "log");                 // motivul („Închidere: repornire în mod sigur”) e ultimul lucru scris
             var h2 = new FakeHost { ExePath = cexe };
             var o2 = StartupCoordinator.Run(G(c1), h2, true, "--safe-mode");
             now = now.AddMinutes(1);
@@ -693,7 +697,7 @@ namespace WinNotch
             var o3 = StartupCoordinator.Run(G(c1), h3, false, "--safe-mode");
             Check("SC2", "Revenirea: nota scrisă înaintea schimbării, apoi exe deblocat, schimbat, mutex eliberat, versiunea veche pornită",
                   o2 == StartupOutcome.ContinueSafe && o3 == StartupOutcome.HandedOver && c1.Note?.Refused == "0.6.9" &&
-                  string.Join("|", h3.Steps) == "unlock-exe|release-mutex|start WinNotch.exe" && File.ReadAllText(cexe) == "vechi");
+                  RealSteps(h3) == "unlock-exe|release-mutex|start WinNotch.exe" && h3.Steps.Last() == "log" && File.ReadAllText(cexe) == "vechi");
             now = t0; var c2 = new MemStore();
             var h4 = new FakeHost { ExePath = cexe, StartOk = false, MutexFree = false };
             for (int i = 0; i < 3; i++) { StartupCoordinator.Run(G(c2), new FakeHost { ExePath = cexe }, false, "--safe-mode"); now = now.AddMinutes(1); }
