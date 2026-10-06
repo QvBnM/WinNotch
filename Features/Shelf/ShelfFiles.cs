@@ -9,7 +9,8 @@ namespace WinNotch.Features.Shelf
     /// <summary>The kind of drive a path is on, as the shelf needs it.</summary>
     public enum ShelfDrive { Local, Removable, Network, Missing }
 
-    public enum ShelfEntry { None, File, Folder }
+    /// <summary>Link = the path itself or a folder on it is a symbolic link or a junction (R1: never followed, never on the shelf).</summary>
+    public enum ShelfEntry { None, File, Folder, Link }
 
     /// <summary>
     /// The little disk access the checks need (the real one in the app, a fake in the tests). Every call may be slow (a
@@ -50,10 +51,25 @@ namespace WinNotch.Features.Shelf
         {
             try
             {
-                if (File.Exists(path)) return ShelfEntry.File;
-                return Directory.Exists(path) ? ShelfEntry.Folder : ShelfEntry.None;
+                var kind = File.Exists(path) ? ShelfEntry.File : Directory.Exists(path) ? ShelfEntry.Folder : ShelfEntry.None;
+                return kind != ShelfEntry.None && LinkOnPath(path) ? ShelfEntry.Link : kind;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException) { return ShelfEntry.None; }
+        }
+
+        /// <summary>
+        /// R1: the path or one of its folders is a symbolic link or a junction (LinkTarget read, the link never followed): a
+        /// local name could lead to \\server\share. Other reparse points (OneDrive's cloud files) have no LinkTarget: fine.
+        /// </summary>
+        public static bool LinkOnPath(string path)
+        {
+            for (string p = path; !string.IsNullOrEmpty(p); p = Path.GetDirectoryName(p))
+            {
+                FileSystemInfo info = Directory.Exists(p) ? new DirectoryInfo(p) : new FileInfo(p);
+                if (!info.Exists) continue;
+                if ((info.Attributes & FileAttributes.ReparsePoint) != 0 && info.LinkTarget != null) return true;
+            }
+            return false;
         }
 
         public byte[] ReadHead(string path, int max)
@@ -136,7 +152,8 @@ namespace WinNotch.Features.Shelf
 
         private sealed class Entry { public string Full, Name; public bool Folder; }
 
-        public static ShelfFileResult Zip(string source, bool isFolder, CancellationToken ct, int maxEntries = MaxEntries, long maxBytes = MaxBytes)
+        /// <param name="open">Opens a file to read (tests: one that fails); null = a FileStream that lets others read and write.</param>
+        public static ShelfFileResult Zip(string source, bool isFolder, CancellationToken ct, int maxEntries = MaxEntries, long maxBytes = MaxBytes, Func<string, Stream> open = null)
         {
             // System.IO.Path, not ShelfPaths: the same code runs on the tests' temporary folders
             string folder = string.IsNullOrEmpty(source) ? null : Path.GetDirectoryName(source);
@@ -195,8 +212,8 @@ namespace WinNotch.Features.Shelf
                     {
                         token.ThrowIfCancellationRequested();
                         if (e.Folder) { zip.CreateEntry(e.Name); continue; }
-                        FileStream input;
-                        try { input = new FileStream(e.Full, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete); }
+                        Stream input;
+                        try { input = open != null ? open(e.Full) : new FileStream(e.Full, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete); }
                         catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException) { skipped++; continue; }
                         using (input)
                         {
@@ -226,6 +243,12 @@ namespace WinNotch.Features.Shelf
                 return ShelfFileResult.Fail("Arhiva nu a putut fi scrisă (fișierul început a fost șters).");
             }
             if (!made.Success) return made;
+            if (files == 0 && entries.Exists(x => !x.Folder))
+            {
+                // R1: nothing could be read (all locked): no empty zip passed off as done; it's ours, just created
+                try { File.Delete(made.Path); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+                return ShelfFileResult.Fail("Niciun fișier nu a putut fi citit (sunt folosite de alte aplicații?); nu am făcut arhiva.");
+            }
             return new ShelfFileResult
             {
                 Success = true, Path = made.Path, Files = files, Skipped = skipped,

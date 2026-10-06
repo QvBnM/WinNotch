@@ -74,6 +74,8 @@ namespace WinNotch.Features.Shelf
                     var (path, folder) = await Task.Run(() => Recheck(item, host.Files), ct);
                     if (path == null)
                     {
+                        if (!await Task.Run(() => ShelfPaths.IsGone(item.Path, host.Files), ct))
+                            return ActionResult.Failed("Unitatea elementului nu e conectată acum; rămâne în raft.");      // R1: an unplugged stick
                         if (host.Model.Remove(item.Id)) host.Changed();
                         return ActionResult.Failed("Elementul nu mai există pe acest PC; l-am scos din raft.");
                     }

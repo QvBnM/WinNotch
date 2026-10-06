@@ -40,10 +40,12 @@ namespace WinNotch.Smoke
             if (file.Length > SmokeMode.MaxShelfPath) Fail("Calea fișierului de test e prea lungă pentru comanda de fum (" + file.Length + " caractere).");
             Directory.CreateDirectory(dir);
             File.WriteAllText(file, "fișier de test pentru raft", new UTF8Encoding(false));
+            bool switchedOn = false;
             try
             {
                 int on = LogCount("Raft: pornit");
                 Command("toggle feature " + ShelfFeature);
+                switchedOn = true;
                 WaitFor(() => LogCount("Raft: pornit"), n => n > on, TimeSpan.FromSeconds(10), "„Raft: pornit” în log");
 
                 const string added = "Raft: adăugate 1, refuzate 0";
@@ -82,12 +84,16 @@ namespace WinNotch.Smoke
                 // back as before: switch off; and nothing of the path in the log
                 int off = LogCount("Raft: oprit.");
                 Command("toggle feature " + ShelfFeature);
+                switchedOn = false;
                 WaitFor(() => LogCount("Raft: oprit."), n => n > off, TimeSpan.FromSeconds(10), "„Raft: oprit.” în log");
                 if (LogCount(ShelfMarker) > 0 || LogCount(dir) > 0) Fail("Calea sau numele fișierului din raft a ajuns în log.txt.");
                 SettledIdle();
             }
             finally
             {
+                // R1: a failure half-way doesn't leave the switch on for the checks after it (the raft's references live only
+                // in the smoke folder's settings, which every run deletes first)
+                if (switchedOn && !_app.HasExited) { try { Command("toggle feature " + ShelfFeature); } catch (SmokeFailure) { } catch (IOException) { } }
                 try { Directory.Delete(dir, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             }
         }

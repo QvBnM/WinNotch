@@ -42,7 +42,12 @@ namespace WinNotch.Features.Shelf
             var info = new FileInfo(path);
             if (!info.Exists) throw new ShelfImageException("Imaginea nu mai există.");
             if (info.Length > MaxFileBytes) throw new ShelfImageException("Imaginea e prea mare (peste 100 MB).");
-            byte[] bytes = File.ReadAllBytes(path);                      // read once: no lock stays on the file
+            byte[] bytes;
+            try { bytes = File.ReadAllBytes(path); }                       // read once: no lock stays on the file
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is NotSupportedException)
+            {
+                throw new ShelfImageException("Imaginea nu a putut fi citită (e folosită de altă aplicație sau nu ai acces).");     // R1: not a feature error
+            }
             if (expect != ShelfImageFormat.None && ShelfPaths.Sniff(bytes) != expect)
                 throw new ShelfImageException(expect == ShelfImageFormat.Png ? "Fișierul nu e un PNG valid." : "Fișierul nu e un JPG valid.");
             keep = new MemoryStream(bytes, false);

@@ -274,6 +274,7 @@ namespace WinNotch.Features.Shelf
             }
             var kind = fs.Kind(path);
             if (kind == ShelfEntry.None) { path = null; return ShelfRefusal.Missing; }
+            if (kind == ShelfEntry.Link) { path = null; return ShelfRefusal.UnsafeShortcut; }      // R1: a symlink / junction could lead to a share
             isFolder = kind == ShelfEntry.Folder;
             if (!isFolder)
             {
@@ -288,6 +289,18 @@ namespace WinNotch.Features.Shelf
                 }
             }
             return ShelfRefusal.None;
+        }
+
+        /// <summary>
+        /// R1: does a shelf item leave the list for good? Only when its drive is here and the path no longer passes
+        /// <see cref="Check"/>; a stick that is just unplugged (drive missing) keeps its items for when it comes back.
+        /// </summary>
+        public static bool IsGone(string path, IShelfFileSystem fs)
+        {
+            if (TryNormalize(path, out var p, out _) != ShelfRefusal.None) return true;
+            if (fs == null) return false;
+            if (fs.DriveOf(p.Substring(0, 3)) == ShelfDrive.Missing) return false;
+            return Check(p, fs, out _, out _) != ShelfRefusal.None;
         }
 
         /// <summary>The extension in lowercase, with the dot ("" without one).</summary>

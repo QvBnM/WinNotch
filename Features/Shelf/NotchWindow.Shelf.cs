@@ -53,7 +53,9 @@ namespace WinNotch
         private Point? _shPressAt;
         private ShelfItem _shPressed;
         private readonly HashSet<string> _shRunning = new HashSet<string>(StringComparer.Ordinal);
-        private DragEventHandler _shDragEnter, _shDragOver, _shDrop;
+        private DragEventHandler _shDragEnter, _shDragOver, _shDrop, _shRefuse;
+        /// <summary>The primary (physical) button for GetAsyncKeyState: read when the switch goes on and when the notch closes, not every tick (R1).</summary>
+        private int _shPrimaryButton = 0x01;
 
         [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
         private const int SM_SWAPBUTTON = 23;
@@ -97,6 +99,7 @@ namespace WinNotch
                 {
                     _shModel.Load(S.Shelf);
                     _shDrawn = -1;
+                    ShelfReadPrimaryButton();
                     ShelfWireDrop(true);
                     ShelfEnsureToggle();
                     App.Log("Raft: pornit (" + _shModel.Count + " elemente).");
@@ -131,18 +134,19 @@ namespace WinNotch
         private bool ShelfDragHover(bool inside)
         {
             if (!_shOn) return false;
-            int button = GetSystemMetrics(SM_SWAPBUTTON) != 0 ? 0x02 : 0x01;          // the primary button (physical) for GetAsyncKeyState
-            return _shDrag.Update(inside, Native.GetAsyncKeyState(button) < 0);
+            return _shDrag.Update(inside, Native.GetAsyncKeyState(_shPrimaryButton) < 0);
         }
 
-        /// <summary>Hook at the end of Expand: the count in the header; opened by a drag → the shelf right away; gone items checked off the UI thread.</summary>
+        /// <summary>
+        /// Hook at the end of Expand: the count in the header; gone items checked off the UI thread. The overlay itself comes
+        /// only with a drag that carries files (DragEnter with FileDrop), not with any drag that opened the notch (R1).
+        /// </summary>
         private void ShelfOnOpen()
         {
             if (!_shOn) return;
             try
             {
                 ShelfUpdateToggle();
-                if (_shDrag.CarriedIn) ShelfShowPanel();
                 _ = ShelfPruneAsync();
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(ShelfActions.FeatureId, ex); }
@@ -156,7 +160,10 @@ namespace WinNotch
             _shDrag.Reset();
             _shPressAt = null;
             _shPressed = null;
+            ShelfReadPrimaryButton();
         }
+
+        private void ShelfReadPrimaryButton() => _shPrimaryButton = GetSystemMetrics(SM_SWAPBUTTON) != 0 ? 0x02 : 0x01;
 
         /// <summary>Hook in UpdateHeader: edit mode has its own buttons; the shelf steps aside.</summary>
         private void ShelfHeaderChanged()
@@ -177,18 +184,25 @@ namespace WinNotch
                 _shDragEnter = ShelfPreviewDragEnter;
                 _shDragOver = ShelfPreviewDragOver;
                 _shDrop = ShelfPreviewDrop;
+                _shRefuse = ShelfRefuseUnhandled;
                 Pill.AllowDrop = true;
                 Pill.AddHandler(PreviewDragEnterEvent, _shDragEnter);
                 Pill.AddHandler(PreviewDragOverEvent, _shDragOver);
                 Pill.AddHandler(PreviewDropEvent, _shDrop);
+                Pill.AddHandler(DragEnterEvent, _shRefuse);         // R1: bubbling, only what nobody handled
+                Pill.AddHandler(DragOverEvent, _shRefuse);
+                Pill.AddHandler(DropEvent, _shRefuse);
             }
             else if (!on && _shDrop != null)
             {
                 Pill.RemoveHandler(PreviewDragEnterEvent, _shDragEnter);
                 Pill.RemoveHandler(PreviewDragOverEvent, _shDragOver);
                 Pill.RemoveHandler(PreviewDropEvent, _shDrop);
+                Pill.RemoveHandler(DragEnterEvent, _shRefuse);
+                Pill.RemoveHandler(DragOverEvent, _shRefuse);
+                Pill.RemoveHandler(DropEvent, _shRefuse);
                 Pill.ClearValue(AllowDropProperty);
-                _shDragEnter = _shDragOver = _shDrop = null;
+                _shDragEnter = _shDragOver = _shDrop = _shRefuse = null;
             }
         }
 
@@ -203,6 +217,18 @@ namespace WinNotch
         /// <summary>A reference, so "link" when the source allows it, else "copy"; never "move" (the source would delete its file).</summary>
         private static DragDropEffects ShelfEffect(DragDropEffects allowed) =>
             (allowed & DragDropEffects.Link) != 0 ? DragDropEffects.Link : (allowed & DragDropEffects.Copy) != 0 ? DragDropEffects.Copy : DragDropEffects.None;
+
+        /// <summary>
+        /// R1: AllowDrop on the pill is inherited by everything in it, and a drop target that sets nothing gives the source
+        /// its default effect (with Move: text dragged from Word would be cut). Whatever nobody handled on the way up (text,
+        /// edit mode, an interactive alert) is refused here; text boxes handle their own text before it gets here.
+        /// </summary>
+        private void ShelfRefuseUnhandled(object sender, DragEventArgs e)
+        {
+            if (e.Handled) return;
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+        }
 
         private void ShelfPreviewDragEnter(object sender, DragEventArgs e)
         {
@@ -268,7 +294,8 @@ namespace WinNotch
             try
             {
                 var items = _shModel.Items;
-                var gone = await Task.Run(() => items.Where(i => ShelfPaths.Check(i.Path, LocalShelfFileSystem.Instance, out _, out _) != ShelfRefusal.None).Select(i => i.Id).ToList());
+                // R1: only when the drive is here and the file isn't; an unplugged stick keeps its items
+                var gone = await Task.Run(() => items.Where(i => ShelfPaths.IsGone(i.Path, LocalShelfFileSystem.Instance)).Select(i => i.Id).ToList());
                 foreach (var i in items) i.Exists = !gone.Contains(i.Id);
                 int n = _shModel.RemoveAll(gone);
                 if (n > 0) { App.Log("Raft: " + n + " elemente care nu mai există, scoase."); ShelfSave(); }
@@ -578,7 +605,11 @@ namespace WinNotch.Features.Shelf
         {
             BitmapSource img = await ShelfImages.LoadForOcrAsync(imagePath);
             ct.ThrowIfCancellationRequested();
-            return await Services.ScreenTools.RecognizeAsync(img);
+            try { return await Services.ScreenTools.RecognizeAsync(img); }
+            catch (Exception ex) when (ex is COMException || ex is System.IO.IOException || ex is UnauthorizedAccessException || ex is ArgumentException || ex is InvalidOperationException)
+            {
+                throw new ShelfImageException("Recunoașterea textului nu a reușit pentru această imagine.");      // R1: a fixed message, not a feature error
+            }
         }
 
         public Task<ShelfFileResult> ConvertImageAsync(string imagePath, ShelfImageFormat to, CancellationToken ct) => ShelfImages.ConvertAsync(imagePath, to, ct);

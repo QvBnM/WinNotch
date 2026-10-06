@@ -49,7 +49,13 @@ namespace WinNotch
             public int ChangedCount;
             public bool SetText(string text) { if (Busy) return false; Written.Add(text); return true; }
             public string OpenFolder(string folder) { Folders.Add(folder); return null; }
-            public Task<string> RecognizeTextAsync(string imagePath, CancellationToken ct) { Ocr.Add(imagePath); return Task.FromResult(OcrText); }
+            public string OcrError;
+            public Task<string> RecognizeTextAsync(string imagePath, CancellationToken ct)
+            {
+                Ocr.Add(imagePath);
+                if (OcrError != null) throw new ShelfImageException(OcrError);
+                return Task.FromResult(OcrText);
+            }
             public Task<ShelfFileResult> ConvertImageAsync(string imagePath, ShelfImageFormat to, CancellationToken ct)
             {
                 Converts.Add((imagePath, to));
@@ -423,6 +429,7 @@ namespace WinNotch
                   new[] { "smoke-shelf-add", "smoke-shelf-add   ", "smoke-shelf-addC:\\x", "smoke-shelf-add C:\\" + new string('a', 190), "smoke-shelf-add C:\\a\u0001b" }.All(l => SmokeMode.Parse(l) == null) &&
                   SmokeMode.ShelfItemPrefix == "shelf-item-" && SmokeMode.ShelfCopyPrefix == "shelf-copy-" && SmokeMode.ShelfToggleAutomationId == "shelf-toggle" && SmokeMode.MaxShelfPath == 180);
 
+            ShelfR1Tests();
             ShelfSourcePins();
         }
 
@@ -447,7 +454,7 @@ namespace WinNotch
                   Norm(NoComments(MethodBody(part, "private void ApplyShelfSwitch()"))).Contains("bool on = ShelfEnabled(); if (on == _shOn) return; _shOn = on;") &&
                   Norm(NoComments(MethodBody(part, "private void ShelfOff()"))).StartsWith("{ ShelfWireDrop(false); ShelfHidePanel();", StringComparison.Ordinal) &&
                   Count(partN, "Pill.AllowDrop = true;") == 1 && partN.Contains("Pill.ClearValue(AllowDropProperty);") && Count(partN, "AllowDrop") == 2 &&
-                  Count(partN, "Pill.AddHandler(") == 3 && Count(partN, "Pill.RemoveHandler(") == 3 &&
+                  Count(partN, "Pill.AddHandler(") == 6 && Count(partN, "Pill.RemoveHandler(") == 6 &&
                   Norm(NoComments(MethodBody(part, "private bool ShelfDragHover(bool inside)"))).StartsWith("{ if (!_shOn) return false;", StringComparison.Ordinal) &&
                   Norm(NoComments(MethodBody(part, "private void ShelfOnOpen()"))).StartsWith("{ if (!_shOn) return;", StringComparison.Ordinal) &&
                   Count(partN, "FeatureFlags.Current?.ReportError(ShelfActions.FeatureId, ex);") >= 5 && !partN.Contains("async void"));
@@ -493,7 +500,7 @@ namespace WinNotch
             string body = MethodBody(sp, "private static void Shelf()") ?? "";
             Check("SH34", "Testul de fum P23 rulează o singură dată (doar cu activity-manager oprit) și o spune; fișier local creat de test, „smoke-shelf-add”, elementul prin UI Automation, „Copiază calea” → exact calea în clipboard, „Golește” → gol, fișierul rămâne, nimic în log; repune starea",
                   sp.Contains("if (!_activityOn) Run(step = \"Raft") && sp.Contains("SKIP  Raft") && Src("tests/WinNotch.Smoke/WinNotch.Smoke.csproj").Contains("<Compile Include=\"SmokeShelf.cs\" />") &&
-                  Count(body, "Command(\"toggle feature \" + ShelfFeature);") == 2 && body.Contains("Command(\"smoke-shelf-add \" + file);") && body.Contains("File.WriteAllText(file,") &&
+                  Count(body, "Command(\"toggle feature \" + ShelfFeature);") == 3 && body.Contains("Command(\"smoke-shelf-add \" + file);") && body.Contains("File.WriteAllText(file,") &&
                   body.Contains("toggle.AsButton().Invoke();") && body.Contains("copy.AsButton().Invoke();") && body.Contains("WaitFor(GetClipboardText, t => t == expected,") &&
                   body.Contains("ShelfButton(SmokeMode.ShelfClearAutomationId).AsButton().Invoke();") && body.Contains("WaitFor(() => ShelfItems().Count, n => n == 0,") &&
                   body.Contains("if (!File.Exists(file)) Fail(") && body.Contains("LogCount(ShelfMarker) > 0") && body.Contains("Directory.Delete(dir, true)") &&
