@@ -139,6 +139,25 @@ namespace WinNotch.Features.Shelf
         }
 
         /// <summary>
+        /// Several items at once, for the actions that work on a group ("1,3,5", ids, or both; empty, "tot" or "all" = the
+        /// whole shelf). Always in the shelf's order, without duplicates; keys that name nothing are skipped.
+        /// </summary>
+        public IReadOnlyList<ShelfItem> FindMany(string keys)
+        {
+            var all = Items;
+            string k = keys?.Trim() ?? "";
+            if (k.Length == 0 || string.Equals(k, "tot", StringComparison.OrdinalIgnoreCase) || string.Equals(k, "all", StringComparison.OrdinalIgnoreCase))
+                return all;
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var part in k.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var item = Find(part);
+                if (item != null) ids.Add(item.Id);
+            }
+            return all.Where(x => ids.Contains(x.Id)).ToList();
+        }
+
+        /// <summary>
         /// From settings.json: each entry checked again for its form only (no disk access at startup), network paths,
         /// broken ones and duplicates dropped, at most 20. A folder is saved with a "\" at the end.
         /// </summary>
@@ -160,6 +179,50 @@ namespace WinNotch.Features.Shelf
         public List<string> ToSettings()
         {
             lock (_lock) return _items.Select(x => x.IsFolder && x.Path.Length > 3 ? x.Path + "\\" : x.Path).ToList();
+        }
+    }
+
+    /// <summary>
+    /// Which rows of the shelf are ticked (P23.2): ids only, kept in memory while WinNotch runs (never in settings.json).
+    /// Nothing ticked means "the whole shelf", so the buttons work without ticking anything first. UI thread only.
+    /// </summary>
+    public sealed class ShelfSelection
+    {
+        private readonly HashSet<string> _ids = new HashSet<string>(StringComparer.Ordinal);
+
+        public int Count => _ids.Count;
+        public bool Has(string id) => id != null && _ids.Contains(id);
+
+        /// <summary>Ticks or unticks one row; true when it is ticked afterwards.</summary>
+        public bool Toggle(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return false;
+            if (_ids.Remove(id)) return false;
+            _ids.Add(id);
+            return true;
+        }
+
+        public void Clear() => _ids.Clear();
+
+        /// <summary>Forgets the ids that left the shelf (removed, gone from the disk); true when something changed.</summary>
+        public bool Prune(IEnumerable<ShelfItem> items)
+        {
+            var live = new HashSet<string>((items ?? Enumerable.Empty<ShelfItem>()).Select(x => x.Id), StringComparer.Ordinal);
+            return _ids.RemoveWhere(id => !live.Contains(id)) > 0;
+        }
+
+        /// <summary>The items the buttons act on: the ticked ones in the shelf's order, or all of them when none is ticked.</summary>
+        public IReadOnlyList<ShelfItem> Chosen(IReadOnlyList<ShelfItem> items)
+        {
+            items ??= Array.Empty<ShelfItem>();
+            return _ids.Count == 0 ? items : items.Where(x => _ids.Contains(x.Id)).ToList();
+        }
+
+        /// <summary>The "elemente" parameter for the actions: the ticked ids, or null (the action then takes the whole shelf).</summary>
+        public string Keys(IReadOnlyList<ShelfItem> items)
+        {
+            var chosen = _ids.Count == 0 ? null : Chosen(items);
+            return chosen == null || chosen.Count == 0 ? null : string.Join(",", chosen.Select(x => x.Id));
         }
     }
 

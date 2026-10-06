@@ -66,6 +66,10 @@ namespace WinNotch.Features.Smoke
         public const string ShelfCopyPrefix = "shelf-copy-";
         /// <summary>P23: an item's „Scoate din raft” button = this prefix + its id.</summary>
         public const string ShelfRemovePrefix = "shelf-remove-";
+        /// <summary>P23: an item's tick (chosen for „Copiază selecția”) = this prefix + its id.</summary>
+        public const string ShelfSelectPrefix = "shelf-select-";
+        /// <summary>P23: „Copiază selecția” / „Copiază tot” in the shelf's header (its Name is the label).</summary>
+        public const string ShelfCopyFilesAutomationId = "shelf-copy-files";
         /// <summary>P23: „Golește” in the shelf's header.</summary>
         public const string ShelfClearAutomationId = "shelf-clear";
         /// <summary>P23: the last result under the shelf's title (its Name is the text; only while shown).</summary>

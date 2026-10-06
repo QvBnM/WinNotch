@@ -14,6 +14,12 @@ namespace WinNotch.Features.Shelf
         IShelfFileSystem Files { get; }
         /// <summary>UI thread: the text into the clipboard as WinNotch's own write; false when the clipboard is busy.</summary>
         bool SetText(string text);
+        /// <summary>
+        /// UI thread: the files on the clipboard as a copy, exactly like Ctrl+C in Explorer (so Ctrl+V in the folder you
+        /// want does the copying, with Windows' own progress and its own question when a name is taken). Nothing is
+        /// written to the disk here; false when the clipboard is busy.
+        /// </summary>
+        bool SetFiles(IReadOnlyList<string> paths);
         /// <summary>UI thread: opens a local folder (already checked) through Shell.Open; null when done, else a short Romanian reason.</summary>
         string OpenFolder(string folder);
         /// <summary>The text in a local image (Windows' own OCR, as Win+Alt+T); null = Windows has no OCR language; "" = no text.</summary>
@@ -38,17 +44,25 @@ namespace WinNotch.Features.Shelf
         public const string ElementParam = "element";
 
         public const string CopyPathId = "shelf.copy-path", OpenFolderId = "shelf.open-folder", ZipId = "shelf.zip", OcrId = "shelf.ocr",
-            ConvertId = "shelf.convert-image", RemoveId = "shelf.remove", ClearId = "shelf.clear";
+            ConvertId = "shelf.convert-image", RemoveId = "shelf.remove", ClearId = "shelf.clear", CopyFilesId = "shelf.copy-files";
 
-        public static readonly IReadOnlyList<string> AllIds = new[] { CopyPathId, OpenFolderId, ZipId, OcrId, ConvertId, RemoveId, ClearId };
+        /// <summary>The parameter of the actions on a group: ticked ids or positions ("1,3,5"), empty = the whole shelf.</summary>
+        public const string ElementsParam = "elemente";
+        /// <summary>20 ids of 12 characters and their commas, with room to spare.</summary>
+        public const int ElementsMaxLength = 280;
+
+        public static readonly IReadOnlyList<string> AllIds = new[] { CopyPathId, OpenFolderId, ZipId, OcrId, ConvertId, RemoveId, ClearId, CopyFilesId };
 
         /// <summary>Segoe Fluent / MDL2 glyphs (the app's icon font).</summary>
         internal const string GShelf = "", GCopy = "", GFolder = "", GZip = "", GText = "", GConvert = "",
-            GRemove = "", GClear = "", GFile = "", GFolderItem = "", GImage = "", GDocument = "";
+            GRemove = "", GClear = "", GFile = "", GFolderItem = "", GImage = "", GDocument = "",
+            GCopyFiles = "", GTicked = "", GUnticked = "";
 
         public static readonly TimeSpan ZipTimeout = TimeSpan.FromMinutes(10), ImageTimeout = TimeSpan.FromSeconds(60);
 
         private const string Busy = "Clipboard-ul e folosit de altă aplicație; încearcă din nou.";
+        private const string NoneLeft = "Niciun element nu mai există pe acest PC; le-am scos din raft.";
+        private const string Offline = "Unitatea elementelor nu e conectată acum; rămân în raft.";
         private const string Gone = "Elementul nu mai e în raft.";
         private const string Empty = "Raftul e gol.";
 
@@ -142,6 +156,23 @@ namespace WinNotch.Features.Shelf
                     Aliases = new[] { "scoate din raft", "remove from shelf" }, Category = Category, Icon = GRemove, FeatureId = FeatureId,
                     Parameters = new[] { Element() }, UnavailableMessage = Empty,
                 },
+                new ActionDescriptor(CopyFilesId, "Raft: copiază fișierele (apoi Ctrl+V unde le vrei)", async (args, ct) =>
+                {
+                    var chosen = host.Model.FindMany(args.GetText(ElementsParam));
+                    if (chosen.Count == 0) return ActionResult.Failed(Empty);
+                    // every path checked again off the UI thread (a sleeping stick can take seconds); the UI thread comes back after
+                    var checkup = await Task.Run(() => CheckMany(chosen, host.Files), ct);
+                    if (checkup.Gone.Count > 0 && host.Model.RemoveAll(checkup.Gone) > 0) host.Changed();
+                    if (checkup.Paths.Count == 0) return ActionResult.Failed(checkup.Away > 0 ? Offline : NoneLeft);
+                    if (!host.SetFiles(checkup.Paths)) return ActionResult.Failed(Busy);
+                    return ActionResult.Ok(CopiedMessage(checkup.Paths.Count, checkup.Gone.Count + checkup.Away));
+                }, Any)
+                {
+                    Aliases = new[] { "copiază fișierele", "copiază selecția", "copiază tot", "copy files", "copy selection" },
+                    Category = Category, Icon = GCopyFiles, FeatureId = FeatureId, RequiresUiThread = true,
+                    Parameters = new[] { new ActionParameter { Name = ElementsParam, Title = "Elementele din raft", Kind = ParamKind.Text, MaxLength = ElementsMaxLength, Required = false } },
+                    UnavailableMessage = Empty,
+                },
                 new ActionDescriptor(ClearId, "Raft: golește raftul (fișierele rămân pe disc)", (args, ct) =>
                 {
                     int n = host.Model.Clear();
@@ -154,6 +185,41 @@ namespace WinNotch.Features.Shelf
                     UnavailableMessage = Empty,
                 },
             };
+        }
+
+        /// <summary>What <see cref="CopyFilesId"/> found: the paths that still pass, the ids to drop, how many wait for their drive.</summary>
+        private readonly struct ManyCheck
+        {
+            public ManyCheck(List<string> paths, List<string> gone, int away) { Paths = paths; Gone = gone; Away = away; }
+            public List<string> Paths { get; }
+            /// <summary>Ids of items that are no longer on this PC: they leave the shelf.</summary>
+            public List<string> Gone { get; }
+            /// <summary>Items on a drive that is not plugged in now: they stay on the shelf, untouched.</summary>
+            public int Away { get; }
+        }
+
+        /// <summary>Off the UI thread: <see cref="Recheck"/> for a group, in the shelf's order.</summary>
+        private static ManyCheck CheckMany(IReadOnlyList<ShelfItem> items, IShelfFileSystem fs)
+        {
+            var paths = new List<string>();
+            var gone = new List<string>();
+            int away = 0;
+            foreach (var item in items)
+            {
+                var (path, _) = Recheck(item, fs);
+                if (path != null) paths.Add(path);
+                else if (ShelfPaths.IsGone(item.Path, fs)) gone.Add(item.Id);
+                else away++;
+            }
+            return new ManyCheck(paths, gone, away);
+        }
+
+        /// <summary>The sentence after a copy: how many went on the clipboard, how many were left out (never a name).</summary>
+        internal static string CopiedMessage(int copied, int skipped)
+        {
+            string s = copied == 1 ? "Un fișier pe clipboard · dă Ctrl+V unde îl vrei" : copied + " fișiere pe clipboard · dă Ctrl+V unde le vrei";
+            if (skipped > 0) s += skipped == 1 ? " (unul sărit)" : " (" + skipped + " sărite)";
+            return s;
         }
 
         /// <summary>The item's path checked again like a drop (drive, existence, shortcut); null when it no longer passes.</summary>
