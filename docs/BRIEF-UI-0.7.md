@@ -222,6 +222,73 @@ re-afișează imediat (anti-buclă).
 **Verificare manuală:** pornește pauza pentru ochi, trage un fișier peste notch → notch-ul se deschide cu Raftul gata
 de drop. Repetă cu alerta de volum și cu cea de actualizare.
 
+## P51c — De ce s-a închis aplicația singură
+
+**Problema raportată:** aplicația s-a închis fără ca utilizatorul să aleagă „Ieșire”. Nu se știe de ce — asta e
+prima problemă de rezolvat. Sarcina are două părți: **(1) aflăm cauza**, **(2) facem ca pe viitor să se vadă imediat**.
+
+### 1. Investigația (întâi asta, înainte de orice cod)
+
+Se cere utilizatorului `log.txt` din `%AppData%\WinNotch\` și se caută, în ordine:
+- `Eroare fatală` / `Eroare neprevăzută` (`App.xaml.cs`, handler-ele de excepții) — o excepție pe un fir care nu e cel
+  de UI închide procesul fără nimic pe ecran;
+- `StartupGuard` / `rollback` / `startup.json` — o repornire monitorizată sau o revenire automată poate închide procesul;
+- `MarkCleanExit` — dacă lipsește înainte de închidere, procesul **nu** a ieșit curat;
+- rândurile de la funcțiile cu comutator (raft, audio-switch, quick actions, notch-guard): `ReportError` de 3 ori în
+  10 minute oprește o funcție, dar nu aplicația — dacă apare, e un indiciu de instabilitate în aceeași zonă;
+- ultima linie scrisă înainte de gol: spune ce rula în acel moment.
+
+Se verifică și Event Viewer din Windows (Windows Logs → Application), evenimentele `.NET Runtime` și
+`Application Error` cu `WinNotch.exe`: acolo apare excepția exactă și modulul, chiar dacă log-ul nostru nu a apucat
+să scrie nimic.
+
+Ipoteze de verificat în cod, în ordinea probabilității:
+1. **Excepție pe un fir de fundal** (Task fără `await`, `async void`, un handler de eveniment WinRT/WMI/COM) —
+   `AppDomain.CurrentDomain.UnhandledException` o scrie în log, dar procesul tot moare. Se caută `async void` și
+   `Task.Run` fără `try/catch` în `Features/` și `Services/`.
+2. **Excepție în `Dispatcher` în timpul unei animații sau al unui timer** — `DispatcherUnhandledException` o marchează
+   `Handled = true`, deci ar trebui să supraviețuiască; dacă vine de pe alt fir, nu.
+3. **Mutex-ul de instanță unică** (`App.xaml.cs:76-79`): o a doua pornire (update, repornire, `--smoke`) poate închide
+   instanța greșită.
+4. **Actualizarea automată**: `StartupCoordinator` / `Rollback` închid procesul ca să schimbe fișierele. Dacă pasul
+   următor eșuează, aplicația rămâne închisă. Se verifică `startup.json` și `rollback.json`.
+5. **Un `Shutdown()` pe o cale de eroare** — `App.xaml.cs:58`, `:63`, `:76`, `:160`: toate trebuie să scrie în log
+   motivul înainte să închidă.
+
+### 2. Reparația (indiferent de cauză)
+
+**Jurnal de închidere.** Orice ieșire din proces scrie o ultimă linie, fixă, cu motivul:
+`App.Log("Închidere: <motiv>")` — motivele fiind cuvinte fixe („cerere utilizator (tray)”, „actualizare”,
+„revenire automată”, „a doua instanță”, „mod ajutător”, „eroare fatală”, „Windows se închide”). Se adaugă în:
+`ExitApp()` (`App.xaml.cs:350`), fiecare `Shutdown(...)` (`:58`, `:63`, `:76`, `:160`), `SessionEnding`
+(dacă nu există, se adaugă), și pe calea de actualizare.
+
+**Nicio închidere tăcută.** Dacă procesul se termină fără una dintre liniile de mai sus, la următoarea pornire se
+scrie `Închidere anterioară: neexplicată` și, dacă s-a întâmplat de două ori la rând, notch-ul arată o alertă:
+„WinNotch s-a închis singur. Detalii în log.” cu butonul „Deschide log-ul”. Se refolosește `StartupGuard`, care
+numără deja închiderile bruște — nu se face un sistem paralel.
+
+**Excepțiile de pe orice fir.** `TaskScheduler.UnobservedTaskException` se abonează (azi nu e) și se scrie în log;
+`AppDomain.UnhandledException` scrie și `ToString()`-ul complet, nu doar mesajul. În `Features/*` orice `async void`
+primește `try/catch` cu `ReportError(featureId, ex)`.
+
+**Repornire în loc de moarte.** Pentru excepțiile nefatale venite de la o funcție cu comutator, funcția se oprește
+(mecanismul existent, 3 erori în 10 minute), aplicația rămâne pornită. Doar o eroare în nucleu (UI, settings)
+justifică închiderea, și atunci se scrie motivul.
+
+### Teste
+
+- `Core/Diagnostics/ShutdownReason` (pur): fiecare motiv are un text fix; „neexplicată” apare doar când lipsesc toate.
+- Test: după o închidere marcată, pornirea următoare nu raportează „neexplicată”.
+- Test: două închideri neexplicate la rând → se cere alerta (regulă pură, nu UI).
+- Test de non-regresie: `ExitApp` scrie motivul **și** apelează `MarkCleanExit()`.
+
+### Verificare manuală
+
+- Ieșire din tray → în log apare „Închidere: cerere utilizator (tray)”.
+- Închiderea Windows-ului → „Închidere: Windows se închide”, fără alertă la pornirea următoare.
+- Omorârea procesului din Task Manager → la pornire apare „Închidere anterioară: neexplicată”; a doua oară, alerta.
+
 ## P52 — Fereastra WinNotch, redesign
 
 **Comutator:** `window-v2`, `Experimental`, `DefaultOn = false`, până e gata. Cod nou în `Features/WindowV2/`.
@@ -298,7 +365,7 @@ Cine deschide fereastra recunoaște instant obiectul din marginea ecranului. Ast
 
 ## Ordinea și livrarea
 
-1. **P51** + **P51b** primele (reparații, se simt imediat, risc mic).
+1. **P51c** primul (investigația: fără ea nu știm dacă restul se construiește pe ceva instabil), apoi **P51** + **P51b**.
 2. **P50** al doilea (vizual, comutator, ușor de comparat).
 3. **P52** ultimul (cel mai mare).
 
