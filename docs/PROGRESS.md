@@ -102,4 +102,6 @@
   verificat la primul build pe Windows (`build.bat`) și de făcut verificările manuale noi P23.20–P23.23.
 - **Abateri:** fără selector de folder în WinNotch (ales de autor: clipboard + `Ctrl+V`), deci fără motor de copiere
   propriu și fără acțiune `Confirm`.
+- **Publicare:** 0.6.19 (versiunea, `RELEASE_NOTES.md`, istoricul din `DOCUMENTATIE.md` și „Noutăți” din `README.md`);
+  release-ul îl face GitHub Actions la push-ul pe `main`.
 
