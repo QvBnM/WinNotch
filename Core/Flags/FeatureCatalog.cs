@@ -45,6 +45,8 @@ namespace WinNotch.Core.Flags
         public const string QuickActions = "quick-actions";
         /// <summary>Features/SmartClipboard: same id as SmartClipboardActions.FeatureId (the tests check they match).</summary>
         public const string SmartClipboard = "smart-clipboard";
+        /// <summary>Features/Shelf: same id as ShelfActions.FeatureId (the tests check they match).</summary>
+        public const string Shelf = "shelf";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -67,6 +69,9 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Experimental, false),
             // P21: off by default; off = the Clipboard widget exactly as before, nothing recognized, no actions available
             new FeatureInfo(SmartClipboard, "Smart Clipboard", "Recunoaște ce copiezi (JSON, link, culoare, e-mail, IP, cale, JWT, telefon) și pune butoane mici în widget-ul Clipboard: formatează, curăță link-ul, decodează. Nimic din ce copiezi nu ajunge în log.",
+                            FeatureStage.Experimental, false),
+            // P23: off by default; off = no drop on the notch, no "Raft" button, the hover exactly as before
+            new FeatureInfo(Shelf, "Raft", "Tragi fișiere peste notch (se deschide singur cât tragi) și le ții la îndemână: copiază calea, deschide folderul, zip, text din imagine (OCR), PNG ↔ JPG. Doar căi locale, cel mult 20.",
                             FeatureStage.Experimental, false),
         };
 

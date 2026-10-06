@@ -126,6 +126,7 @@ namespace WinNotch
             Features.Context.ContextStartup.Start(_notch, Log);       // what the user is doing now (P12); off with its switch
             _notch.StartQuickActions();                                // P20: buttons under the pill by context; idle with its switch off
             _notch.StartSmartClipboard();                              // P21: chips in the Clipboard widget; idle with its switch off
+            _notch.StartShelf();                                       // P23: the shelf (drops on the open notch); idle with its switch off
             StartHealthTimer();
         }
 
@@ -232,6 +233,7 @@ namespace WinNotch
                 Features.CommandBar.SettingsActions.Register(registry, new Features.CommandBar.AppSettingsHost(this));
                 Features.QuickActions.QuickActionsActions.Register(registry, new NotchQuickActionsHost(_notch));
                 Features.SmartClipboard.SmartClipboardActions.Register(registry, new Features.SmartClipboard.NotchSmartClipboardHost(_notch), _notch.SmartClipboardCache);
+                Features.Shelf.ShelfActions.Register(registry, new Features.Shelf.NotchShelfHost(_notch));
                 Core.Actions.ActionRegistry.Current = registry;
             }
             catch (Exception ex) { Log("Acțiuni: înregistrarea a eșuat: " + ex.GetType().Name); }

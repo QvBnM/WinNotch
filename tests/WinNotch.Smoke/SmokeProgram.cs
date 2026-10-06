@@ -41,9 +41,13 @@ namespace WinNotch.Smoke
     /// widget ("smoke-clipboard-page on"), a JSON copied by the test; with "smart-clipboard" off no chips, switched on the
     /// chip "Formatează" ("sc-clipboard.format-json"), a click through the registry, and the clipboard then holds the same
     /// JSON indented (the chips follow it: "Compactează", no loop); the JSON never reaches the log.
+    /// P23, once (only on the run with the Activity Manager off; the other run prints SKIP): with "shelf" on, a local file
+    /// made by the test goes through the drop's checks ("smoke-shelf-add"), shows in the shelf (UI Automation,
+    /// "shelf-item-&lt;id&gt;"), „Copiază calea” runs through the registry and the clipboard holds exactly its path, „Golește”
+    /// empties the shelf (the file stays); the path never reaches the log.
     /// log.txt is copied to the artifacts folder after every run; on a failure also a screenshot and the notch's state.
     /// This file: Main, the order of the checks, the shared helpers and the basic checks; the areas are in SmokeAlerts.cs,
-    /// SmokeCommandBar.cs, SmokeContext.cs (P27, P20) and SmokeClipboard.cs (P21), the same partial class.
+    /// SmokeCommandBar.cs, SmokeContext.cs (P27, P20), SmokeClipboard.cs (P21) and SmokeShelf.cs (P23), the same partial class.
     /// </summary>
     public static partial class SmokeProgram
     {
@@ -101,6 +105,8 @@ namespace WinNotch.Smoke
                     : "Quick Actions: întâlnire cu căști → butoanele sub pastilă; click pe „Mută / pornește microfonul” prin registru, cu rezultatul în rând; fără sugestii nesolicitate", QuickActions);
                 if (!_activityOn) Run(step = "Smart Clipboard: un JSON copiat → chip-ul „Formatează” în widget-ul Clipboard; click prin registru → JSON-ul formatat în clipboard", SmartClipboard);
                 else Console.WriteLine("SKIP  Smart Clipboard (rulează o singură dată, în rularea cu activity-manager oprit)");
+                if (!_activityOn) Run(step = "Raft: un fișier local adăugat ca la tragere → apare în raft; „Copiază calea” prin registru → exact calea în clipboard; „Golește” → raftul gol", Shelf);
+                else Console.WriteLine("SKIP  Raft (rulează o singură dată, în rularea cu activity-manager oprit)");
                 Run(step = "Command Bar oprit: Win+Alt+Space nu deschide nimic", CommandBarOff);
                 Run(step = "Command Bar: se deschide, „volum” găsește un rezultat, o alertă nu ia pastila, Esc închide și focusul revine", CommandBarSearchAndEscape);
                 Run(step = "Command Bar: Enter pe „settings.position” (sigură) deschide Setări în fereastra WinNotch", CommandBarRunsAction);

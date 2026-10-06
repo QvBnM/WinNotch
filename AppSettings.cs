@@ -27,7 +27,6 @@ namespace WinNotch
         public double Lat { get; set; } = 44.4268;
         public double Lon { get; set; } = 26.1025;
         public string Note { get; set; } = "";
-        public List<string> Shelf { get; set; } = new List<string>();
         /// <summary>Private calendar link (.ics) from Google Calendar or Outlook, for "what's next".</summary>
         public string CalendarIcs { get; set; } = "";
         public bool Lyrics { get; set; } = true;
@@ -124,7 +123,7 @@ namespace WinNotch
                         s.CustomThemes ??= new List<ThemePalette>();
                         if (s.Accent == "#F5A524") s.Accent = "";          // old default = the theme's own accent now
                         if (s.ThemeMode != "light" && s.ThemeMode != "auto") s.ThemeMode = "dark";
-                        s.Shelf ??= new List<string>();
+                        s.NormalizeShelf();                  // P23 (Features/Shelf)
                         s.Workspaces ??= new List<Services.Workspace>();
                         s.PinnedClips ??= new List<string>();
                         s.NormalizeFeatures();

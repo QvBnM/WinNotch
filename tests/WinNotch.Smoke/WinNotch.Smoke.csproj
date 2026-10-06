@@ -20,6 +20,7 @@
     <Compile Include="SmokeCommandBar.cs" />
     <Compile Include="SmokeContext.cs" />
     <Compile Include="SmokeClipboard.cs" />
+    <Compile Include="SmokeShelf.cs" />
     <!-- the same status format and file names as the app -->
     <Compile Include="..\..\Features\Smoke\SmokeMode.cs" />
   </ItemGroup>

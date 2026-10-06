@@ -107,6 +107,9 @@ namespace WinNotch
                 case SmokeCommandKind.ClipboardPage:
                     SmokeClipboardPage(c.Argument == "on");
                     break;
+                case SmokeCommandKind.ShelfAdd:
+                    SmokeShelfAdd(c.Argument);
+                    break;
             }
             UpdateSmokeStatus();
         }
@@ -235,6 +238,18 @@ namespace WinNotch
             }
             RelayoutPanel();
             App.Log("Test de fum: pagina cu widget-ul Clipboard " + (on ? "adăugată și arătată." : "scoasă."));
+        }
+
+        /// <summary>
+        /// P23 "smoke-shelf-add &lt;path&gt;": a file the test made goes on the shelf through the same checks as a drop (UI
+        /// Automation can't do an OLE drag). The path is never logged. Only smoke mode runs these commands.
+        /// </summary>
+        private void SmokeShelfAdd(string path)
+        {
+            if (!SmokeMode.On) return;                     // test mode only, whoever calls it
+            if (!_shOn) { App.Log("Test de fum: raftul e oprit; comanda e ignorată."); return; }
+            App.Log("Test de fum: un fișier pentru raft (aceleași verificări ca la tragere).");
+            _ = ShelfAddPathsAsync(new[] { path });
         }
 
         private void StopSmoke()

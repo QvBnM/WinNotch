@@ -142,6 +142,7 @@ namespace WinNotch
             _editBtn.Visibility = SettingsBtn.Visibility = HeaderClock.Visibility = Editing ? Visibility.Collapsed : Visibility.Visible;
             _addWidgetBtn.IsEnabled = _pane is WidgetPage;
             _addWidgetBtn.Opacity = _pane is WidgetPage ? 1 : 0.4;
+            ShelfHeaderChanged();                      // P23 hook (Features/Shelf): edit mode takes the shelf's place
             QuickActionsHeaderChanged();               // P20 hook (Features/QuickActions): edit mode takes the place of the row
         }
 
@@ -330,6 +331,7 @@ namespace WinNotch
             double h = _pane?.PanelHeight ?? 310;
             if (_gallery != null) h = Math.Max(h, 460);
             if (_sizes != null) h = Math.Max(h, 400);
+            h = Math.Max(h, ShelfPanelHeight());       // P23 hook (Features/Shelf): room for the shelf's overlay, 0 when it's closed
             if (_banner != null) h += 22;              // room for the note under the page
             h += QuickActionsExtraHeight();            // P20 hook (Features/QuickActions): room for the row of buttons, 0 without it
             return h;

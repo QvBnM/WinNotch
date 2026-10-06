@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace WinNotch.Features.Smoke
 {
-    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage, FakeMeeting, ClipboardPage }
+    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage, FakeMeeting, ClipboardPage, ShelfAdd }
 
     /// <summary>One line of smoke-commands.txt, checked.</summary>
     public sealed class SmokeCommand
@@ -17,6 +17,7 @@ namespace WinNotch.Features.Smoke
         public int Number { get; init; }
         // P20: for FakeMeeting, Argument is the playback device ("Headphones"…; "" = back to the real context)
         // P21: for ClipboardPage, Argument is "on" (add the test page with the Clipboard widget and show it) or "off" (remove it)
+        // P23: for ShelfAdd, Argument is the path of a file the test made, exactly as written (its case kept)
         /// <summary>P27: the page id for <see cref="SmokeCommandKind.SetContextPage"/> ("" = „—”).</summary>
         public string Page { get; init; } = "";
     }
@@ -55,6 +56,24 @@ namespace WinNotch.Features.Smoke
         public const string SmartClipMessageAutomationId = "sc-message";
         /// <summary>P21: the id of the page "smoke-clipboard-page on" adds (in the smoke folder's settings only).</summary>
         public const string SmokeClipboardPageId = "smoke-clipboard";
+        /// <summary>P23: the "Raft" button in the open notch's header (only with the "shelf" switch on).</summary>
+        public const string ShelfToggleAutomationId = "shelf-toggle";
+        /// <summary>P23: the shelf's overlay over the page (only while it is open).</summary>
+        public const string ShelfPanelAutomationId = "shelf-panel";
+        /// <summary>P23: an item's name in the shelf = this prefix + its id (12 hex digits); its Name is the file's name.</summary>
+        public const string ShelfItemPrefix = "shelf-item-";
+        /// <summary>P23: an item's „Copiază calea” button = this prefix + its id.</summary>
+        public const string ShelfCopyPrefix = "shelf-copy-";
+        /// <summary>P23: an item's „Scoate din raft” button = this prefix + its id.</summary>
+        public const string ShelfRemovePrefix = "shelf-remove-";
+        /// <summary>P23: „Golește” in the shelf's header.</summary>
+        public const string ShelfClearAutomationId = "shelf-clear";
+        /// <summary>P23: the last result under the shelf's title (its Name is the text; only while shown).</summary>
+        public const string ShelfMessageAutomationId = "shelf-message";
+        /// <summary>P23: "smoke-shelf-add" takes a path of at most this many characters.</summary>
+        public const int MaxShelfPath = 180;
+        private const string ShelfAddCommand = "smoke-shelf-add";
+
         /// <summary>Bigger files are ignored (and deleted): the commands are a few short lines.</summary>
         public const int MaxFileBytes = 4096;
         public const int MaxLines = 20;
@@ -97,12 +116,20 @@ namespace WinNotch.Features.Smoke
         /// page by context (P27): "fake-context &lt;category|none&gt;" (into the context engine's snapshot) and
         /// "set-context-page &lt;category&gt; &lt;page id|none&gt;", and for Quick Actions (P20): "fake-meeting
         /// &lt;headphones|speakers|bluetooth|none&gt;" (a meeting with that output, into the context engine's snapshot), and for
-        /// Smart Clipboard (P21): "smoke-clipboard-page &lt;on|off&gt;" (a page with the Clipboard widget, shown / removed). Case and
-        /// extra spaces don't matter; anything else is null (ignored).
+        /// Smart Clipboard (P21): "smoke-clipboard-page &lt;on|off&gt;" (a page with the Clipboard widget, shown / removed), and
+        /// for the shelf (P23): "smoke-shelf-add &lt;path&gt;" (a file the test made, added like a drop; the path keeps its
+        /// case, at most <see cref="MaxShelfPath"/> characters, no control characters). Case and extra spaces don't matter;
+        /// anything else is null (ignored).
         /// </summary>
         public static SmokeCommand Parse(string line)
         {
             if (string.IsNullOrWhiteSpace(line) || line.Length > 200) return null;
+            string raw = line.Trim();
+            if (raw.StartsWith(ShelfAddCommand, StringComparison.OrdinalIgnoreCase) && raw.Length > ShelfAddCommand.Length && char.IsWhiteSpace(raw[ShelfAddCommand.Length]))
+            {
+                string path = raw.Substring(ShelfAddCommand.Length).Trim();
+                return path.Length > 0 && path.Length <= MaxShelfPath && !path.Any(char.IsControl) ? new SmokeCommand { Kind = SmokeCommandKind.ShelfAdd, Argument = path } : null;
+            }
             var w = line.Trim().ToLowerInvariant().Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
             if (w.Length == 2 && w[0] == "post-alert")
             {
