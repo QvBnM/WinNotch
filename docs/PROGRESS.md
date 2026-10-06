@@ -153,6 +153,12 @@
 - **Teste:** 35 noi (SD1–SD32, cu SD6b/6c, SD20b/20c, SD25b/25c), `AC1` și `AC6` actualizate pentru alerta nouă.
   **Nerulate de mine:** containerul nu are .NET SDK, iar politica de rețea a refuzat `builds.dotnet.microsoft.com`; CI-ul
   le rulează la push pe ramură, autorul cu `tests\run-tests.bat`.
+- **CI:** run 52 roșu (3 teste, toate ale mele: `SD19` cu șirul așteptat rămas vechi după reparația Criticului, și `SC1` /
+  `SC2`, care comparau secvența exactă de pași a `FakeHost` — rândul nou de jurnal apare acum în ea; se compară pașii fără
+  „log”, iar rândul e pinat de `SD20` / `SD20b`). Run 53 încercarea 1: 713/713 C# + 23 extensie + build fără avertismente
+  verzi, dar un test de fum roșu (Quick Actions, rezultatul clickului pe microfon în 3 s) — rerulat o dată, verde; rulările
+  47–51 trecuseră cu același test și nimic din diff nu atinge `audio.mute-mic`, deci instabilitate de runner (fără
+  dispozitiv audio). Run 53 încercarea 2: **tot verde**, ambele drumuri de fum. 2 push-uri.
 - **Nereprodus:** crash-ul însuși nu poate fi reprodus fără placa video a autorului; testele acoperă regulile pure și
   pinează locurile din codul WPF.
 - **Rămas pentru P51d:** fereastra dintre o schimbare pe care Windows nu a anunțat-o încă și citirea următoare. Doar
