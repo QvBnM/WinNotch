@@ -85,3 +85,5 @@ termină cu notch-ul deschis: prezentatorul nu desenează în `Expanded`), reven
   satisface așteptarea).
 - Rămas așa (Minor): `WeatherBrush()` dă o pensulă fixă (nu o referință de resursă); standby-ul, Acasă și widget-ul o recitesc
   la reîmprospătare și la schimbarea temei.
+- **Testul de fum B1 a fost scos la cererea autorului** (testează el pe Windows). Rămân comenzile `smoke-empty-panel` /
+  `smoke-empty-pill` (doar cu `--smoke`) și câmpurile `;b1=` / `;b1r=`, pentru o verificare manuală.

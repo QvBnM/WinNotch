@@ -300,18 +300,8 @@ namespace WinNotch
                   Norm(NoComments(MethodBody(smoke0, "private void SmokeEmptyPill()"))).StartsWith("{ if (!SmokeMode.On) return;", StringComparison.Ordinal) &&
                   Norm(NoComments(smoke0)).Contains("case SmokeCommandKind.EmptyPanel: SmokeEmptyPanel(); break;") &&
                   Norm(NoComments(smoke0)).Contains("SmokeMode.QuickActionsStatus(_qaInvoked, _qaSuggested) + NotchGuardSmokeStatus()"));
-            string sp = SmokeSrc("SmokeB1.cs"), b1Body = Norm(NoComments(MethodBody(sp, "private static void B1EmptyNotch()") ?? ""));
-            Check("NG26", "Fumul B1 rulează pe ambele drumuri ale activity-manager: plasa repară un panou și o pastilă golite intenționat, apoi 20 de cicluri (alertă, Command Bar, raft, pagina după context) cu toate comutatoarele noi pornite, fără nicio reparație",
-                  Regex.IsMatch(Norm(NoComments(sp)), @"Run\(step = ""B1[^""]*"", B1EmptyNotch\);") && !Regex.IsMatch(Norm(NoComments(sp)), @"if \(!_activityOn\) Run\(step = ""B1") &&
-                  b1Body.Contains("for (int i = 1; i <= B1Cycles; i++)") && sp.Contains("private const int B1Cycles = 20;") &&
-                  B1FeaturesInSmoke(sp).SetEquals(new[] { "command-bar", "context-pages", "quick-actions", "smart-clipboard", "shelf", "audio-switch" }) &&
-                  b1Body.Contains("Command(\"smoke-empty-panel\");") && b1Body.Contains("Command(\"smoke-empty-pill\");"));
-        }
-
-        static HashSet<string> B1FeaturesInSmoke(string src)
-        {
-            var m = Regex.Match(src ?? "", @"B1Features = \{([^}]*)\}");
-            return new HashSet<string>(Regex.Matches(m.Success ? m.Groups[1].Value : "", "\"([a-z-]+)\"").Cast<Match>().Select(x => x.Groups[1].Value));
+            Check("NG26", "Fumul B1 scos la cererea autorului (testează el pe Windows); comenzile smoke-empty-* rămân doar pentru verificări manuale",
+                  !Src("tests/WinNotch.Smoke/WinNotch.Smoke.csproj").Contains("SmokeB1.cs") && !Src("tests/WinNotch.Smoke/SmokeProgram.cs").Contains("B1EmptyNotch"));
         }
     }
 }
