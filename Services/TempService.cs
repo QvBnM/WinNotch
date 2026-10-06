@@ -17,8 +17,11 @@ namespace WinNotch.Services
         private volatile bool _disposed;
         private readonly bool _watchDisplay;
         private readonly Func<int> _abrupt;
-        /// <summary>The monitors changed: the library's GPU handles may be dead, reopen before reading (P51c).</summary>
-        private volatile bool _displayChanged;
+        /// <summary>
+        /// When Windows last reported a display change (UTC ticks, 0 = none pending): the library's GPU handles may be
+        /// dead until it has been reopened (P51c). Written by the SystemEvents thread, read by the refresh.
+        /// </summary>
+        private long _displayChangedTicks;
         private bool _watching;
         /// <summary>The "stopped reading sensors" line goes in the log once per run, not on every ApplySettings.</summary>
         private bool _blockedLogged;
@@ -98,7 +101,14 @@ namespace WinNotch.Services
             catch (Exception ex) { App.Log("Temperaturi indisponibile: " + ex.Message); }
         }
 
-        private void OnDisplaySettingsChanged(object sender, EventArgs e) => _displayChanged = true;
+        private void OnDisplaySettingsChanged(object sender, EventArgs e) =>
+            Interlocked.Exchange(ref _displayChangedTicks, DateTime.UtcNow.Ticks);
+
+        private DateTime? DisplayChangedAt()
+        {
+            long t = Interlocked.Read(ref _displayChangedTicks);
+            return t == 0 ? (DateTime?)null : new DateTime(t, DateTimeKind.Utc);
+        }
 
         /// <summary>
         /// P51c: after a display change the graphics driver re-initialises and the GPU handles the library kept go dead;
@@ -106,15 +116,19 @@ namespace WinNotch.Services
         /// closed and opened again, and nothing is read this time round. Called under <see cref="_busy"/>, so no refresh
         /// is in flight.
         /// </summary>
-        private void ReopenAfterDisplayChange()
+        /// <param name="observed">
+        /// The change this reopen answers. Cleared only if no newer one arrived meanwhile, so a display change during
+        /// the reopen (the driver was still settling) is answered by another reopen instead of being swallowed.
+        /// </param>
+        private void ReopenAfterDisplayChange(DateTime observed)
         {
-            _displayChanged = false;
             var old = _pc;
             _pc = null;
             try { old?.Close(); } catch (Exception ex) { App.Log("Temperaturi, închiderea bibliotecii: " + ex.GetType().Name); }
             if (_disposed) return;
             App.Log("Temperaturi: monitoarele s-au schimbat, redeschid citirea senzorilor.");
             Open();
+            Interlocked.CompareExchange(ref _displayChangedTicks, 0, observed.Ticks);
         }
 
         /// <summary>Refresh in the background; skipped if the previous refresh hasn't finished.</summary>
@@ -134,15 +148,20 @@ namespace WinNotch.Services
                     }
                     // P51c: everything below this line calls into LibreHardwareMonitor, which calls into the graphics
                     // driver. Ask first whether we are still allowed to, and whether the handles need renewing.
-                    switch (Core.Diagnostics.SensorGuard.Next(_abrupt(), _displayChanged))
+                    var changedAt = DisplayChangedAt();
+                    switch (Core.Diagnostics.SensorGuard.Next(_abrupt(), changedAt, DateTime.UtcNow))
                     {
-                        case Core.Diagnostics.SensorStep.Blocked: return;
-                        case Core.Diagnostics.SensorStep.Reopen: ReopenAfterDisplayChange(); return;
+                        case Core.Diagnostics.SensorStep.Blocked:
+                        case Core.Diagnostics.SensorStep.Wait: return;
+                        case Core.Diagnostics.SensorStep.Reopen: ReopenAfterDisplayChange(changedAt.Value); return;
                     }
                     if (_pc == null) return;
                     float? cpu = null, gpu = null, ssd = null, gpuLoad = null;
                     foreach (var hw in _pc.Hardware)
                     {
+                        // One pass takes hundreds of milliseconds; a display change arriving inside it would make the
+                        // very next hw.Update() the one that reads a dead handle, so the pass is abandoned at once.
+                        if (DisplayChangedAt() != null) return;
                         hw.Update();
                         foreach (var sub in hw.SubHardware) sub.Update();
                         var temps = hw.Sensors.Concat(hw.SubHardware.SelectMany(s => s.Sensors))

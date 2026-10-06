@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using WinNotch.Core.Diagnostics;
@@ -62,14 +63,25 @@ namespace WinNotch
                   SensorGuard.AllowInProcess(0) && SensorGuard.AllowInProcess(1) &&
                   !SensorGuard.AllowInProcess(2) && !SensorGuard.AllowInProcess(3));
 
-            Check("SD6", "Fără schimbare de monitoare se citește; după una se redeschide biblioteca și nu se citește",
-                  SensorGuard.Next(0, false) == SensorStep.Read && SensorGuard.Next(0, true) == SensorStep.Reopen &&
-                  SensorGuard.Next(1, true) == SensorStep.Reopen);
+            var t = new DateTime(2026, 10, 6, 21, 36, 0, DateTimeKind.Utc);
+            Check("SD6", "Fără schimbare de monitoare se citește; imediat după una nu se citește nimic",
+                  SensorGuard.Next(0, null, t) == SensorStep.Read &&
+                  SensorGuard.Next(0, t, t) == SensorStep.Wait &&
+                  SensorGuard.Next(1, t, t.AddSeconds(2.9)) == SensorStep.Wait);
+
+            // the replug of 0.6.18: a burst of events, then the driver needs a moment before the library is reopened
+            Check("SD6b", "După liniștea de 3 secunde se redeschide biblioteca, și abia la citirea următoare se citește",
+                  SensorGuard.Next(0, t, t.AddSeconds(3)) == SensorStep.Reopen &&
+                  SensorGuard.Next(0, t, t.AddSeconds(30)) == SensorStep.Reopen &&
+                  SensorGuard.Next(0, null, t.AddSeconds(30)) == SensorStep.Read);
+
+            Check("SD6c", "Un ceas dat în urmă nu face o schimbare recentă să pară veche (nu se citește de pe un handle mort)",
+                  SensorGuard.Next(0, t, t.AddSeconds(-1)) == SensorStep.Wait);
 
             // the crash of 0.6.18: the library must not be entered at all once it has taken the app down twice
             Check("SD7", "Oprit după închideri bruște: nici schimbarea de monitoare nu mai redeschide biblioteca",
-                  SensorGuard.Next(2, false) == SensorStep.Blocked && SensorGuard.Next(2, true) == SensorStep.Blocked &&
-                  SensorGuard.Next(9, true) == SensorStep.Blocked);
+                  SensorGuard.Next(2, null, t) == SensorStep.Blocked && SensorGuard.Next(2, t, t.AddSeconds(30)) == SensorStep.Blocked &&
+                  SensorGuard.Next(9, t, t) == SensorStep.Blocked);
 
             Check("SD8", "Motivul opririi e un text fix, de cel mult 120 de caractere, fără mesaj de excepție",
                   SensorGuard.BlockedReason.Length > 0 && SensorGuard.BlockedReason.Length <= 120 &&
@@ -172,6 +184,33 @@ namespace WinNotch
             r6.Begin(false, true);
             Check("SD16", "Un startup.json cu o numărătoare negativă e citit ca 0, apoi numărat normal",
                   r6.UnexplainedInARow == 1, r6.UnexplainedInARow.ToString());
+
+            // an update right after an unexplained death: the line is still written, the streak starts over
+            var st6 = new MemStore();
+            G(st6).Begin(false, true);                          // 0.6.19 starts and dies
+            log.Clear();
+            var newer = new StartupGuard(st6, AppVersion.ParseOrZero("0.7.0"), () => now, log.Add);
+            newer.Begin(false, true);
+            Check("SD31", "O moarte neexplicată urmată de o actualizare e tot raportată, dar seria pornește de la 1",
+                  log.Any(l => l.StartsWith(ShutdownJournal.PreviousLine(ShutdownKind.Unexplained), StringComparison.Ordinal)) &&
+                  newer.UnexplainedInARow == 1 && SensorGuard.AllowInProcess(newer.UnexplainedInARow),
+                  string.Join(" | ", log));
+
+            // R1, the regression this review caught: on the "another WinNotch took the mutex" path, startup.json belongs
+            // to that other process from the moment the mutex was released — this one must not write a single byte more
+            string dir = Path.Combine(Path.GetTempPath(), "winnotch-sd32");
+            Directory.CreateDirectory(dir);
+            string exe = Path.Combine(dir, "WinNotch.exe");
+            now = new DateTime(2026, 10, 6, 23, 0, 0, DateTimeKind.Utc);
+            var st7 = new MemStore();
+            for (int i = 0; i < 3; i++) { StartupCoordinator.Run(G(st7), new FakeHost { ExePath = exe }, false, "--safe-mode"); now = now.AddMinutes(1); }
+            var taken = new FakeHost { ExePath = exe, StartOk = false, MutexFree = false };
+            int savesBefore = st7.Saves;
+            var outcome = StartupCoordinator.Run(G(st7), taken, false, "--safe-mode");
+            Check("SD32", "A doua instanță: după ce mutex-ul e al altui proces, nu se mai scrie în startup.json",
+                  outcome == StartupOutcome.Quit && taken.Steps.Contains("take-mutex") && st7.Saves == savesBefore + 1,
+                  outcome + ", " + (st7.Saves - savesBefore) + " salvări (se așteaptă 1, cea din Begin)");
+            try { Directory.Delete(dir, true); } catch { }
         }
 
         // ------------------------------------------------------------------ the source, where the rules live in WPF code
@@ -198,8 +237,9 @@ namespace WinNotch
             foreach (var e in exits)
             {
                 int i = Array.FindIndex(appLines, l => l.Contains(e.Anchor, StringComparison.Ordinal));
-                string near = i < 0 ? "" : string.Join(" ", appLines.Skip(Math.Max(0, i - 3)).Take(7));
-                if (i < 0 || !Norm(NoComments(near)).Contains("LogShutdown(", StringComparison.Ordinal)) missing.Add(e.Name);
+                // comments stripped per line, before joining: a // before the call must not hide it from the search
+                string near = i < 0 ? "" : string.Join(" ", appLines.Skip(Math.Max(0, i - 5)).Take(11).Select(NoComments));
+                if (i < 0 || !Norm(near).Contains("LogShutdown(", StringComparison.Ordinal)) missing.Add(e.Name);
             }
             Check("SD17", "Fiecare ieșire din App.xaml.cs scrie motivul înainte să închidă", missing.Count == 0, string.Join(", ", missing));
 
@@ -214,8 +254,19 @@ namespace WinNotch
                   Norm(NoComments(app)).Contains("LogShutdown(Core.Diagnostics.ShutdownKind.WindowsShutdown)", StringComparison.Ordinal) &&
                   Norm(NoComments(app)).Contains("LogShutdown(Core.Diagnostics.ShutdownKind.FatalError)", StringComparison.Ordinal));
 
+            string coord = Norm(NoComments(Src("Core/Update/StartupCoordinator.cs")));
             Check("SD20", "Predarea către alt proces (revenire, mod sigur, a doua instanță) își scrie motivul în coordonator",
-                  Count(Norm(NoComments(Src("Core/Update/StartupCoordinator.cs"))), "Ending(guard, host,") == 3);
+                  Count(coord, "Ending(host,") == 3);
+
+            // the regression R1 found: the hand-over paths run after the mutex was released, so the process that took
+            // over owns startup.json from then on — writing the reason there would overwrite its state
+            Check("SD20b", "Coordonatorul scrie motivul doar în log, niciodată în startup.json",
+                  !coord.Contains("MarkReason", StringComparison.Ordinal), "coordonatorul apelează MarkReason");
+
+            string logShutdown = Norm(NoComments(MethodBody(app, "internal static void LogShutdown(")));
+            Check("SD20c", "Motivul se salvează în startup.json numai pe ieșirile care NU marchează o ieșire curată",
+                  logShutdown != null && logShutdown.Contains("if (remember) Guard?.MarkReason(kind);", StringComparison.Ordinal) &&
+                  Count(Norm(NoComments(app)), "remember: true") == 2, logShutdown ?? "LogShutdown nu a fost găsit");
 
             Check("SD21", "Actualizarea iese cu motivul „actualizare”, nu cu cel implicit",
                   Norm(NoComments(Src("NotchWindow.Updates.cs"))).Contains("ExitApp(Core.Diagnostics.ShutdownKind.Update)", StringComparison.Ordinal));
@@ -243,6 +294,14 @@ namespace WinNotch
                   temp.Contains("SensorGuard.AllowInProcess(", StringComparison.Ordinal) &&
                   temp.Contains("SystemEvents.DisplaySettingsChanged +=", StringComparison.Ordinal) &&
                   temp.Contains("SystemEvents.DisplaySettingsChanged -=", StringComparison.Ordinal));
+
+            // one pass of the library takes hundreds of ms: a change arriving inside it must abandon the pass
+            Check("SD25b", "Bucla de citire se abandonează dacă monitoarele se schimbă în timpul ei",
+                  temp.Contains("if (DisplayChangedAt() != null) return; hw.Update();", StringComparison.Ordinal), temp.Length.ToString());
+
+            // a change arriving while the library is opening must not be swallowed by the reopen that answers the old one
+            Check("SD25c", "Schimbarea se uită doar dacă n-a venit una mai nouă în timpul redeschiderii",
+                  temp.Contains("Interlocked.CompareExchange(ref _displayChangedTicks, 0, observed.Ticks);", StringComparison.Ordinal));
 
             // ---- nothing personal in the log (section 14 of DOCUMENTATIE.md): the leak this step closed
             Check("SD26", "Titlul ferestrei nu mai ajunge în log: MonitorService nu îl citește deloc",

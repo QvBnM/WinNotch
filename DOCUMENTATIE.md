@@ -429,11 +429,15 @@ Comutatorul „Raportul închiderilor” (`shutdown-report`, **Beta, pornit impl
 - **Nicio închidere tăcută.** Motivul se scrie și în `startup.json`. La pornirea următoare, o rulare care nu a ajuns la
   nicio ieșire a noastră e numită `Închidere anterioară: neexplicată (a N-a la rând)`. De la **a doua la rând**, notch-ul
   arată o dată alerta „WinNotch s-a închis singur”, cu butonul **„Deschide log-ul”**. O ieșire curată șterge seria.
-- **Temperaturile nu mai pot omorî aplicația.** Când Windows anunță o schimbare de monitoare, biblioteca de senzori e
-  închisă și deschisă din nou **înainte** de orice citire, ca handle-ul mort să nu fie folosit. Și dacă aplicația s-a
-  închis totuși brusc de două ori la rând, citirea în proces se oprește definitiv: pagina Sistem arată „temp: oprite”
-  cu explicația, log-ul scrie motivul, iar aplicația rămâne pornită. Bifezi din nou „Temperaturi” în Setări și se reia.
-  Temperaturile venite din serviciul SYSTEM (alt proces) nu sunt afectate.
+- **Temperaturile aproape nu mai pot omorî aplicația.** Din clipa în care Windows anunță o schimbare de monitoare **nu se
+  mai citește nimic** (o singură trecere a bibliotecii atinge toate dispozitivele, deci nici procesorul); după **3 secunde
+  de liniște** — o reconectare e o rafală de evenimente, iar driverul are nevoie de o clipă — biblioteca e închisă și
+  deschisă din nou, și abia citirea următoare citește. Dacă schimbarea vine în timpul unei citiri, trecerea e abandonată
+  pe loc. Și dacă aplicația s-a închis totuși brusc de două ori la rând, citirea în proces se oprește definitiv: pagina
+  Sistem arată „temp: oprite” cu explicația, log-ul scrie motivul, iar aplicația rămâne pornită. Bifezi din nou
+  „Temperaturi” în Setări și se reia. Temperaturile din serviciul SYSTEM (alt proces) nu sunt afectate.
+  **Ce rămâne:** fereastra dintre o schimbare pe care Windows nu a anunțat-o încă și citirea următoare. Asta se închide
+  doar mutând citirea în alt proces — e sarcina **P51d** din `docs/ROADMAP.md`.
 - **Excepțiile de pe orice fir.** Sarcinile de fundal pe care nu le așteaptă nimeni ajung acum în log
   (`TaskScheduler.UnobservedTaskException`), iar callback-urile care nu rulează pe firul de UI — NAudio (vizualizatorul
   și volumul), timerul alertelor, firul care instalează serviciul de temperatură — sunt prinse: o excepție acolo închidea

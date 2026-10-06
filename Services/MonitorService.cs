@@ -94,16 +94,29 @@ namespace WinNotch.Services
         /// How a window is named in the log: its class, the process' file name and its rectangle. Deliberately without
         /// the title — a title says what the user is reading or watching, and nothing of that goes in log.txt.
         /// </summary>
-        private static string Describe(IntPtr h, string cls, Native.RECT wr)
+        private static string Describe(IntPtr h, string cls, Native.RECT wr) =>
+            cls + " (" + ProcessName(h) + ") [" + wr.Left + "," + wr.Top + " " + wr.Width + "x" + wr.Height + "]";
+
+        /// <summary>
+        /// The window's process, lower-cased, without path or extension. Cached per window: this runs for every monitor
+        /// on every scan, and opening the process each time would be work for nothing. Only ever used for the log line,
+        /// so a handle Windows reused keeps the old name at worst.
+        /// </summary>
+        private static readonly Dictionary<IntPtr, string> ProcessNames = new Dictionary<IntPtr, string>();
+
+        private static string ProcessName(IntPtr h)
         {
-            string process = "?";
+            if (ProcessNames.TryGetValue(h, out string cached)) return cached;
+            string name = "?";
             try
             {
                 string path = Native.ProcessPath(h);
-                if (!string.IsNullOrEmpty(path)) process = System.IO.Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
+                if (!string.IsNullOrEmpty(path)) name = System.IO.Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
             }
             catch { /* a window of a process we may not query: the class alone still tells enough */ }
-            return cls + " (" + process + ") [" + wr.Left + "," + wr.Top + " " + wr.Width + "x" + wr.Height + "]";
+            if (ProcessNames.Count >= 64) ProcessNames.Clear();        // windows come and go; the cache never grows
+            ProcessNames[h] = name;
+            return name;
         }
 
         public static IntPtr MonitorUnderCursor()

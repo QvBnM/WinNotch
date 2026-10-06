@@ -105,3 +105,57 @@
 - **Publicare:** 0.6.19 (versiunea, `RELEASE_NOTES.md`, istoricul din `DOCUMENTATIE.md` și „Noutăți” din `README.md`);
   release-ul îl face GitHub Actions la push-ul pe `main`.
 
+## P51c — De ce s-a închis aplicația singură (brief UI 0.7, 6 oct 2026)
+
+- **Cerut:** întâi investigația („nu scrie cod până nu avem o ipoteză sprijinită de dovezi”), apoi jurnalul de închidere.
+- **Investigația.** Autorul a trimis `log.txt`. Rândurile cu funcțiile pornite (`Activity Manager: pornit`, `Raft: pornit`,
+  `Context: pornit (9 surse)`) apar o dată per proces, deci au delimitat exact două porniri pe 6 octombrie: `19:01:16` și
+  `22:33:56`, cu ultimul rând al primei la `21:36:38`. **Niciun `Eroare fatală`, niciun `Eroare neprevăzută`** — ceea ce a
+  eliminat cele patru ipoteze de cod din prima trecere (Visualizer, AudioService, firul de temperatură, timerul alertelor):
+  `AppDomain.UnhandledException` e abonat și `App.Log` scrie sincron, deci o excepție .NET obișnuită ar fi lăsat urmă.
+  Au rămas trei posibilități cu aceeași semnătură (zero rânduri): omorât din afară (jucase CS2 și un repack), crash în cod
+  nativ, sau o moarte fără handler. Ipoteza principală a fost cerută explicit cu Event Viewer, pe fereastra `21:30–22:40`.
+- **Cauza, confirmată:** `System.AccessViolationException` în `LibreHardwareMonitor.Interop.NvidiaML.NvmlDeviceGetPowerUsage`
+  ← `NvidiaGpu.Update()` ← `WinNotch.Services.TempService.<RefreshAsync>b__26_0()`, pe un fir din thread pool, cod
+  `0xc0000005`. Se potrivește la secundă: la `21:36:28` un monitor a dispărut și la `21:36:33` a revenit (log-ul arată și
+  ieșirile audio re-enumerându-se, 6 → 7 → 8: audio prin DisplayPort). Handle-ul de GPU ținut de la `Computer.Open()`
+  murise cu reinițializarea driverului.
+- **Două constatări care au schimbat reparația:** (1) linia care a crăpat era **deja** într-un `try`/`catch (Exception)` —
+  o excepție de stare coruptă nu e prinsă în .NET 8; (2) **nici `AppDomain.UnhandledException` nu a rulat**, de unde
+  log-ul gol. Deci „nicio închidere tăcută” nu se poate rezolva scriind în momentul morții; se rezolvă la pornirea
+  următoare, din `StartupGuard`, exact cum cere brief-ul.
+- **Făcut:** `Core/Diagnostics/ShutdownJournal.cs` (pur: motive fixe, rândurile din log, regula alertei) și
+  `Core/Diagnostics/SensorGuard.cs` (pur: `Read` / `Wait` / `Reopen` / `Blocked`, cu liniștea de 3 s și limita de 2
+  închideri bruște). Fiecare ieșire scrie `Închidere: <motiv>`; motivul se salvează în `startup.json` **doar** pe cele două
+  căi care nu marchează ieșire curată (eroare fatală, pornire eșuată). `StartupGuard.NameLastClosure` numește închiderea
+  anterioară și o numără, și o face și când între timp s-a actualizat versiunea. `Features/Diagnostics` adaugă alerta
+  „WinNotch s-a închis singur” cu „Deschide log-ul” (comutatorul `shutdown-report`, Beta, pornit; un cârlig de un rând în
+  `UpdateTick`). `TempService` nu mai citește nimic din clipa unei schimbări de monitoare, redeschide biblioteca după 3 s
+  de liniște, abandonează o trecere în curs dacă schimbarea vine la mijloc, și se oprește definitiv după 2 închideri
+  bruște (pagina Sistem: „temp: oprite”, cu explicație). `TaskScheduler.UnobservedTaskException` abonat (doar tipurile
+  excepțiilor, nu mesajele). `try/catch` în `Visualizer.OnData` (plus 0 canale), `AudioService.OnNotify`,
+  `ActivityManager.Expire` și firul din `InstallTempHelper`.
+- **Reparație de securitate, găsită pe drum:** rândul `Monitoare:` scria **titlul ferestrei** (adrese Telegram, nume de
+  torrente, titluri de postări), încălcând secțiunea 14 și regula din ADR 0004. Acum scrie clasa, procesul și geometria,
+  fără marcajul monitorului țintă — deci schimbarea unui tab sau mutarea mouse-ului nu mai scriu nimic. Era și cauza
+  pierderii dovezilor: peste 300 din ~340 de rânduri erau `Monitoare:`, iar log-ul se golește la 512 KB.
+- **Revizia R1:** 1 Critic, 3 Majore, 5 Medii, 6 Minore. **Criticul era o regresie introdusă de mine:** pe calea „alt
+  WinNotch a luat mutex-ul”, `Ending` apela `MarkReason` → `Save`, scriind peste `startup.json`-ul instanței care rulează
+  și dezactivând în liniște protecția la versiuni stricate. Reparat prin restrângerea lui `MarkReason` la cele două căi
+  care au nevoie de el (ceea ce a rezolvat și cele două Majore de cursă din coordonator și pe cea din `RestartAsAdmin`).
+  Celelalte reparate: mesajele de excepție scoase din canalul nou de log (Major, securitate); raportul pierdut la
+  schimbarea versiunii; fereastra în care handle-ul mort era încă folosit (liniștea de 3 s + abandonarea trecerii +
+  `CompareExchange`, ca o schimbare sosită în timpul redeschiderii să nu fie înghițită); `AC2` nu scana fișierul nou;
+  condiția din Setări nu se declanșa niciodată când citirea era blocată; alerta pierdută dacă `Alert` o refuza; pin-ul
+  SD17 fragil; numele procesului memorat ca să nu deschidem procesul la fiecare secundă. **Acceptate cu motivare:**
+  `AppDomain.UnhandledException` scrie în continuare `ToString()`-ul complet (cerut explicit de brief, o dată per moarte);
+  `App.xaml.cs` a crescut cu ~45 de rânduri (e fișierul de legătură firesc; `NotchWindow.xaml.cs` e atins 7 rânduri).
+- **Teste:** 35 noi (SD1–SD32, cu SD6b/6c, SD20b/20c, SD25b/25c), `AC1` și `AC6` actualizate pentru alerta nouă.
+  **Nerulate de mine:** containerul nu are .NET SDK, iar politica de rețea a refuzat `builds.dotnet.microsoft.com`; CI-ul
+  le rulează la push pe ramură, autorul cu `tests\run-tests.bat`.
+- **Nereprodus:** crash-ul însuși nu poate fi reprodus fără placa video a autorului; testele acoperă regulile pure și
+  pinează locurile din codul WPF.
+- **Rămas pentru P51d:** fereastra dintre o schimbare pe care Windows nu a anunțat-o încă și citirea următoare. Doar
+  mutarea citirii în alt proces o închide; scris în `docs/ROADMAP.md`, cu mențiunea explicită în DOCUMENTATIE.md.
+- **Publicare:** niciuna. Versiunea nu a fost crescută și nu s-a făcut merge în `main`: autorul testează pasul pe Windows
+  și confirmă, conform cerinței lui.

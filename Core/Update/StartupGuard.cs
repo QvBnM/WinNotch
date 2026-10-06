@@ -133,7 +133,12 @@ namespace WinNotch.Core.Update
                 var s = Load();
                 var now = _now();
                 string me = _current.ToString();
-                if (s.Version != me)
+                // P51c: read before the per-version reset below clears Running, so an update right after a death that
+                // explained nothing still gets its line in the log.
+                bool diedUnnamed = s.Running;
+                string reasonWritten = s.LastReason ?? "";
+                bool sameVersion = s.Version == me;
+                if (!sameVersion)
                 {
                     s.Version = me; s.Starts.Clear(); s.Running = false; s.SafeMode = false; s.AutoSafe = false;
                     s.SafeRestartPending = false; s.Healthy = false;
@@ -141,8 +146,8 @@ namespace WinNotch.Core.Update
                 ReadRollbackNote(s);
                 if (s.Refused.Count > 0) _log?.Invoke("Versiuni refuzate pe acest PC (nu mai sunt propuse): " + string.Join(", ", s.Refused) + ".");
 
+                NameLastClosure(s, diedUnnamed, reasonWritten, sameVersion);
                 bool previousUnclean = s.Running, previousSafe = s.SafeMode;
-                NameLastClosure(s, previousUnclean);
                 bool recentAutoSafe = previousSafe && s.AutoSafe && (now - s.SafeStartedAt).Duration() <= CrashWindow;
                 bool safeRestart = s.SafeRestartPending && safeModeArg;
                 s.SafeRestartPending = false;
@@ -286,19 +291,24 @@ namespace WinNotch.Core.Update
         /// "neexplicată" — the signature of a death that ran no handler (a driver's AccessViolationException, a stack
         /// overflow, a process killed from outside). Under <c>_lock</c>, before this run is recorded.
         /// </summary>
-        private void NameLastClosure(StartupState s, bool previousUnclean)
+        /// <param name="diedUnnamed">The previous run was still marked as running: it reached none of our exits.</param>
+        /// <param name="reasonWritten">What that run saved as its reason, empty when it saved none.</param>
+        /// <param name="sameVersion">
+        /// The previous run was this same version. The line is written either way, but the streak only counts runs of one
+        /// version: a new version starts with a clean slate (and so do the temperatures it switched off).
+        /// </param>
+        private void NameLastClosure(StartupState s, bool diedUnnamed, string reasonWritten, bool sameVersion)
         {
-            string written = s.LastReason ?? "";
             s.LastReason = "";                                  // belongs to the run that just ended, not to this one
-            if (!previousUnclean) { s.UnexplainedInARow = 0; return; }
-            if (written.Length > 0 && Enum.TryParse<Diagnostics.ShutdownKind>(written, out var kind)
+            if (!diedUnnamed) { s.UnexplainedInARow = 0; return; }
+            if (reasonWritten.Length > 0 && Enum.TryParse<Diagnostics.ShutdownKind>(reasonWritten, out var kind)
                 && kind != Diagnostics.ShutdownKind.Unexplained)
             {
                 s.UnexplainedInARow = 0;
                 _log?.Invoke(Diagnostics.ShutdownJournal.PreviousLine(kind));
                 return;
             }
-            s.UnexplainedInARow++;
+            s.UnexplainedInARow = sameVersion ? s.UnexplainedInARow + 1 : 1;
             _log?.Invoke(Diagnostics.ShutdownJournal.PreviousLine(Diagnostics.ShutdownKind.Unexplained)
                          + " (a " + s.UnexplainedInARow + "-a la rând)");
         }

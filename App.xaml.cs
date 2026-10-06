@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Security.Principal;
 using System.Threading;
 using System.Windows;
@@ -53,7 +54,7 @@ namespace WinNotch
                 {
                     // a helper that dies silently leaves the app without temperatures and no trace of why (P51c)
                     try { Services.TempHelper.RunServer(); }
-                    catch (Exception ex) { Log("Serviciul de temperatură s-a oprit: " + ex); }
+                    catch (Exception ex) { Log("Serviciul de temperatură s-a oprit: " + ex.GetType().Name); }
                     try { Dispatcher.Invoke(() => { LogShutdown(Core.Diagnostics.ShutdownKind.HelperMode); Shutdown(); }); } catch { }
                 }) { IsBackground = true };
                 t.Start();
@@ -93,13 +94,14 @@ namespace WinNotch
                 Log("Eroare fatală: " + ex.ExceptionObject);
                 // The process still goes down. Naming it now keeps the next start from calling it unexplained; a crash
                 // that corrupts the process state (a driver's AccessViolationException) never gets this far — see P51c.
-                if (ex.IsTerminating) LogShutdown(Core.Diagnostics.ShutdownKind.FatalError);
+                if (ex.IsTerminating) LogShutdown(Core.Diagnostics.ShutdownKind.FatalError, remember: true);
             };
             // Until now a Task nobody awaited could fail without a word in the log (P51c).
             System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (s, ex) =>
             {
                 ex.SetObserved();
-                Log("Eroare într-o sarcină de fundal: " + ex.Exception);
+                // Only the exception types: a message can carry the calendar link, a file path or a URL (section 14).
+                Log("Eroare într-o sarcină de fundal: " + string.Join(", ", ex.Exception.InnerExceptions.Select(i => i.GetType().Name)));
                 Guard?.NoteError();
             };
 
@@ -118,19 +120,25 @@ namespace WinNotch
             catch (Exception ex)
             {
                 Log("Pornirea a eșuat: " + ex);
-                LogShutdown(Core.Diagnostics.ShutdownKind.StartupFailed);     // a reason, but still counted as a crash
+                LogShutdown(Core.Diagnostics.ShutdownKind.StartupFailed, remember: true);     // a reason, but still counted as a crash
                 Environment.Exit(1);
             }
         }
 
         /// <summary>
-        /// P51c, the shutdown journal: the last line of this run, with a fixed reason, and the same reason in
-        /// startup.json so the next start can name it. Every exit of ours goes through here; a run that ends without it
-        /// is reported as "Închidere anterioară: neexplicată" next time.
+        /// P51c, the shutdown journal: the last line of this run, with a fixed reason. Every exit of ours goes through
+        /// here; a run that ends without it is reported as "Închidere anterioară: neexplicată" next time.
         /// </summary>
-        internal static void LogShutdown(Core.Diagnostics.ShutdownKind kind)
+        /// <param name="remember">
+        /// Also write the reason into startup.json, for the next start to name. Only for the exits that leave this run
+        /// marked as still running — a fatal error and a failed start — because those are the only ones the next start
+        /// would otherwise count as unexplained. Every other exit marks a clean exit, so the saved reason would never be
+        /// read; worse, writing it after the single-instance mutex has been released would overwrite the state of the
+        /// process that took over.
+        /// </param>
+        internal static void LogShutdown(Core.Diagnostics.ShutdownKind kind, bool remember = false)
         {
-            Guard?.MarkReason(kind);
+            if (remember) Guard?.MarkReason(kind);
             Log(Core.Diagnostics.ShutdownJournal.Line(kind));
         }
 

@@ -58,20 +58,20 @@ namespace WinNotch.Core.Update
                     host.ReleaseMutex();
                     if (!host.Start(host.ExePath, null))
                         host.Log("Revenire: versiunea anterioară nu a pornit; pornește WinNotch din nou.");
-                    Ending(guard, host, Diagnostics.ShutdownKind.Rollback);
+                    Ending(host, Diagnostics.ShutdownKind.Rollback);
                     return StartupOutcome.HandedOver;
 
                 case StartupAction.RestartInSafeMode:
                     host.ReleaseMutex();
                     if (host.Start(host.ExePath, safeModeArgText))
                     {
-                        Ending(guard, host, Diagnostics.ShutdownKind.SafeRestart);
+                        Ending(host, Diagnostics.ShutdownKind.SafeRestart);
                         return StartupOutcome.HandedOver;
                     }
                     host.Log("Repornirea în modul sigur nu a reușit; continui în modul sigur.");
                     if (!host.TakeMutex())
                     {
-                        Ending(guard, host, Diagnostics.ShutdownKind.SecondInstance);
+                        Ending(host, Diagnostics.ShutdownKind.SecondInstance);
                         return StartupOutcome.Quit;
                     }
                     guard.ContinueInSafeMode();
@@ -86,14 +86,14 @@ namespace WinNotch.Core.Update
         }
 
         /// <summary>
-        /// P51c: this process is handing over and will quit. The reason goes to the log for the user and into
-        /// startup.json, so the next start names it instead of counting an unexplained closure. Here and not in
+        /// P51c: this process is handing over and will quit; the reason goes to the log for the user. Here and not in
         /// App.xaml.cs because only this method knows which of the two hand-overs happened.
+        /// <para>Only the log: the reason is deliberately NOT written to startup.json. By this point the mutex has been
+        /// released and the successor (the previous version, the safe-mode run, or a WinNotch that was already running)
+        /// may have recorded its own start, so a save here would overwrite its state — and it would never be read
+        /// anyway, because every hand-over leaves <c>Running = false</c>.</para>
         /// </summary>
-        private static void Ending(StartupGuard guard, IStartupHost host, Diagnostics.ShutdownKind kind)
-        {
-            guard.MarkReason(kind);
+        private static void Ending(IStartupHost host, Diagnostics.ShutdownKind kind) =>
             host.Log(Diagnostics.ShutdownJournal.Line(kind));
-        }
     }
 }

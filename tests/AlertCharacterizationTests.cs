@@ -244,7 +244,7 @@ namespace WinNotch
 
             // every alert call in the notch's files is one of the table's (a new alert must be added to the table)
             var calls = new List<string>();
-            foreach (var f in new[] { LegacyAlerts.Notch, LegacyAlerts.Updates, LegacyAlerts.Context })
+            foreach (var f in new[] { LegacyAlerts.Notch, LegacyAlerts.Updates, LegacyAlerts.Context, LegacyAlerts.Diagnostics })
                 foreach (var l in Src(f).Split('\n'))
                 {
                     string n = Norm(NoComments(l));

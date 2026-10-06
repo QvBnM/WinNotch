@@ -13,7 +13,8 @@ namespace WinNotch
     /// button that opens the log.
     /// <para>Shown once per start, from <c>UpdateTick</c> (one line there), only in standby and only after the first
     /// seconds, like the rollback message. The count is not cleared here: it is what also keeps the in-process
-    /// temperature read switched off (<see cref="SensorGuard"/>), and only a clean run clears it.</para>
+    /// temperature read switched off (<see cref="SensorGuard"/>). It is cleared by a run that ends cleanly, by a new
+    /// version, or by the user ticking "Temperaturi" in Settings again.</para>
     /// <para>Switch "shutdown-report" (Beta, on): off, the log still names every closure and nothing is shown.</para>
     /// </summary>
     public partial class NotchWindow
@@ -29,15 +30,21 @@ namespace WinNotch
         {
             if (_shutdownReportShown || _mode != Mode.Idle || _tick <= 3) return false;
             if (!ShutdownReportEnabled()) return false;
-            int inARow = App.Guard?.UnexplainedInARow ?? 0;
+            int inARow = App.Guard?.UnexplainedInARow ?? 0;      // read every tick: the user can clear it from Settings
             if (!ShutdownJournal.ShouldAlert(inARow)) return false;
-            _shutdownReportShown = true;
-            try { ShowShutdownReport(inARow); }
-            catch (Exception ex) { FeatureFlags.Current?.ReportError(ShutdownJournal.FeatureId, ex); }
+            try
+            {
+                // The flag is set only once it is really on screen: an alert dropped (the notch opened in between) is
+                // offered again at the next tick, like ShowOldExtension.
+                if (!ShowShutdownReport(inARow)) return false;
+                _shutdownReportShown = true;
+            }
+            catch (Exception ex) { _shutdownReportShown = true; FeatureFlags.Current?.ReportError(ShutdownJournal.FeatureId, ex); }
             return true;
         }
 
-        private void ShowShutdownReport(int inARow)
+        /// <summary>True when the alert is on screen (false when the notch was open and it was dropped).</summary>
+        private bool ShowShutdownReport(int inARow)
         {
             var open = Ui.PillBtn("Deschide log-ul", () =>
             {
@@ -48,6 +55,7 @@ namespace WinNotch
             string sub = "De " + inARow + " ori la rând, fără să ceri tu ieșirea. " + ShutdownJournal.AlertBody;
             var row = LiveRow(LiveIcon(Ui.GWarn, CWarn), ShutdownJournal.AlertTitle, sub, open);
             ShowInteractive(LegacyAlerts.ShutdownUnexplained, row, 520, 58, 9000);
+            return _mode == Mode.Live;          // Idle still: the alert was dropped (the notch opened meanwhile)
         }
     }
 }
