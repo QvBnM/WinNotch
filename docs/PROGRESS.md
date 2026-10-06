@@ -74,3 +74,14 @@
 ### Publicare
 - 0.6.17 (P23 + P30), un singur push pe `main`.
 
+
+## Reparația B1 — notch-ul gol și pastila doar cu ora (6 oct 2026)
+
+- **Cauze găsite:** (1) `FadeLayer`: o animație de ascundere înlocuită își ridica totuși `Completed` și colapsa un strat arătat între timp (afișarea așteaptă 120–140 ms la opacitatea găsită, adesea 0) → standby, formă mică sau alertă goale, doar cu fundalul; (2) iconița vremii cu culori fixe deschise, invizibilă pe tema luminoasă, iar fără date doar „—” → pastila părea să arate doar ora.
+- **Reparat:** jetoane per strat (`FadeTokens`, și pentru panou), culorile temei pentru vreme pe temele luminoase, regulile formei mici pure (`PillRules`, data niciodată goală); plasa de siguranță `Features/NotchGuard` (comutatorul „notch-guard”, Stabil, pornit): verificare la 300 ms după deschidere (pagina curentă refăcută, apoi Acasă) și la 450 ms după schimbarea pastilei, cu încă o privire pentru o animație încă în curs; un rând „B1 recover” în log, fără date personale; ADR 0013.
+- **Nereprodus:** un drum din cod care să lase panoul fără tab-uri sau pagină cu notch-ul deschis (în afara Command Bar și a unei excepții la jumătatea lui `Expand`); acoperit de plasă și de log.
+- **Revizia R1:** 1 Critic (pin-ul QA27), 1 Mediu (verificarea de 300 ms înainte de sfârșitul fade-ului), 5 Minore; reparate în 81140ea, plus fals pozitivul văzut în CI (6205f45, `MaybeFading`); rămas: `WeatherBrush` dă o pensulă fixă (se recitește la reîmprospătare).
+- **CI:** run 45 roșu (QA27), run 46 roșu (doar fumul B1: fals pozitiv al plasei, reparat), run 47–48 verzi, toate testele de fum existente pe ambele drumuri. 3 încercări.
+- **Teste:** 668 C# (27 noi, NG1–NG27) + 23 extensie + fum 20 / 17 (+4 SKIP). Fumul B1 (golire intenționată + 20 de cicluri) a fost scris și apoi **scos la cererea autorului** (testează el pe Windows); comenzile `smoke-empty-panel` / `smoke-empty-pill` rămân.
+- **Abateri:** comutatorul „notch-guard” e Stabil și pornit (reparație anunțată în 0.6.18); fără abonare la `FeatureFlags.Changed` (citit la fiecare verificare, ca P27).
+- **Publicare:** 0.6.18, merge --no-ff 96c9d7b + caee8a5 pe `main`; release v0.6.18 cu WinNotch.exe (SHA-256 9781e0a2…d59e) + WinNotch.exe.sig, semnătura ECDSA verificată cu cheia publică din `Services/Updater.cs` („Verified OK”).
