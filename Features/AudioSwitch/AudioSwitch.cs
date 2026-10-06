@@ -42,6 +42,23 @@ namespace WinNotch.Features.AudioSwitch
         void Stop();
     }
 
+    /// <summary>A one-shot delay that each <see cref="Arm"/> starts again (the debounce of the device notifications).</summary>
+    public interface IAudioDebounce : IDisposable
+    {
+        /// <summary>(Re)starts the delay; never blocks. After Dispose it does nothing.</summary>
+        void Arm();
+    }
+
+    /// <summary>The app's debounce: a System.Threading.Timer, one shot, re-armed by every notification (no polling).</summary>
+    public sealed class TimerDebounce : IAudioDebounce
+    {
+        private readonly Timer _timer;
+        private readonly int _ms;
+        public TimerDebounce(Action tick, int ms) { _ms = ms; _timer = new Timer(_ => tick(), null, Timeout.Infinite, Timeout.Infinite); }
+        public void Arm() { try { _timer.Change(_ms, Timeout.Infinite); } catch (ObjectDisposedException) { } }
+        public void Dispose() { try { _timer.Dispose(); } catch { } }
+    }
+
     /// <summary>One output as the list and the actions show it.</summary>
     public sealed class AudioOutput
     {
@@ -159,18 +176,22 @@ namespace WinNotch.Features.AudioSwitch
         private readonly object _lock = new object();
         private readonly object _eventsLock = new object();
         private IReadOnlyList<AudioOutput> _outputs = Array.Empty<AudioOutput>();
-        private Timer _debounce;
+        private readonly Func<Action, IAudioDebounce> _makeDebounce;
+        private IAudioDebounce _debounce;
         private bool _running, _failed, _eventsOn;
-        private int _gen, _lastCount = -1;
+        private int _gen, _eventsGen, _lastCount = -1;
 
-        /// <param name="background">Runs the start (subscription and first read) off the caller's thread; the tests pass an inline one.</param>
-        public AudioSwitchService(IAudioEndpointSwitcher switcher, IAudioEndpointEvents events, Func<FeatureFlags> flags, Action<string> log, Action<Action> background = null)
+        /// <param name="background">Runs the start (subscription and first read) and a non-waiting stop off the caller's thread; the tests pass an inline one.</param>
+        /// <param name="debounce">Makes the debounce for a tick; default <see cref="TimerDebounce"/> of <see cref="DebounceMs"/> (the tests pass a manual one).</param>
+        public AudioSwitchService(IAudioEndpointSwitcher switcher, IAudioEndpointEvents events, Func<FeatureFlags> flags, Action<string> log, Action<Action> background = null,
+                                  Func<Action, IAudioDebounce> debounce = null)
         {
             _sw = switcher ?? throw new ArgumentNullException(nameof(switcher));
             _events = events;
             _flags = flags ?? (() => FeatureFlags.Current);
             _log = log ?? (_ => { });
             _background = background ?? (a => Task.Run(a));
+            _makeDebounce = debounce ?? (tick => new TimerDebounce(tick, DebounceMs));
         }
 
         /// <summary>The list changed (any thread): redraw through the Dispatcher; the action provider forwards it to the registry.</summary>
@@ -193,7 +214,7 @@ namespace WinNotch.Features.AudioSwitch
                 _running = true;
                 _failed = false;                                  // switched on again: a new chance
                 gen = ++_gen;
-                _debounce = new Timer(OnDebounce, gen, Timeout.Infinite, Timeout.Infinite);
+                _debounce = _makeDebounce(() => Refresh(gen));
             }
             _log("Ieșire audio: pornit.");
             _background(() =>
@@ -201,44 +222,64 @@ namespace WinNotch.Features.AudioSwitch
                 lock (_eventsLock)
                 {
                     if (!IsCurrent(gen)) return;                  // stopped meanwhile
-                    try { _events?.Start(DevicesChanged); _eventsOn = _events != null; }
+                    // a subscription left by a stop that hasn't run yet is kept (same callback) and now belongs to this start
+                    try { if (!_eventsOn) { _events?.Start(DevicesChanged); _eventsOn = _events != null; } _eventsGen = gen; }
                     catch (Exception ex) { _log("Ieșire audio: schimbările de dispozitive nu pot fi urmărite (" + ex.GetType().Name + ")."); }
                 }
                 Refresh(gen);
             });
         }
 
-        public void Stop()
+        /// <param name="wait">
+        /// True (Cleanup at exit): unsubscribes now, on this thread. False (the switch turned off, on the UI thread): the list
+        /// is cleared now, the unsubscription (a COM call on an MTA thread) runs in the background, so the UI never waits for it.
+        /// </param>
+        public void Stop(bool wait = true)
         {
-            Timer t;
+            IAudioDebounce t;
+            int stopGen;
+            bool wasRunning;
             lock (_lock)
             {
-                if (!_running) return;
-                _running = false;
-                _gen++;
-                t = _debounce;
-                _debounce = null;
-                _outputs = Array.Empty<AudioOutput>();
-                _lastCount = -1;
+                wasRunning = _running;
+                if (wasRunning) { _running = false; _gen++; }
+                stopGen = _gen;
+                t = wasRunning ? _debounce : null;
+                if (wasRunning) { _debounce = null; _outputs = Array.Empty<AudioOutput>(); _lastCount = -1; }
             }
-            try { t?.Dispose(); } catch { }
-            lock (_eventsLock)
+            if (!wasRunning)
             {
-                if (_eventsOn) { try { _events.Stop(); } catch (Exception ex) { _log("Ieșire audio: dezabonarea a eșuat (" + ex.GetType().Name + ")."); } }
-                _eventsOn = false;
+                // already stopped: at exit (wait) a background unsubscription that hasn't run yet is done now
+                if (wait) Unsubscribe(stopGen + 1);
+                return;
+            }
+            t?.Dispose();
+            if (wait) Unsubscribe(stopGen);
+            else
+            {
+                try { _background(() => Unsubscribe(stopGen)); }
+                catch (Exception ex) { _log("Ieșire audio: dezabonarea a eșuat (" + ex.GetType().Name + ")."); }
             }
             _log("Ieșire audio: oprit.");
             RaiseChanged();
         }
 
+        /// <summary>Only a subscription made by a start older than <paramref name="stopGen"/> (a newer start keeps its own).</summary>
+        private void Unsubscribe(int stopGen)
+        {
+            lock (_eventsLock)
+            {
+                if (!_eventsOn || _eventsGen >= stopGen) return;
+                try { _events.Stop(); } catch (Exception ex) { _log("Ieșire audio: dezabonarea a eșuat (" + ex.GetType().Name + ")."); }
+                _eventsOn = false;
+            }
+        }
+
         /// <summary>From the COM notification: only re-arms the timer (never blocks, never calls COM, takes no lock).</summary>
         public void DevicesChanged()
         {
-            var t = Volatile.Read(ref _debounce);
-            try { t?.Change(DebounceMs, Timeout.Infinite); } catch (ObjectDisposedException) { }
+            Volatile.Read(ref _debounce)?.Arm();
         }
-
-        private void OnDebounce(object state) => Refresh((int)state);
 
         private bool IsCurrent(int gen) { lock (_lock) return _running && gen == _gen; }
 
@@ -285,14 +326,22 @@ namespace WinNotch.Features.AudioSwitch
                     RefreshNow();
                     return ActionResult.Failed(AudioOutputRules.GoneMessage);
                 }
-                if (string.Equals(_sw.GetDefault(), target.EndpointId, StringComparison.OrdinalIgnoreCase))
-                    return ActionResult.Ok("„" + target.Name + "” e deja ieșirea audio.");
+                // no "already the default" shortcut: the default is read for one role only, and SetDefault (all three) is idempotent
             }
             catch (Exception ex) { ReportError(ex); return ActionResult.Failed(AudioOutputRules.ReadFailedMessage); }
 
             try { _sw.SetDefault(target.EndpointId); }
             catch (Exception ex)
             {
+                // R1: unplugged between the check and the call → "no longer connected", not an IPolicyConfig failure
+                bool gone;
+                try { gone = !(_sw.List() ?? Array.Empty<AudioEndpointInfo>()).Any(e => e != null && string.Equals(e.Id, target.EndpointId, StringComparison.OrdinalIgnoreCase)); }
+                catch (Exception) { gone = false; }
+                if (gone)
+                {
+                    RefreshNow();
+                    return ActionResult.Failed(AudioOutputRules.GoneMessage);
+                }
                 Fail(ex);
                 return ActionResult.Failed(AudioOutputRules.FailureTitle + ". " + AudioOutputRules.FailureHint);
             }

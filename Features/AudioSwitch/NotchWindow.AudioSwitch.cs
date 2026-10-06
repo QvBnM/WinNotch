@@ -90,7 +90,7 @@ namespace WinNotch
                 else
                 {
                     AudioSwitchOff();
-                    _asService.Stop();
+                    _asService.Stop(wait: false);              // R1: the unsubscription (COM, MTA) in the background, the UI never waits
                 }
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(AudioOutputRules.FeatureId, ex); }

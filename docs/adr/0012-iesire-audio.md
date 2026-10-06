@@ -41,7 +41,7 @@ Bluetooth). Nu exista nicio listă a dispozitivelor.
   (`UnregisterEndpointNotificationCallback`) la oprirea comutatorului și la ieșire.
 - **Logica pură, testată** (`Features/AudioSwitch/AudioSwitch.cs`, fără NAudio / COM / WPF): `AudioOutputRules` (ordinea după
   nume apoi cheie, dublurile de id ignorate, numerotarea numelor, textele), `AudioSwitchService` (Start / Stop, debounce,
-  `Select`, oprirea automată), `AudioOutputActions : IActionProvider` (cu `Changed` din serviciu). Teste AS1–AS21 cu un
+  `Select`, oprirea automată), `AudioOutputActions : IActionProvider` (cu `Changed` din serviciu). Teste AS1–AS24 cu un
   `IAudioEndpointSwitcher` fals.
 - **Id-urile acțiunilor:** `audio.output-<cheie>`, cheia = primele 10 cifre hex din SHA-256 al id-ului de endpoint (cu
   majuscule): stabilă la fiecare pornire, scurtă, fără acoladele și punctele id-ului brut; „-2” la o coliziune. **Abatere de la
@@ -80,3 +80,18 @@ Bluetooth). Nu exista nicio listă a dispozitivelor.
 - Un dispozitiv redenumit își păstrează id-ul de acțiune (cheia vine din id-ul endpoint-ului, nu din nume); același
   dispozitiv pe alt port USB poate primi alt endpoint, deci altă cheie.
 - Limită cunoscută: butonul e doar pe Acasă (și în Command Bar); paginile tale nu au un widget pentru el.
+
+## Note după revizia R1
+- **Dispozitiv scos chiar în timpul schimbării:** dacă `SetDefault` aruncă, lista e recitită; când dispozitivul nu mai e în
+  ea, rezultatul e „Dispozitivul nu mai e conectat.”, fără oprire automată (AS22). Doar o eroare pe un dispozitiv încă prezent
+  oprește funcția.
+- **Fără scurtătura „e deja ieșirea”:** implicita e citită doar pentru Multimedia, iar comunicațiile pot fi pe alt
+  dispozitiv; `SetDefault` (toate trei rolurile) e chemat mereu, fiind idempotent (AS8).
+- **Oprirea din UI nu așteaptă COM-ul:** comutatorul oprit golește lista imediat, iar dezabonarea (`OnMta`, sincronă) rulează
+  în fundal (`Stop(wait: false)`). Abonarea are generația pornirii care a făcut-o: o dezabonare întârziată nu atinge abonarea
+  unei porniri mai noi (care o preia). Doar `Cleanup` la ieșire oprește sincron și termină o dezabonare rămasă (AS23).
+- **Numele ilizibil:** orice excepție la `FriendlyName` dă numele generic „Ieșire audio fără nume”.
+- **Microfoanele:** cu `includeDeviceEvents`, `EndpointWatcher` ignoră evenimentele endpoint-urilor de captură după forma
+  id-ului („{0.0.1.…}”, fără COM în callback; orice altă formă contează ca ieșire). Fără opțiune (motorul de context),
+  comportamentul e identic (AS24).
+- **Debounce-ul injectabil:** `IAudioDebounce` (în aplicație `TimerDebounce`, 400 ms); testul AS16 îl declanșează de mână, fără ceas.

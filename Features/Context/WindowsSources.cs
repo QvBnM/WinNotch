@@ -292,9 +292,16 @@ namespace WinNotch.Features.Context
         public EndpointWatcher(Action changed, bool includeDeviceEvents = false) { _changed = changed; _devices = includeDeviceEvents; }
 
         public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId) { if (flow == DataFlow.Render) _changed(); }
-        public void OnDeviceStateChanged(string deviceId, DeviceState newState) { if (_devices) _changed(); }
-        public void OnDeviceAdded(string pwstrDeviceId) { if (_devices) _changed(); }
-        public void OnDeviceRemoved(string deviceId) { if (_devices) _changed(); }
+        public void OnDeviceStateChanged(string deviceId, DeviceState newState) { if (_devices && !IsCapture(deviceId)) _changed(); }
+        public void OnDeviceAdded(string pwstrDeviceId) { if (_devices && !IsCapture(pwstrDeviceId)) _changed(); }
+        public void OnDeviceRemoved(string deviceId) { if (_devices && !IsCapture(deviceId)) _changed(); }
+
+        /// <summary>
+        /// Capture endpoints have ids "{0.0.1.00000000}.{…}" (render: "{0.0.0.…}"): a microphone coming or going doesn't
+        /// re-read the list of outputs. A string test only (no COM in the callback); any other form counts as an output.
+        /// Used only with includeDeviceEvents (the context engine's behaviour is unchanged).
+        /// </summary>
+        public static bool IsCapture(string deviceId) => deviceId != null && deviceId.StartsWith("{0.0.1.", StringComparison.Ordinal);
         public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) { }
     }
 

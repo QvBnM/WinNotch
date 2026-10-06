@@ -42,6 +42,17 @@ namespace WinNotch
             public void Stop() { Stops++; Callback = null; }
         }
 
+        /// <summary>A debounce the test fires by hand: no clock, no sleeping.</summary>
+        sealed class ManualDebounce : IAudioDebounce
+        {
+            public readonly Action Tick;
+            public int Arms; public bool Disposed;
+            public ManualDebounce(Action tick) { Tick = tick; }
+            public void Arm() { if (!Disposed) Arms++; }
+            public void Fire() { if (Arms > 0 && !Disposed) { Arms = 0; Tick(); } }
+            public void Dispose() => Disposed = true;
+        }
+
         sealed class AudioRig
         {
             public readonly FakeEndpoints Sw = new FakeEndpoints();
@@ -53,11 +64,15 @@ namespace WinNotch
             public readonly AudioOutputActions Provider;
             public readonly List<(string, string)> Failures = new List<(string, string)>();
             public int ChangedCount, ProviderChanged;
+            public readonly List<ManualDebounce> Debounces = new List<ManualDebounce>();
+            public readonly Queue<Action> Deferred = new Queue<Action>();
+            public bool Defer;
 
             public AudioRig(bool on = true)
             {
                 Flags = new FeatureFlags(new Dictionary<string, bool>(), FeatureCatalog.All, log: l => { lock (Log) Log.Add(l); });
-                Service = new AudioSwitchService(Sw, Events, () => Flags, l => { lock (Log) Log.Add(l); }, a => a());
+                Service = new AudioSwitchService(Sw, Events, () => Flags, l => { lock (Log) Log.Add(l); }, a => { if (Defer) Deferred.Enqueue(a); else a(); },
+                                                 tick => { var d = new ManualDebounce(tick); Debounces.Add(d); return d; });
                 Service.Changed += () => Interlocked.Increment(ref ChangedCount);
                 Service.Failed += (t, h) => { lock (Failures) Failures.Add((t, h)); };
                 Registry = new ActionRegistry(Flags, null, l => { lock (Log) Log.Add(l); });
@@ -136,15 +151,15 @@ namespace WinNotch
                   rig.ChangedCount > changedBefore && rig.AllLog().Contains("Acțiune " + headphones.ActionId + " (UI): reușită"));
 
             var again = rig.Invoke(headphones.ActionId);
-            Check("AS8", "Ieșirea care e deja implicită: reușit, fără niciun apel SetDefault",
-                  again.Success && again.Message.Contains("e deja ieșirea audio") && rig.Sw.Set.Count == 1);
+            Check("AS8", "Ieșirea care pare deja implicită (citită doar pentru Multimedia): SetDefault e chemat oricum (idempotent, toate cele trei roluri), reușit (R1)",
+                  again.Success && again.Message == "Ieșire audio: Căști" && rig.Sw.Set.SequenceEqual(new[] { Ep1, Ep1 }));
 
             // a device unplugged between the list and the click: not an IPolicyConfig failure
             var speakers = rig.Service.Outputs.Single(o => o.EndpointId == Ep2);
             rig.Sw.Devices.RemoveAll(d => d.Id == Ep2);
             var gone = rig.Invoke(speakers.ActionId);
             Check("AS9", "Dispozitiv scos între listă și click: „nu mai e conectat”, fără SetDefault, fără oprire automată; lista se recitește și acțiunea dispare",
-                  !gone.Success && gone.Message == AudioOutputRules.GoneMessage && rig.Sw.Set.Count == 1 && rig.Flags.IsEnabled("audio-switch") &&
+                  !gone.Success && gone.Message == AudioOutputRules.GoneMessage && rig.Sw.Set.Count == 2 && rig.Flags.IsEnabled("audio-switch") &&
                   rig.Flags.DisabledReason("audio-switch") == null && rig.Service.Outputs.Count == 1 && rig.Actions().Count == 1);
 
             // ---- the first error turns the switch off, once, with a fixed reason
@@ -202,30 +217,71 @@ namespace WinNotch
             Check("AS15", "Refresh: provider-ul anunță registrul doar când lista se schimbă (un dispozitiv nou, altă implicită); registrul recitește acțiunile",
                   pc1 == pc0 + 1 && pc2 == pc1 && rr.ProviderChanged == pc2 + 1 && rr.Actions().Count == 1 && rr.Actions()[0].Title.EndsWith("(implicită)"));
 
-            // ---- debounce of the device notifications (no polling)
+            // ---- debounce of the device notifications (no polling); fired by hand (R1: no clock in the test)
             var db = new AudioRig();
             db.Service.Start();
             int reads0 = db.Sw.ListCalls;
             var cb = db.Events.Callback;
+            var deb = db.Debounces.Single();
             for (int i = 0; i < 6; i++) cb();               // a burst from Windows (a Bluetooth headset connecting)
-            Thread.Sleep(150);
-            int readsSoon = db.Sw.ListCalls;
-            WaitUntil(() => db.Sw.ListCalls > reads0, 3000);
-            Thread.Sleep(AudioSwitchService.DebounceMs + 300);
+            int readsArmed = db.Sw.ListCalls;
+            deb.Fire();
             int readsAfter = db.Sw.ListCalls;
+            deb.Fire();                                     // nothing armed since: no read
+            int readsIdle = db.Sw.ListCalls;
             db.Service.Stop();
             cb();                                           // a late notification after the stop
-            Thread.Sleep(AudioSwitchService.DebounceMs + 300);
-            Check("AS16", "Notificările de dispozitive: debounce ≥ 300 ms (o rafală → o singură recitire, nu imediat); după oprire, nicio recitire; abonare și dezabonare o dată",
-                  AudioSwitchService.DebounceMs >= 300 && readsSoon == reads0 && readsAfter == reads0 + 1 && db.Sw.ListCalls == readsAfter &&
-                  db.Events.Starts == 1 && db.Events.Stops == 1,
-                  reads0 + " / " + readsSoon + " / " + readsAfter + " / " + db.Sw.ListCalls);
+            deb.Fire();
+            Check("AS16", "Notificările de dispozitive: debounce (≥ 300 ms în aplicație) — o rafală doar re-armează, o singură recitire la tick, niciuna fără notificare; după oprire debounce-ul e eliberat și nimic nu se mai citește; abonare și dezabonare o dată",
+                  AudioSwitchService.DebounceMs >= 300 && readsArmed == reads0 && readsAfter == reads0 + 1 && readsIdle == readsAfter && db.Sw.ListCalls == readsAfter &&
+                  deb.Disposed && db.Events.Starts == 1 && db.Events.Stops == 1 && Norm(NoComments(Src("Features/AudioSwitch/AudioSwitch.cs"))).Contains("tick => new TimerDebounce(tick, DebounceMs)"),
+                  reads0 + " / " + readsArmed + " / " + readsAfter + " / " + db.Sw.ListCalls);
 
             var le = new AudioRig();
             le.Sw.ListError = new System.IO.IOException("x");
             le.Service.Start();
             Check("AS17", "Lista nu poate fi citită: eroare raportată funcției (ReportError, doar tipul), lista rămâne goală, nimic nu cade",
                   le.Service.Outputs.Count == 0 && le.AllLog().Contains("Eroare în funcția „audio-switch”: IOException") && le.Flags.IsEnabled("audio-switch"));
+
+            // R1: unplugged between the check and SetDefault (SetDefault throws because the device is gone) → not a failure
+            var race = new AudioRig();
+            race.Sw.Add(Ep1, "Căști").Add(Ep2, "Boxe");
+            var raceSw = new RemovingEndpoints(race.Sw, Ep1);
+            var race2 = new AudioSwitchService(raceSw, null, () => race.Flags, l => { lock (race.Log) race.Log.Add(l); }, a => a());
+            race2.Start();
+            var rr2 = race2.Select(race2.Outputs.Single(o => o.EndpointId == Ep1).Key);
+            Check("AS22", "Dispozitiv scos între verificare și SetDefault (SetDefault aruncă, iar lista recitită nu-l mai are): „nu mai e conectat”, fără oprire automată, fără mesaj de eroare (R1)",
+                  !rr2.Success && rr2.Message == AudioOutputRules.GoneMessage && race.Flags.IsEnabled("audio-switch") && race.Flags.DisabledReason("audio-switch") == null &&
+                  !race2.HasFailed && race2.Outputs.All(o => o.EndpointId != Ep1) && raceSw.SetCalls == 1);
+
+            // R1: the switch turned off on the UI thread unsubscribes in the background; a quick restart keeps its subscription
+            var bg = new AudioRig();
+            bg.Service.Start();
+            bg.Defer = true;
+            bg.Service.Stop(wait: false);
+            bool clearedNow = bg.Service.Outputs.Count == 0 && !bg.Service.Running && bg.Events.Stops == 0;
+            bg.Defer = false;
+            bg.Service.Start();                             // subscription kept (same callback), owned by the new start
+            while (bg.Deferred.Count > 0) bg.Deferred.Dequeue()();     // the old stop's unsubscription runs late
+            bool keptOnRestart = bg.Events.Stops == 0 && bg.Events.Starts == 1 && bg.Service.Running;
+            bg.Defer = true;
+            bg.Service.Stop(wait: false);
+            bg.Defer = false;
+            bg.Service.Stop();                              // at exit (Cleanup): the pending unsubscription is done now
+            bool exitDone = bg.Events.Stops == 1;
+            while (bg.Deferred.Count > 0) bg.Deferred.Dequeue()();
+            Check("AS23", "Oprirea din UI nu așteaptă COM-ul: lista golită imediat, dezabonarea în fundal; o repornire rapidă își păstrează abonarea; la ieșire (Cleanup) dezabonarea rămasă se face pe loc, o singură dată (R1)",
+                  clearedNow && keptOnRestart && exitDone && bg.Events.Stops == 1 &&
+                  Norm(NoComments(Src("Features/AudioSwitch/NotchWindow.AudioSwitch.cs"))).Contains("_asService.Stop(wait: false);") &&
+                  Norm(NoComments(MethodBody(Src("Features/AudioSwitch/NotchWindow.AudioSwitch.cs"), "private void StopAudioSwitch()"))).Contains("_asService.Stop();"));
+
+            string ws = Norm(NoComments(Src("Features/Context/WindowsSources.cs")));
+            Check("AS24", "Evenimentele de captură (microfoane, „{0.0.1.…}”) nu recitesc lista ieșirilor, doar cu includeDeviceEvents; motorul de context neschimbat; numele ilizibil → numele generic (R1)",
+                  ws.Contains("public void OnDeviceAdded(string pwstrDeviceId) { if (_devices && !IsCapture(pwstrDeviceId)) _changed(); }") &&
+                  ws.Contains("public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId) { if (flow == DataFlow.Render) _changed(); }") &&
+                  ws.Contains("deviceId.StartsWith(\"{0.0.1.\", StringComparison.Ordinal)") && ws.Contains("_watcher = new EndpointWatcher(Raise);") &&
+                  Norm(NoComments(Src("Features/AudioSwitch/PolicyConfigSwitcher.cs"))).Contains("try { name = d.FriendlyName; } catch (Exception) { name = null; }") &&
+                  AudioOutputRules.Build(new[] { new AudioEndpointInfo(Ep1, null) }, null)[0].Name == AudioOutputRules.Unnamed);
 
             // ---- the Windows side, the notch's side, the wiring (source checks, like the earlier features)
             string pc = Src("Features/AudioSwitch/PolicyConfigSwitcher.cs"), pcN = Norm(NoComments(pc)), pure0 = Src("Features/AudioSwitch/AudioSwitch.cs");
@@ -275,10 +331,20 @@ namespace WinNotch
                   Norm(NoComments(MethodBody(part, "private void SmokeAudioOutputs()"))).StartsWith("{ if (!SmokeMode.On) return;", StringComparison.Ordinal));
         }
 
-        static void WaitUntil(Func<bool> ok, int ms)
+        /// <summary>A switcher whose device disappears the moment SetDefault is called (and SetDefault then fails).</summary>
+        sealed class RemovingEndpoints : IAudioEndpointSwitcher
         {
-            var until = DateTime.UtcNow.AddMilliseconds(ms);
-            while (!ok() && DateTime.UtcNow < until) Thread.Sleep(20);
+            private readonly FakeEndpoints _inner; private readonly string _id;
+            public int SetCalls;
+            public RemovingEndpoints(FakeEndpoints inner, string id) { _inner = inner; _id = id; }
+            public IReadOnlyList<AudioEndpointInfo> List() => _inner.List();
+            public string GetDefault() => _inner.GetDefault();
+            public void SetDefault(string endpointId)
+            {
+                SetCalls++;
+                _inner.Devices.RemoveAll(d => d.Id == _id);
+                throw new System.Runtime.InteropServices.COMException("gone");
+            }
         }
     }
 }

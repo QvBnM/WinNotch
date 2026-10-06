@@ -42,7 +42,7 @@ namespace WinNotch.Features.AudioSwitch
                 {
                     using var d = all[i];                  // each MMDevice released right away
                     string name;
-                    try { name = d.FriendlyName; } catch (COMException) { name = null; }
+                    try { name = d.FriendlyName; } catch (Exception) { name = null; }      // R1: any failure → the generic name
                     list.Add(new AudioEndpointInfo(d.ID, name));
                 }
             }
