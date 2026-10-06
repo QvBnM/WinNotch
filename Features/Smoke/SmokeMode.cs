@@ -74,6 +74,13 @@ namespace WinNotch.Features.Smoke
         public const string AudioOutputsToggleAutomationId = "audio-outputs-toggle";
         /// <summary>P30: the list of outputs over the page (only while it is open).</summary>
         public const string AudioOutputsPanelAutomationId = "audio-outputs-panel";
+        /// <summary>P30: the list's title (a TextBlock, which UI Automation always sees): present exactly while the list is open.</summary>
+        public const string AudioOutputsTitleAutomationId = "audio-outputs-title";
+        /// <summary>P30: what "smoke-audio-outputs" did, logged with fixed words and counters (the test waits for its start).</summary>
+        public const string AudioOutputsLogPrefix = "Test de fum: lista ieșirilor audio";
+        public static string AudioOutputsLogLine(bool open, bool home, bool editing, bool button, int outputs) =>
+            AudioOutputsLogPrefix + " — deschisă: " + (open ? "da" : "nu") + ", pagina Acasă: " + (home ? "da" : "nu") + ", editare: " + (editing ? "da" : "nu") +
+            ", butonul lângă volum: " + (button ? "da" : "nu") + ", ieșiri: " + Math.Clamp(outputs, 0, 999) + ".";
         /// <summary>P30: an output in the list = this prefix + its key (10 hex digits); its Name is the device's name, its ItemStatus "default" for the default one.</summary>
         public const string AudioOutputItemPrefix = "audio-output-";
         /// <summary>P30: „Nicio ieșire audio” when there is no active output.</summary>

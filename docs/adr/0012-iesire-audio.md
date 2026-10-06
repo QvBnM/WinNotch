@@ -95,3 +95,8 @@ Bluetooth). Nu exista nicio listă a dispozitivelor.
   id-ului („{0.0.1.…}”, fără COM în callback; orice altă formă contează ca ieșire). Fără opțiune (motorul de context),
   comportamentul e identic (AS24).
 - **Debounce-ul injectabil:** `IAudioDebounce` (în aplicație `TimerDebounce`, 400 ms); testul AS16 îl declanșează de mână, fără ceas.
+- **Testul de fum în CI (rularea 40):** lista nu era găsită („audio-outputs-panel”), fiindcă id-ul stătea pe un `Border`, care
+  nu are peer UI Automation (raftul nu căuta niciodată cadrul său, doar butoane și texte). Acum id-ul de căutare e pe titlu
+  (`audio-outputs-title`, un `TextBlock`), iar cadrul e un `Border` cu peer propriu; comanda `smoke-audio-outputs` scrie o
+  linie de diagnostic fixă (deschisă, pagina Acasă, editare, butonul, numărul de ieșiri), pe care testul o tipărește și o
+  verifică înainte de UI Automation (AS25).

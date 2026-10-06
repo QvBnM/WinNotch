@@ -328,7 +328,16 @@ namespace WinNotch
                   Count(body, "toggle.AsButton().Invoke();") == 2 && body.Contains("LogCount(AudioAutoOff) > 0") && !body.Contains("SmokeMode.AudioOutputItemPrefix + ") &&
                   SmokeMode.Parse("smoke-audio-outputs")?.Kind == SmokeCommandKind.AudioOutputs && SmokeMode.Parse(" SMOKE-AUDIO-OUTPUTS ")?.Kind == SmokeCommandKind.AudioOutputs &&
                   SmokeMode.Parse("smoke-audio-outputs x") == null &&
-                  Norm(NoComments(MethodBody(part, "private void SmokeAudioOutputs()"))).StartsWith("{ if (!SmokeMode.On) return;", StringComparison.Ordinal));
+                  Norm(NoComments(MethodBody(part, "private void SmokeAudioOutputs()"))).StartsWith("{ if (!SmokeMode.On) return;", StringComparison.Ordinal) &&
+                  body.Contains("WaitFor(ListShown, p => p,") && body.Contains("if (!diag.Contains(\"deschisă: da\", StringComparison.Ordinal)) Fail(") &&
+                  !body.Contains("AudioOutputsPanelAutomationId"));
+            // the CI failure of run 40: the id was on a Border, which has no automation peer → the list was never found
+            Check("AS25", "Lista e vizibilă în UI Automation: id-ul pe titlu (TextBlock, are peer) și cadrul e un Border cu peer propriu; linia de diagnostic a comenzii de fum are doar cuvinte fixe și contoare",
+                  partN.Contains("AutomationProperties.SetAutomationId(title, SmokeMode.AudioOutputsTitleAutomationId);") && partN.Contains("_asPanel = new AutomationBorder {") &&
+                  partN.Contains("new System.Windows.Automation.Peers.FrameworkElementAutomationPeer(this)") &&
+                  SmokeMode.AudioOutputsLogLine(true, true, false, true, 0) == "Test de fum: lista ieșirilor audio — deschisă: da, pagina Acasă: da, editare: nu, butonul lângă volum: da, ieșiri: 0." &&
+                  SmokeMode.AudioOutputsLogLine(false, false, true, false, 5000).EndsWith("ieșiri: 999.", StringComparison.Ordinal) &&
+                  !SmokeMode.IsFatalLogLine(SmokeMode.AudioOutputsLogLine(false, true, false, true, 2)));
         }
 
         /// <summary>A switcher whose device disappears the moment SetDefault is called (and SetDefault then fails).</summary>

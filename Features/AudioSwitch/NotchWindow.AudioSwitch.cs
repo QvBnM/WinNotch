@@ -163,6 +163,9 @@ namespace WinNotch
         {
             if (_asPanel != null || !_asOn || Editing || _mode != Mode.Expanded) return;
             var title = ThemedText("Ieșire audio", 13, "InkBrush", true);
+            // a TextBlock has an automation peer (a Border has none: an id on it is invisible to UI Automation)
+            AutomationProperties.SetAutomationId(title, SmokeMode.AudioOutputsTitleAutomationId);
+            AutomationProperties.SetName(title, "Ieșire audio");
             var close = new Button { Style = Ui.S("GhostPill"), Content = "Închide" };
             close.Click += (o, e) => { e.Handled = true; AudioSwitchHidePanel(); };
             var head = Ui.Cols(Ui.Star(), Ui.Auto);
@@ -181,7 +184,7 @@ namespace WinNotch
             body.Put(_asMessage, 0, 1);
             body.Put(scroll, 0, 2);
 
-            _asPanel = new Border
+            _asPanel = new AutomationBorder
             {
                 Width = 300, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom,
                 Margin = new Thickness(8, 0, 0, 8), Padding = new Thickness(12, 10, 12, 8), CornerRadius = new CornerRadius(16),
@@ -301,16 +304,26 @@ namespace WinNotch
         /// <summary>The Activity Manager's key for the failure alert.</summary>
         internal const string AudioSwitchFailureAlertId = "audio-switch-failed";
 
-        /// <summary>Smoke command "smoke-audio-outputs": Home shown and the list opened, as the button does (the test then clicks the button itself).</summary>
+        /// <summary>
+        /// Smoke command "smoke-audio-outputs": Home shown and the list opened, as the button does (the test then clicks the
+        /// button itself). The log line says what happened, with fixed words and counters only (never a device name).
+        /// </summary>
         private void SmokeAudioOutputs()
         {
             if (!SmokeMode.On) return;
             if (!_asOn) { App.Log("Test de fum: ieșirea audio e oprită; comanda e ignorată."); return; }
             if (_mode != Mode.Expanded) { App.Log("Test de fum: notch-ul e închis; lista ieșirilor audio nu se deschide."); return; }
-            ShowHome();
+            if (_pane != _home) ShowHome();
             AudioSwitchPlaceToggle();
             if (_asPanel == null) AudioSwitchShowPanel();
-            App.Log("Test de fum: lista ieșirilor audio.");
+            App.Log(SmokeMode.AudioOutputsLogLine(_asPanel != null, _pane == _home, Editing, _home?.OutputSlot.Child == _asToggle && _asToggle != null, _asService.Outputs.Count));
+        }
+
+        /// <summary>A Border that UI Automation sees (the default Border has no peer): the list's frame, found by its id.</summary>
+        private sealed class AutomationBorder : Border
+        {
+            protected override System.Windows.Automation.Peers.AutomationPeer OnCreateAutomationPeer() =>
+                new System.Windows.Automation.Peers.FrameworkElementAutomationPeer(this);
         }
     }
 }

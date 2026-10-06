@@ -16,6 +16,9 @@ namespace WinNotch.Smoke
 
         private static AutomationElement AudioElement(string id) => _notch.FindFirstDescendant(cf => cf.ByAutomationId(id));
 
+        /// <summary>The list is open: its title (a TextBlock, always in UI Automation) is there.</summary>
+        private static bool ListShown() => AudioElement(SmokeMode.AudioOutputsTitleAutomationId) != null;
+
         private static List<AutomationElement> AudioItems() =>
             _notch.FindAllDescendants().Where(e => IdOf(e).StartsWith(SmokeMode.AudioOutputItemPrefix, StringComparison.Ordinal)).ToList();
 
@@ -33,7 +36,8 @@ namespace WinNotch.Smoke
             bool switchedOn = false;
             try
             {
-                const string started = "Ieșire audio: pornit.", stopped = "Ieșire audio: oprit.", listed = "Test de fum: lista ieșirilor audio.";
+                const string started = "Ieșire audio: pornit.", stopped = "Ieșire audio: oprit.";
+                string listed = SmokeMode.AudioOutputsLogPrefix;
                 int on = LogCount(started), offBefore = LogCount(stopped);
                 Command("toggle feature " + AudioFeature);
                 switchedOn = true;
@@ -42,8 +46,11 @@ namespace WinNotch.Smoke
                 OpenNotchByHotkey();
                 int shown = LogCount(listed);
                 Command("smoke-audio-outputs");
-                WaitFor(() => LogCount(listed), n => n > shown, TimeSpan.FromSeconds(8), "„" + listed + "” în log");
-                WaitFor(() => AudioElement(SmokeMode.AudioOutputsPanelAutomationId), p => p != null, TimeSpan.FromSeconds(5), "lista ieșirilor audio („" + SmokeMode.AudioOutputsPanelAutomationId + "”)");
+                WaitFor(() => LogCount(listed), n => n > shown, TimeSpan.FromSeconds(8), "„" + listed + "…” în log");
+                string diag = LogLines().LastOrDefault(l => l.Contains(listed, StringComparison.Ordinal)) ?? "";
+                Console.WriteLine("      (" + diag.Trim() + ")");                  // fixed words and counters only
+                if (!diag.Contains("deschisă: da", StringComparison.Ordinal)) Fail("Lista nu s-a deschis: " + diag + "\nStarea: " + ReadStatus());
+                WaitFor(ListShown, p => p, TimeSpan.FromSeconds(8), "lista ieșirilor audio în UI Automation („" + SmokeMode.AudioOutputsTitleAutomationId + "”); " + diag);
 
                 // no audio on the CI machine: „Nicio ieșire audio”; with devices, the rows (at most one default)
                 var state = WaitFor(() => (Items: AudioItems(), Empty: AudioElement(SmokeMode.AudioOutputsEmptyAutomationId)),
@@ -58,9 +65,9 @@ namespace WinNotch.Smoke
                 var toggle = WaitFor(() => AudioElement(SmokeMode.AudioOutputsToggleAutomationId), b => b != null, TimeSpan.FromSeconds(5),
                                      "butonul „Ieșire audio” de lângă volum („" + SmokeMode.AudioOutputsToggleAutomationId + "”)");
                 toggle.AsButton().Invoke();
-                WaitFor(() => AudioElement(SmokeMode.AudioOutputsPanelAutomationId), p => p == null, TimeSpan.FromSeconds(5), "lista închisă de butonul de lângă volum");
+                WaitFor(ListShown, p => !p, TimeSpan.FromSeconds(5), "lista închisă de butonul de lângă volum");
                 toggle.AsButton().Invoke();
-                WaitFor(() => AudioElement(SmokeMode.AudioOutputsPanelAutomationId), p => p != null, TimeSpan.FromSeconds(5), "lista deschisă din nou de butonul de lângă volum");
+                WaitFor(ListShown, p => p, TimeSpan.FromSeconds(5), "lista deschisă din nou de butonul de lângă volum");
                 if (ReadStatus().Mode != "Expanded") Fail("Notch-ul s-a închis după butonul „Ieșire audio”: " + ReadStatus());
                 CloseNotchByHotkey();
 
