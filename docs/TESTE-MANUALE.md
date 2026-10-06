@@ -245,6 +245,20 @@ căști cu fir, USB sau Bluetooth). Atenție: fiecare click schimbă ieșirea im
 | P30.10 | Nimic în log, fără consum | După P30.2–P30.7 deschide `%AppData%\WinNotch\log.txt`; apoi lasă notch-ul închis 10 minute și urmărește Task Manager. | Doar „Ieșire audio: pornit.”, „Ieșire audio: N ieșiri active.”, „Ieșire audio: lista deschisă (N).”, „Acțiune audio.output-… (UI): reușită”; niciun nume de dispozitiv. CPU aproape 0%: nimic nu rulează periodic. |
 | P30.11 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Rularea cu activity-manager oprit are „PASS  Căști/boxe: …” (20 PASS); cea cu el pornit scrie „SKIP  Căști/boxe…” (17 PASS). |
 
+### B1 — Notch-ul gol și pastila doar cu ora (0.6.18)
+
+Plasa de siguranță („Plasa de siguranță a notch-ului”, Setări › Funcții noi) e pornită implicit. Pe tema luminoasă și pe cea
+întunecată. După fiecare verificare, caută în `%AppData%\WinNotch\log.txt` rânduri „B1 recover” (nu ar trebui să apară).
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| B1.1 | Deschideri repetate | Cu toate funcțiile noi pornite (Manager de activități, Command Bar, Pagina după context, Quick Actions, Smart Clipboard, Raft, Căști/boxe): deschide notch-ul de 20 de ori, amestecat — hover, `Win+Alt+N`, peste o alertă de volum, după `Win+Alt+Space` + Esc, trăgând un fișier peste pastilă, pe fiecare pagină. | De fiecare dată: tab-urile, pagina și ora din antet se văd. Niciun „B1 recover” în log. |
+| B1.2 | Pastila după închidere | Închide notch-ul repede (mouse-ul afară imediat după deschidere, sau `Win+Alt+N` de două ori rapid), de 10 ori; apoi schimbă volumul imediat după închidere. | Standby-ul (Muzică, Ora, Vremea) apare de fiecare dată; alerta de volum are bara și numărul (nu e goală). |
+| B1.3 | Forma mică | Lasă mouse-ul departe de notch 10 s (Setări: forma mică după 10 s); apoi maximizează o fereastră pe același monitor. | După 10 s: pastila mică, sus, cu „ora · data” (ex. „14:05 · mar 6 oct”), niciodată doar ora. Peste fereastra maximizată: la fel. Hover peste ea (sau o alertă) → standby-ul complet (fără fereastra maximizată). |
+| B1.4 | Vremea pe tema luminoasă | Tema luminoasă; standby cu Vremea; apoi deconectează internetul și repornește WinNotch. | Iconița vremii se vede (portocaliu-închis ziua cu soare, albastru noaptea / cu nori; gri fără date, lângă „—”). Pe tema întunecată culorile sunt ca înainte. |
+| B1.5 | Plasa în acțiune | (Pentru dezvoltare) pornește `WinNotch.exe --smoke`, deschide notch-ul și scrie `smoke-empty-panel` în `%AppData%\WinNotch\smoke\smoke-commands.txt`; apoi, cu notch-ul închis, `smoke-empty-pill`. | În cel mult o secundă panoul (apoi pastila) apare din nou; în `%AppData%\WinNotch\smoke\log.txt` câte un rând „B1 recover”, urmat de „conținutul se vede”. |
+| B1.6 | Ce scrii dacă se mai întâmplă | Notch gol sau pastila doar cu ora. | Copiază rândurile „B1 recover” și „Eroare neprevăzută” din jurul momentului (`log.txt`): ele spun ce strat lipsea, pagina, comutatoarele, activitatea și overlay-urile, fără titluri sau nume. |
+
 ### P02 — Teste de fum (CI)
 
 Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai jos sunt pentru rularea locală și pentru siguranța modului `--smoke`.

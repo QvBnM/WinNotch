@@ -22,6 +22,7 @@
     <Compile Include="ShelfTests.cs" />
     <Compile Include="ShelfR1Tests.cs" />
     <Compile Include="AudioSwitchTests.cs" />
+    <Compile Include="NotchGuardTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -76,5 +77,7 @@
     <Compile Include="..\Features\Shelf\ShelfSettings.cs" />
     <!-- P30: only the pure part (no NAudio, no COM); PolicyConfigSwitcher.cs and the notch's partial stay out -->
     <Compile Include="..\Features\AudioSwitch\AudioSwitch.cs" />
+    <!-- B1: only the pure part of the safety net (the notch's partial stays out) -->
+    <Compile Include="..\Features\NotchGuard\NotchGuard.cs" />
   </ItemGroup>
 </Project>

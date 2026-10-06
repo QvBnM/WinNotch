@@ -51,7 +51,7 @@ namespace WinNotch.Smoke
     /// and the switch doesn't turn itself off; nothing is chosen (that would change the machine's default output).
     /// log.txt is copied to the artifacts folder after every run; on a failure also a screenshot and the notch's state.
     /// This file: Main, the order of the checks, the shared helpers and the basic checks; the areas are in SmokeAlerts.cs,
-    /// SmokeCommandBar.cs, SmokeContext.cs (P27, P20), SmokeClipboard.cs (P21), SmokeShelf.cs (P23) and SmokeAudio.cs (P30), the same partial class.
+    /// SmokeCommandBar.cs, SmokeContext.cs (P27, P20), SmokeClipboard.cs (P21), SmokeShelf.cs (P23), SmokeAudio.cs (P30), the same partial class.
     /// </summary>
     public static partial class SmokeProgram
     {
@@ -183,6 +183,8 @@ namespace WinNotch.Smoke
             public string Page = "", Ctx = "";
             /// <summary>P20: Quick Actions buttons that ran with success, unasked suggestions posted.</summary>
             public int Qa, Qs;
+            /// <summary>B1: what the safety net sees wrong on screen now (0 = the content is visible), its repairs since start.</summary>
+            public int B1, B1r;
             public override string ToString() => Raw;
             public bool SameSize(Status o) => Math.Abs(W - o.W) <= 2 && Math.Abs(H - o.H) <= 2;
         }
@@ -191,7 +193,7 @@ namespace WinNotch.Smoke
         {
             string raw = _notch.Properties.ItemStatus.ValueOrDefault ?? "";
             return SmokeMode.TryParseStatus(raw, out var m, out int w, out int h, out var x, out var page, out var ctx)
-                ? new Status { Mode = m, W = w, H = h, Raw = raw, Split = x["split"], Group = x["group"], Peek = x["peek"], Cmd = x["cmd"], Page = page, Ctx = ctx, Qa = x["qa"], Qs = x["qs"] }
+                ? new Status { Mode = m, W = w, H = h, Raw = raw, Split = x["split"], Group = x["group"], Peek = x["peek"], Cmd = x["cmd"], Page = page, Ctx = ctx, Qa = x["qa"], Qs = x["qs"], B1 = x["b1"], B1r = x["b1r"] }
                 : new Status { Mode = "", Raw = raw };
         }
 

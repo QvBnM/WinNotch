@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace WinNotch.Features.Smoke
 {
-    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage, FakeMeeting, ClipboardPage, ShelfAdd, AudioOutputs }
+    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage, FakeMeeting, ClipboardPage, ShelfAdd, AudioOutputs, EmptyPanel, EmptyPill }
 
     /// <summary>One line of smoke-commands.txt, checked.</summary>
     public sealed class SmokeCommand
@@ -136,7 +136,9 @@ namespace WinNotch.Features.Smoke
         /// Smart Clipboard (P21): "smoke-clipboard-page &lt;on|off&gt;" (a page with the Clipboard widget, shown / removed), and
         /// for the shelf (P23): "smoke-shelf-add &lt;path&gt;" (a file the test made, added like a drop; the path keeps its
         /// case, at most <see cref="MaxShelfPath"/> characters, no control characters), and for the audio outputs (P30):
-        /// "smoke-audio-outputs" (with the notch open: Home shown and the list of outputs opened, as its button does). Case and extra spaces don't matter;
+        /// "smoke-audio-outputs" (with the notch open: Home shown and the list of outputs opened, as its button does), and for the
+        /// safety net (B1): "smoke-empty-panel" (the open notch's panel hidden and its tabs removed on purpose, then checked as
+        /// after an opening) and "smoke-empty-pill" (the standby's layer hidden on purpose, then checked). Case and extra spaces don't matter;
         /// anything else is null (ignored).
         /// </summary>
         public static SmokeCommand Parse(string line)
@@ -167,6 +169,8 @@ namespace WinNotch.Features.Smoke
             if (w.Length == 1 && w[0] == "dismiss-activities") return new SmokeCommand { Kind = SmokeCommandKind.DismissActivities };
             if (w.Length == 1 && w[0] == "open-command-bar") return new SmokeCommand { Kind = SmokeCommandKind.OpenCommandBar };
             if (w.Length == 1 && w[0] == "smoke-audio-outputs") return new SmokeCommand { Kind = SmokeCommandKind.AudioOutputs };
+            if (w.Length == 1 && w[0] == "smoke-empty-panel") return new SmokeCommand { Kind = SmokeCommandKind.EmptyPanel };
+            if (w.Length == 1 && w[0] == "smoke-empty-pill") return new SmokeCommand { Kind = SmokeCommandKind.EmptyPill };
             if (w.Length == 2 && w[0] == "fake-context")
             {
                 if (w[1] == "none") return new SmokeCommand { Kind = SmokeCommandKind.FakeContext };
@@ -240,6 +244,13 @@ namespace WinNotch.Features.Smoke
         public static string QuickActionsStatus(int qa, int qs) =>
             (qa > 0 ? ";qa=" + Math.Min(qa, 9999) : "") + (qs > 0 ? ";qs=" + Math.Min(qs, 9999) : "");
 
+        /// <summary>
+        /// B1, after <see cref="QuickActionsStatus"/>: what the safety net sees on screen now (";b1=" the problems as a number,
+        /// 0 = the content is visible) and how many repairs it made since start (";b1r="); zero ones are left out.
+        /// </summary>
+        public static string NotchGuardStatus(int problems, int recoveries) =>
+            (problems > 0 ? ";b1=" + Math.Min(problems, 99999) : "") + (recoveries > 0 ? ";b1r=" + Math.Min(recoveries, 99999) : "");
+
         /// <summary>Reads <see cref="Status"/> back: false if it isn't one.</summary>
         public static bool TryParseStatus(string status, out string mode, out int width, out int height) =>
             TryParseStatus(status, out mode, out width, out height, out _);
@@ -253,12 +264,12 @@ namespace WinNotch.Features.Smoke
                                           out string page, out string ctx)
         {
             mode = ""; width = height = 0; page = ""; ctx = "";
-            var fields = new Dictionary<string, int>(StringComparer.Ordinal) { ["split"] = 0, ["group"] = 0, ["peek"] = 0, ["cmd"] = 0, ["qa"] = 0, ["qs"] = 0 };
+            var fields = new Dictionary<string, int>(StringComparer.Ordinal) { ["split"] = 0, ["group"] = 0, ["peek"] = 0, ["cmd"] = 0, ["qa"] = 0, ["qs"] = 0, ["b1"] = 0, ["b1r"] = 0 };
             extra = fields;
-            var m = Regex.Match(status ?? "", @"^mode=(\w+);pill=(\d+)x(\d+)((?:;(?:split|group|peek|cmd)=\d{1,4})*)(;page=[A-Za-z0-9-]{1,40})?(;ctx=[A-Za-z0-9-]{1,40})?((?:;(?:qa|qs)=\d{1,4})*)$");
+            var m = Regex.Match(status ?? "", @"^mode=(\w+);pill=(\d+)x(\d+)((?:;(?:split|group|peek|cmd)=\d{1,4})*)(;page=[A-Za-z0-9-]{1,40})?(;ctx=[A-Za-z0-9-]{1,40})?((?:;(?:qa|qs)=\d{1,4})*)((?:;(?:b1|b1r)=\d{1,5})*)$");
             if (!m.Success) return false;
             mode = m.Groups[1].Value;
-            foreach (Match f in Regex.Matches(m.Groups[4].Value + m.Groups[7].Value, @";(\w+)=(\d+)")) fields[f.Groups[1].Value] = int.Parse(f.Groups[2].Value);
+            foreach (Match f in Regex.Matches(m.Groups[4].Value + m.Groups[7].Value + m.Groups[8].Value, @";(\w+)=(\d+)")) fields[f.Groups[1].Value] = int.Parse(f.Groups[2].Value);
             if (m.Groups[5].Success) page = m.Groups[5].Value.Substring(";page=".Length);
             if (m.Groups[6].Success) ctx = m.Groups[6].Value.Substring(";ctx=".Length);
             return int.TryParse(m.Groups[2].Value, out width) && int.TryParse(m.Groups[3].Value, out height);

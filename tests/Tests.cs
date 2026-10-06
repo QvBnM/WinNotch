@@ -337,6 +337,7 @@ namespace WinNotch
             SmartClipboardTests();
             ShelfTests();
             AudioSwitchTests();
+            NotchGuardTests();
 
             Console.WriteLine(string.Join("\n", lines));
             Console.WriteLine($"\nTOTAL {pass + fail}: {pass} PASS, {fail} FAIL");
