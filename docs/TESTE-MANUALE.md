@@ -175,6 +175,29 @@ Cu comutatorul oprit, notch-ul arată ca înainte (niciun rând de butoane, nici
 | P20.13 | Fără consum | Comutator pornit, notch închis, 10 minute; Task Manager › WinNotch.exe. | CPU ca înainte (aproape 0%): nimic nu rulează periodic. |
 | P20.14 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Ambele rulări au „PASS  Quick Actions: …” (17 PASS); cea cu activity-manager pornit spune și „o singură sugestie (peek) la 10 minute; „Nu mai arăta””. |
 
+### P21 — Smart Clipboard (experimental, oprit implicit)
+
+Cu comutatorul oprit, widget-ul Clipboard arată ca înainte (niciun chip). Verificările de mai jos sunt cu „Smart Clipboard”
+pornit (Setări › Funcții noi › bifează › Salvează) și cu widget-ul Clipboard pe o pagină de-a ta (Editează › Adaugă widget ›
+Clipboard), dacă nu scrie altfel.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P21.1 | Oprit = ca înainte | Comutatorul oprit (implicit). Copiază un JSON, un link și o culoare; deschide pagina cu widget-ul. | Widget-ul arată exact ca înainte: titlul, lista, fără rând de chip-uri și fără spațiu în plus. În log nu apare „Smart Clipboard”. |
+| P21.2 | JSON | Comutatorul pornit. Copiază `{"nume":"Ion","oraș":"Brașov","note":[10,9.50]}` dintr-un editor; deschide pagina. Click pe „Formatează”, lipește în Notepad. | Sub titlu: „JSON”, „Formatează”, chip-uri mici rotunjite în culorile temei. În Notepad JSON-ul e indentat cu 2 spații, cu „oraș”, „Brașov” și „9.50” neschimbate. Lângă chip-uri apare 3 s „JSON formatat, în clipboard”; chip-ul devine „Compactează”. |
+| P21.3 | Fără buclă | După P21.2, lasă notch-ul deschis 10 s; uită-te în istoricul widget-ului. | Clipboard-ul nu se mai schimbă singur; JSON-ul formatat nu apare ca intrare nouă în istoric; niciun peek. |
+| P21.4 | Link cu urmărire | Copiază `https://exemplu.ro/pagina?utm_source=nl&id=7&fbclid=abc#sus`. Click pe „Curăță link-ul”, lipește. Apoi „Deschide”. | Rămâne `https://exemplu.ro/pagina?id=7#sus` (mesajul spune „2 parametri de urmărire scoși”). „Deschide” deschide link-ul în browserul implicit. Un link fără urmărire are doar „Deschide”. |
+| P21.5 | JWT | Copiază un token JWT (de exemplu de pe jwt.io). Click pe „Decodează”, lipește. | Un JSON cu „header” și „payload” (de exemplu „alg”, „sub”, „name”); semnătura nu apare. Fără nicio conexiune la rețea (poți verifica deconectat). |
+| P21.6 | Celelalte tipuri | Copiază pe rând: `#1A2B3C`, `Ion@Exemplu.RO`, `192.168.1.10`, `0721 123 456`, `C:\Windows\notepad.exe`. Click pe chip, lipește. | Culoarea are o mostră albastru-închis și dă `rgb(26, 43, 60)`; adresa `Ion@exemplu.ro`; IP-ul la fel; numărul `0721123456`; „Deschide folderul” deschide `C:\Windows` în Explorer (Notepad nu pornește). |
+| P21.7 | Nu e recunoscut | Copiază pe rând: `2026-10-06`, `1.234,56`, `12345`, `{nu e json}`, `#hashtag`, `#123`, un text oarecare. | Niciun chip. |
+| P21.8 | Parole ignorate | Din KeePass / Bitwarden / 1Password copiază o parolă (sau un text cu formatul „ExcludeClipboardContentFromMonitorProcessing”). | Parola nu apare în istoric; rândul de chip-uri dispare (nimic analizat). |
+| P21.9 | Căi de rețea | Copiază `\\server\share\x` și apoi o cale de pe o unitate de rețea mapată (de exemplu `Z:\Proiecte`). Click pe „Deschide folderul” unde apare. | Calea `\\server…` nu are chip; pentru unitatea mapată: „Calea e pe o unitate de rețea sau lipsă; nu o deschid.”; Windows nu se conectează la server. |
+| P21.10 | Peek la copiere | Setări › Smart Clipboard › bifează „Un mesaj scurt în pastilă…” › Salvează. Cu „Manager de activități” oprit, copiază un JSON compact; apoi pornește-l și copiază din nou. | Fără manager: nimic în pastilă. Cu el: pastila se lărgește 2 s cu „JSON copiat · Formatează”. Pentru un e-mail, un IP sau un JSON deja formatat: niciun peek. |
+| P21.11 | Nimic în log | După P21.2–P21.10, deschide `%AppData%\WinNotch\log.txt`. | Doar „Smart Clipboard: pornit.” / „oprit (N recunoașteri).” și „Acțiune clipboard.… (UI): reușită”; niciun text copiat, niciun link, nicio adresă. |
+| P21.12 | Command Bar | Cu „Command Bar” pornit și un JSON copiat: `Win+Alt+Space`, „formateaza json”, Enter. | JSON-ul formatat ajunge în clipboard. Fără JSON copiat, acțiunea nu apare în rezultate. |
+| P21.13 | Fără consum | Comutator pornit, notch închis, 10 minute; Task Manager › WinNotch.exe. | CPU ca înainte (aproape 0%): nimic nu rulează periodic. |
+| P21.14 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Rularea cu activity-manager oprit are „PASS  Smart Clipboard: …” (18 PASS); cea cu el pornit scrie „SKIP  Smart Clipboard…” (17 PASS). |
+
 ### P02 — Teste de fum (CI)
 
 Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai jos sunt pentru rularea locală și pentru siguranța modului `--smoke`.

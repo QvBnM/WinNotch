@@ -18,6 +18,7 @@
     <Compile Include="CommandBarTests.cs" />
     <Compile Include="ContextPagesTests.cs" />
     <Compile Include="QuickActionsTests.cs" />
+    <Compile Include="SmartClipboardTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -61,5 +62,9 @@
     <Compile Include="..\Features\QuickActions\QuickActions.cs" />
     <Compile Include="..\Features\QuickActions\QuickActionsSettings.cs" />
     <Compile Include="..\Features\QuickActions\QuickActionsActions.cs" />
+    <Compile Include="..\Features\SmartClipboard\SmartClip.cs" />
+    <Compile Include="..\Features\SmartClipboard\ClipboardPrivacy.cs" />
+    <Compile Include="..\Features\SmartClipboard\SmartClipboardActions.cs" />
+    <Compile Include="..\Features\SmartClipboard\SmartClipboardSettings.cs" />
   </ItemGroup>
 </Project>

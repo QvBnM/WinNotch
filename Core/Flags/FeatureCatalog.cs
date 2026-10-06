@@ -43,6 +43,8 @@ namespace WinNotch.Core.Flags
         public const string ContextPages = "context-pages";
         /// <summary>Features/QuickActions: same id as QuickActionRules.FeatureId (the tests check they match).</summary>
         public const string QuickActions = "quick-actions";
+        /// <summary>Features/SmartClipboard: same id as SmartClipboardActions.FeatureId (the tests check they match).</summary>
+        public const string SmartClipboard = "smart-clipboard";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -62,6 +64,9 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Experimental, false),
             // P20: off by default; off = no buttons under the pill and no suggestions, nothing subscribed
             new FeatureInfo(QuickActions, "Quick Actions", "Câteva butoane sub pastilă, la deschidere, după ce faci: în întâlnire cu căști mută microfonul, la muzică pauză, la stick deschide-l. Cu Activity Manager pornit, cel mult o sugestie la 10 minute.",
+                            FeatureStage.Experimental, false),
+            // P21: off by default; off = the Clipboard widget exactly as before, nothing recognized, no actions available
+            new FeatureInfo(SmartClipboard, "Smart Clipboard", "Recunoaște ce copiezi (JSON, link, culoare, e-mail, IP, cale, JWT, telefon) și pune butoane mici în widget-ul Clipboard: formatează, curăță link-ul, decodează. Nimic din ce copiezi nu ajunge în log.",
                             FeatureStage.Experimental, false),
         };
 

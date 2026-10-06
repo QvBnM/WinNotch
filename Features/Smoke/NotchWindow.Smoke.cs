@@ -104,6 +104,9 @@ namespace WinNotch
                 case SmokeCommandKind.FakeMeeting:
                     SmokeFakeMeeting(c.Argument);
                     break;
+                case SmokeCommandKind.ClipboardPage:
+                    SmokeClipboardPage(c.Argument == "on");
+                    break;
             }
             UpdateSmokeStatus();
         }
@@ -196,6 +199,42 @@ namespace WinNotch
             if (engine == null) { App.Log("Test de fum: motorul de context lipsește; întâlnirea falsă e ignorată."); return; }
             bool now = engine.ForceMeetingForSmoke(forced);
             App.Log("Test de fum: întâlnire falsă „" + (forced?.ToString() ?? "niciuna") + "”" + (now ? "." : " (motorul de context e oprit; se aplică la pornirea lui)."));
+        }
+
+        /// <summary>
+        /// P21 "smoke-clipboard-page on|off": a page of yours with only the Clipboard widget (3 × 2), added to the smoke
+        /// folder's settings and shown (the standard pages have no Clipboard widget), or removed again. Only smoke mode
+        /// runs these commands.
+        /// </summary>
+        private void SmokeClipboardPage(bool on)
+        {
+            if (!SmokeMode.On) return;                     // test mode only, whoever calls it
+            var page = S.Pages.FirstOrDefault(p => p.Id == SmokeMode.SmokeClipboardPageId);
+            if (on)
+            {
+                if (page == null)
+                {
+                    var slot = Widgets.Catalog.NewSlot("clipboard", (3, 2));
+                    page = new Widgets.UserPage { Id = SmokeMode.SmokeClipboardPageId, Name = "Clipboard (test)", Icon = "star", Widgets = new System.Collections.Generic.List<Widgets.WidgetSlot> { slot } };
+                    S.Pages.Add(page);                         // like NewPage
+                    S.Save();
+                }
+                RebuildTabs();
+                ShowPane(UserPane(page));
+            }
+            else
+            {
+                if (page != null)
+                {
+                    if (_userPanes.TryGetValue(page.Id, out var shown) && _pane == shown) ShowPane(_home);     // R1: not left on the removed page
+                    _userPanes.Remove(page.Id);
+                    S.Pages.Remove(page);
+                    S.Save();
+                }
+                RebuildTabs();
+            }
+            RelayoutPanel();
+            App.Log("Test de fum: pagina cu widget-ul Clipboard " + (on ? "adăugată și arătată." : "scoasă."));
         }
 
         private void StopSmoke()
