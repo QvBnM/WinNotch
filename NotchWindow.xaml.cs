@@ -197,6 +197,7 @@ namespace WinNotch
             StopQuickActions();
             StopSmartClipboard();
             StopShelf();
+            StopAudioSwitch();
             _poll.Stop(); _sec.Stop(); _mon.Stop(); _audioTick.Stop();
             CompositionTarget.Rendering -= OnFrame;
             S.PinnedClips = Clips.Where(c => c.Pinned).Select(c => c.Text).ToList();
@@ -244,6 +245,7 @@ namespace WinNotch
                 UpdateHeader();
             }
             ExpLayer.Height = PanelH();
+            AudioSwitchOnPaneChanged();     // P30 hook (Features/AudioSwitch): the button beside the volume; the list only over Home
             if (_mode == Mode.Expanded)
             {
                 p.Shown();
@@ -459,6 +461,7 @@ namespace WinNotch
             _leaveStart = null;
             ShelfOnClose();                 // P23 hook (Features/Shelf): the overlay goes with the panel
             StopTyping();
+            AudioSwitchOnClose();           // P30 hook (Features/AudioSwitch): the list of outputs goes with the panel
             _pane?.Hidden();
             QuickActionsOnClose();          // P20 hook (Features/QuickActions): the row goes with the panel
             SetClickThrough(true);

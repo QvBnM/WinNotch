@@ -47,6 +47,8 @@ namespace WinNotch.Core.Flags
         public const string SmartClipboard = "smart-clipboard";
         /// <summary>Features/Shelf: same id as ShelfActions.FeatureId (the tests check they match).</summary>
         public const string Shelf = "shelf";
+        /// <summary>Features/AudioSwitch: same id as AudioOutputRules.FeatureId (the tests check they match).</summary>
+        public const string AudioSwitch = "audio-switch";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -72,6 +74,9 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Experimental, false),
             // P23: off by default; off = no drop on the notch, no "Raft" button, the hover exactly as before
             new FeatureInfo(Shelf, "Raft", "Tragi fișiere peste notch (se deschide singur cât tragi) și le ții la îndemână: copiază calea, deschide folderul, zip, text din imagine (OCR), PNG ↔ JPG. Doar căi locale, cel mult 20.",
+                            FeatureStage.Experimental, false),
+            // P30: off by default; off = no button beside the volume, no list, no "audio.output-*" actions, nothing subscribed
+            new FeatureInfo(AudioSwitch, "Căști/boxe", "Un buton lângă volum (pagina Acasă) și în Command Bar: alegi ieșirea audio implicită (căști, boxe, Bluetooth). Folosește o interfață Windows nedocumentată; la prima eroare se oprește singur.",
                             FeatureStage.Experimental, false),
         };
 

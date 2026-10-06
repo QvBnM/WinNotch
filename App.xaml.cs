@@ -127,6 +127,7 @@ namespace WinNotch
             _notch.StartQuickActions();                                // P20: buttons under the pill by context; idle with its switch off
             _notch.StartSmartClipboard();                              // P21: chips in the Clipboard widget; idle with its switch off
             _notch.StartShelf();                                       // P23: the shelf (drops on the open notch); idle with its switch off
+            _notch.StartAudioSwitch();                                 // P30: the list of audio outputs beside the volume; idle with its switch off
             StartHealthTimer();
         }
 
@@ -234,6 +235,7 @@ namespace WinNotch
                 Features.QuickActions.QuickActionsActions.Register(registry, new NotchQuickActionsHost(_notch));
                 Features.SmartClipboard.SmartClipboardActions.Register(registry, new Features.SmartClipboard.NotchSmartClipboardHost(_notch), _notch.SmartClipboardCache);
                 Features.Shelf.ShelfActions.Register(registry, new Features.Shelf.NotchShelfHost(_notch));
+                Features.AudioSwitch.AudioSwitchActions.Register(registry, _notch.AudioOutputs, () => Core.Flags.FeatureFlags.Current);
                 Core.Actions.ActionRegistry.Current = registry;
             }
             catch (Exception ex) { Log("Acțiuni: înregistrarea a eșuat: " + ex.GetType().Name); }

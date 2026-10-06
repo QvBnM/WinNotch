@@ -21,6 +21,7 @@
     <Compile Include="SmartClipboardTests.cs" />
     <Compile Include="ShelfTests.cs" />
     <Compile Include="ShelfR1Tests.cs" />
+    <Compile Include="AudioSwitchTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -73,5 +74,7 @@
     <Compile Include="..\Features\Shelf\ShelfFiles.cs" />
     <Compile Include="..\Features\Shelf\ShelfActions.cs" />
     <Compile Include="..\Features\Shelf\ShelfSettings.cs" />
+    <!-- P30: only the pure part (no NAudio, no COM); PolicyConfigSwitcher.cs and the notch's partial stay out -->
+    <Compile Include="..\Features\AudioSwitch\AudioSwitch.cs" />
   </ItemGroup>
 </Project>

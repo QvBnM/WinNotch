@@ -110,6 +110,9 @@ namespace WinNotch
                 case SmokeCommandKind.ShelfAdd:
                     SmokeShelfAdd(c.Argument);
                     break;
+                case SmokeCommandKind.AudioOutputs:
+                    SmokeAudioOutputs();
+                    break;
             }
             UpdateSmokeStatus();
         }

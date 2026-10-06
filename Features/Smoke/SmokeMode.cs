@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace WinNotch.Features.Smoke
 {
-    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage, FakeMeeting, ClipboardPage, ShelfAdd }
+    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage, FakeMeeting, ClipboardPage, ShelfAdd, AudioOutputs }
 
     /// <summary>One line of smoke-commands.txt, checked.</summary>
     public sealed class SmokeCommand
@@ -70,6 +70,23 @@ namespace WinNotch.Features.Smoke
         public const string ShelfClearAutomationId = "shelf-clear";
         /// <summary>P23: the last result under the shelf's title (its Name is the text; only while shown).</summary>
         public const string ShelfMessageAutomationId = "shelf-message";
+        /// <summary>P30: the "Ieșire audio" button beside the volume on the Home page (only with the "audio-switch" switch on).</summary>
+        public const string AudioOutputsToggleAutomationId = "audio-outputs-toggle";
+        /// <summary>P30: the list of outputs over the page (only while it is open).</summary>
+        public const string AudioOutputsPanelAutomationId = "audio-outputs-panel";
+        /// <summary>P30: the list's title (a TextBlock, which UI Automation always sees): present exactly while the list is open.</summary>
+        public const string AudioOutputsTitleAutomationId = "audio-outputs-title";
+        /// <summary>P30: what "smoke-audio-outputs" did, logged with fixed words and counters (the test waits for its start).</summary>
+        public const string AudioOutputsLogPrefix = "Test de fum: lista ieșirilor audio";
+        public static string AudioOutputsLogLine(bool open, bool home, bool editing, bool button, int outputs) =>
+            AudioOutputsLogPrefix + " — deschisă: " + (open ? "da" : "nu") + ", pagina Acasă: " + (home ? "da" : "nu") + ", editare: " + (editing ? "da" : "nu") +
+            ", butonul lângă volum: " + (button ? "da" : "nu") + ", ieșiri: " + Math.Clamp(outputs, 0, 999) + ".";
+        /// <summary>P30: an output in the list = this prefix + its key (10 hex digits); its Name is the device's name, its ItemStatus "default" for the default one.</summary>
+        public const string AudioOutputItemPrefix = "audio-output-";
+        /// <summary>P30: „Nicio ieșire audio” when there is no active output.</summary>
+        public const string AudioOutputsEmptyAutomationId = "audio-outputs-empty";
+        /// <summary>P30: the last click's result under the list's title (its Name is the text; only while shown).</summary>
+        public const string AudioOutputsMessageAutomationId = "audio-outputs-message";
         /// <summary>P23: "smoke-shelf-add" takes a path of at most this many characters.</summary>
         public const int MaxShelfPath = 180;
         private const string ShelfAddCommand = "smoke-shelf-add";
@@ -118,7 +135,8 @@ namespace WinNotch.Features.Smoke
         /// &lt;headphones|speakers|bluetooth|none&gt;" (a meeting with that output, into the context engine's snapshot), and for
         /// Smart Clipboard (P21): "smoke-clipboard-page &lt;on|off&gt;" (a page with the Clipboard widget, shown / removed), and
         /// for the shelf (P23): "smoke-shelf-add &lt;path&gt;" (a file the test made, added like a drop; the path keeps its
-        /// case, at most <see cref="MaxShelfPath"/> characters, no control characters). Case and extra spaces don't matter;
+        /// case, at most <see cref="MaxShelfPath"/> characters, no control characters), and for the audio outputs (P30):
+        /// "smoke-audio-outputs" (with the notch open: Home shown and the list of outputs opened, as its button does). Case and extra spaces don't matter;
         /// anything else is null (ignored).
         /// </summary>
         public static SmokeCommand Parse(string line)
@@ -148,6 +166,7 @@ namespace WinNotch.Features.Smoke
             if (w.Length == 2 && w[0] == "post-activity" && w[1] == "low") return new SmokeCommand { Kind = SmokeCommandKind.LowActivity };
             if (w.Length == 1 && w[0] == "dismiss-activities") return new SmokeCommand { Kind = SmokeCommandKind.DismissActivities };
             if (w.Length == 1 && w[0] == "open-command-bar") return new SmokeCommand { Kind = SmokeCommandKind.OpenCommandBar };
+            if (w.Length == 1 && w[0] == "smoke-audio-outputs") return new SmokeCommand { Kind = SmokeCommandKind.AudioOutputs };
             if (w.Length == 2 && w[0] == "fake-context")
             {
                 if (w[1] == "none") return new SmokeCommand { Kind = SmokeCommandKind.FakeContext };

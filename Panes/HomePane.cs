@@ -69,6 +69,8 @@ namespace WinNotch.Panes
         private readonly TextBlock _title, _artist, _lyric1, _lyric2, _cur, _dur, _volN;
         private readonly ScaleTransform _prog;
         private readonly TextBlock _playGlyph, _volGlyph;
+        /// <summary>P30 hook (Features/AudioSwitch): the "Ieșire audio" button beside the volume goes here; empty with its switch off.</summary>
+        internal readonly Border OutputSlot = new Border { VerticalAlignment = VerticalAlignment.Center };
         private readonly Slider _vol;
         private readonly Button _lyricsBtn;
         private readonly Rectangle[] _bars = new Rectangle[Visualizer.BandCount];
@@ -157,7 +159,7 @@ namespace WinNotch.Panes
             _vol.ValueChanged += (o, e) => { if (!_syncing) { W.SetMasterVolume((int)Math.Round(e.NewValue)); _volN.Text = ((int)e.NewValue).ToString(); } };
             _volN = Ui.T("0", 11, "MutedBrush", false, true);
             _volN.Width = 22; _volN.TextAlignment = TextAlignment.Right;
-            var ctl = Ui.Cols(Ui.Auto, Ui.Auto, Ui.Auto, Ui.Auto, Ui.Auto, Ui.Star(), Ui.Auto);
+            var ctl = Ui.Cols(Ui.Auto, Ui.Auto, Ui.Auto, Ui.Auto, Ui.Auto, Ui.Star(), Ui.Auto, Ui.Auto);
             ctl.Put(Ui.IconBtn(Ui.GPrev, () => W.Now.Previous(), "Anterioara", 32, 17));
             ctl.Put(play, 1);
             ctl.Put(Ui.IconBtn(Ui.GNext, () => W.Now.Next(), "Următoarea", 32, 17), 2);
@@ -165,6 +167,7 @@ namespace WinNotch.Panes
             ctl.Put(muteBtn, 4);
             ctl.Put(_vol, 5);
             ctl.Put(_volN, 6);
+            ctl.Put(OutputSlot, 7);
 
             var info = Ui.V(4, _title, _artist, lyrics, progRow, ctl);
             info.VerticalAlignment = VerticalAlignment.Center;

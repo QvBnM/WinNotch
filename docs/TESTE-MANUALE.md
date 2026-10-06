@@ -223,7 +223,27 @@ Salvează), dacă nu scrie altfel. Pentru fișiere de test folosește un folder 
 | P23.16 | Nimic în log | După P23.2–P23.15, deschide `%AppData%\WinNotch\log.txt`. | Doar „Raft: pornit (N elemente).”, „Raft: adăugate N, refuzate M (din rețea K)…”, „Raft: N elemente care nu mai există, scoase.” și „Acțiune shelf.… (UI): reușită”; nicio cale, niciun nume de fișier. |
 | P23.17 | Command Bar | Cu „Command Bar” pornit și 2 elemente în raft: `Win+Alt+Space`, „raft copiaza calea 2”, Enter. | Calea elementului 2 ajunge în clipboard. Cu raftul gol acțiunile nu apar. |
 | P23.18 | Fără consum | Comutator pornit, notch închis, 10 minute; Task Manager › WinNotch.exe. | CPU ca înainte (aproape 0%): nimic nu rulează periodic. |
-| P23.19 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Rularea cu activity-manager oprit are „PASS  Raft: …” (19 PASS); cea cu el pornit scrie „SKIP  Raft…” (17 PASS). |
+| P23.19 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Rularea cu activity-manager oprit are „PASS  Raft: …” (20 PASS din P30); cea cu el pornit scrie „SKIP  Raft…” (17 PASS). |
+
+### P30 — Căști/boxe (experimental, oprit implicit)
+
+Cu comutatorul oprit nimic nu se schimbă. Verificările de mai jos sunt cu „Căști/boxe” pornit (Setări › Funcții noi ›
+bifează › Salvează), dacă nu scrie altfel. Ai nevoie de cel puțin două ieșiri (boxele / difuzoarele laptopului și niște
+căști cu fir, USB sau Bluetooth). Atenție: fiecare click schimbă ieșirea implicită a Windows.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P30.1 | Oprit = ca înainte | Comutatorul oprit (implicit). Deschide notch-ul pe Acasă; `Win+Alt+Space` (cu Command Bar pornit) și scrie „căști”. | Lângă volum nu e niciun buton nou; Command Bar nu găsește „Ieșire audio: …”. În log nu apare „Ieșire audio:”. |
+| P30.2 | Lista | Pornește comutatorul. Deschide notch-ul pe Acasă, click pe butonul cu căști de lângă numărul volumului. | O listă mică, rotunjită, cu culorile temei, peste pagină: ieșirile active (ca în Setări Windows › Sistem › Sunet › Ieșire), ordonate după nume, cea de acum cu bifă. Cu două dispozitive cu același nume: „Speakers” și „Speakers (2)”. |
+| P30.3 | Căști ↔ boxe | În listă, click pe căști; pornește o melodie; apoi click pe boxe. | Sunetul trece pe căști, bifa se mută, sub titlu „Ieșire audio: …”; volumul din notch și alerta de volum arată volumul căștilor. Apoi totul trece înapoi pe boxe. În panoul Sunet al Windows (`mmsys.cpl`) dispozitivul ales e și „Implicit”, și „Dispozitiv de comunicare implicit”. |
+| P30.4 | Deja implicită | Click pe ieșirea care are deja bifa. | „„…” e deja ieșirea audio.”; nimic nu se schimbă. |
+| P30.5 | Bluetooth conectat / deconectat | Cu lista deschisă, conectează căștile Bluetooth; apoi deconectează-le (sau oprește-le). | În cel mult o secundă apar în listă (și „Ieșire audio: <căștile>” în Command Bar); la deconectare dispar; dacă erau implicite, Windows alege altă ieșire și bifa o urmează. Fără lag, fără erori în log. |
+| P30.6 | Dispozitiv scos între listă și click | Deschide lista, scoate căștile USB, apoi click repede pe ele (înainte să dispară). | „Dispozitivul nu mai e conectat.”; funcția rămâne pornită. |
+| P30.7 | Command Bar | Cu „Command Bar” pornit: `Win+Alt+Space`, „casti” (fără diacritice), Enter pe „Ieșire audio: <căștile>”; apoi „speakers”. | Ieșirea se schimbă ca din listă; cea de acum are „(implicită)” în titlu. |
+| P30.8 | Eroare simulată | Simulează o eroare a interfeței nedocumentate: într-un build de test, fă ca `PolicyConfigSwitcher.SetDefault` să arunce (de exemplu `throw new System.Runtime.InteropServices.COMException()` la început), apoi click pe o ieșire cu notch-ul deschis; închide notch-ul. Repetă cu „Manager de activități” pornit. | În listă: „Ieșirea audio nu a putut fi schimbată. „Căști/boxe” s-a oprit…”, lista golită, butonul dispare; după închiderea notch-ului, aceeași alertă în pastilă (o singură dată; cu Activity Manager, ca activitate). În Setări › Funcții noi comutatorul e oprit, cu motivul „Windows a refuzat schimbarea ieșirii audio implicite (interfață nedocumentată).”. În log o singură „a fost oprită automat”, tipul excepției, fără mesajul ei. Pornit din nou, încearcă iar. |
+| P30.9 | Pagină, editare, temă | Cu lista deschisă: schimbă pagina; deschide-o din nou și intră în modul de editare; schimbă tema din fereastra WinNotch. | Lista se închide la schimbarea paginii și la editare; după schimbarea temei butonul e tot lângă volum, cu culorile noi. |
+| P30.10 | Nimic în log, fără consum | După P30.2–P30.7 deschide `%AppData%\WinNotch\log.txt`; apoi lasă notch-ul închis 10 minute și urmărește Task Manager. | Doar „Ieșire audio: pornit.”, „Ieșire audio: N ieșiri active.”, „Ieșire audio: lista deschisă (N).”, „Acțiune audio.output-… (UI): reușită”; niciun nume de dispozitiv. CPU aproape 0%: nimic nu rulează periodic. |
+| P30.11 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Rularea cu activity-manager oprit are „PASS  Căști/boxe: …” (20 PASS); cea cu el pornit scrie „SKIP  Căști/boxe…” (17 PASS). |
 
 ### P02 — Teste de fum (CI)
 
@@ -231,7 +251,7 @@ Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai 
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
-| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 19 rânduri PASS și „TEST DE FUM (activity-manager oprit): 19 PASS, 0 FAIL” (18 până la P23, 17 până la P21, 16 până la P20, 15 până la P27); WinNotch se închide singur. Cu `-- publish\WinNotch.exe smoke-artifacts --activity-manager=on`: 17 PASS și trei rânduri SKIP (pagina după context, Smart Clipboard, raftul) (12 / 13 până la P14). În timpul rulării apare o fereastră mică a testului; nu da click în ea. |
+| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 20 de rânduri PASS și „TEST DE FUM (activity-manager oprit): 20 PASS, 0 FAIL” (19 până la P30, 18 până la P23, 17 până la P21, 16 până la P20, 15 până la P27); WinNotch se închide singur. Cu `-- publish\WinNotch.exe smoke-artifacts --activity-manager=on`: 17 PASS și patru rânduri SKIP (pagina după context, Smart Clipboard, raftul, Căști/boxe) (12 / 13 până la P14). În timpul rulării apare o fereastră mică a testului; nu da click în ea. |
 | P02.2 | Setările tale nu sunt atinse | După P02.1, compară `%AppData%\WinNotch\settings.json` și `log.txt` cu cele dinainte. | Neschimbate; testul a scris doar în `%AppData%\WinNotch\smoke\`. |
 | P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
 | P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
