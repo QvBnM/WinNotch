@@ -41,12 +41,15 @@ namespace WinNotch
         /// <summary>UI-thread copy of the switch.</summary>
         private bool _shOn;
         private readonly ShelfModel _shModel = new ShelfModel();
+        /// <summary>Which rows are ticked (UI thread only, never saved): nothing ticked = the buttons take the whole shelf.</summary>
+        private readonly ShelfSelection _shSelection = new ShelfSelection();
         private readonly ShelfDragHover _shDrag = new ShelfDragHover();
         private Button _shToggle;
         private TextBlock _shToggleCount;
         private Border _shPanel;
         private StackPanel _shList;
-        private TextBlock _shCount, _shMessage, _shEmpty;
+        private TextBlock _shCount, _shMessage, _shEmpty, _shCopyText;
+        private Button _shCopy;
         private DispatcherTimer _shMessageTimer;
         private int _shDrawn = -1;
         private bool _shPruning;
@@ -118,6 +121,7 @@ namespace WinNotch
         {
             ShelfWireDrop(false);
             ShelfHidePanel();
+            _shSelection.Clear();
             if (_shToggle != null) { HeaderRight.Children.Remove(_shToggle); _shToggle = null; _shToggleCount = null; }
             _shDrag.Reset();
             _shPressAt = null;
@@ -336,6 +340,32 @@ namespace WinNotch
             return true;
         }
 
+        /// <summary>
+        /// For "shelf.copy-files" (UI thread): the files on the clipboard as a copy, exactly like Ctrl+C in Explorer — the
+        /// paths as FileDrop plus "Preferred DropEffect" = copy (never move, so nothing of yours is ever taken from where
+        /// it is). WinNotch writes no file: the copying is Windows' own, when you press Ctrl+V. The clipboard keeps the
+        /// list after WinNotch closes (SetDataObject with copy: true). False when another application holds the clipboard.
+        /// </summary>
+        internal bool ShelfWriteFiles(IReadOnlyList<string> paths)
+        {
+            if (paths == null || paths.Count == 0) return false;
+            try
+            {
+                var data = new DataObject();
+                data.SetData(DataFormats.FileDrop, paths.ToArray());
+                // DROPEFFECT_COPY | DROPEFFECT_LINK (5), what Explorer itself puts there for a copy
+                data.SetData("Preferred DropEffect", new System.IO.MemoryStream(BitConverter.GetBytes((int)(DragDropEffects.Copy | DragDropEffects.Link))));
+                _ignoreClip = true;
+                Clipboard.SetDataObject(data, true);
+            }
+            catch (Exception ex) when (ex is ExternalException || ex is ArgumentException || ex is InvalidOperationException)
+            {
+                _ignoreClip = false;
+                return false;
+            }
+            return true;
+        }
+
         // ------------------------------------------------------------------ the header button and the overlay
 
         private void ShelfEnsureToggle()
@@ -366,21 +396,43 @@ namespace WinNotch
             _shToggleCount.Text = n > 0 ? "Raft " + n : "Raft";
         }
 
+        /// <summary>The copy button's label: what it would act on now (the ticked rows, or the whole shelf).</summary>
+        private void ShelfUpdateCopy(IReadOnlyList<ShelfItem> items)
+        {
+            if (_shCopy == null || _shCopyText == null) return;
+            int chosen = _shSelection.Count > 0 ? _shSelection.Chosen(items).Count : items.Count;
+            _shCopyText.Text = _shSelection.Count > 0 ? "Copiază selecția (" + chosen + ")" : "Copiază tot (" + chosen + ")";
+            _shCopy.IsEnabled = chosen > 0;
+            AutomationProperties.SetName(_shCopy, _shCopyText.Text);
+        }
+
         private void ShelfShowPanel()
         {
             if (_shPanel != null || !_shOn || Editing || _mode != Mode.Expanded) return;
             var title = ThemedText("Raft", 15, "InkBrush", true);
             _shCount = ThemedText("", 11.5, "MutedBrush");
+            var copyIcon = new TextBlock { Text = ShelfActions.GCopyFiles, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+            copyIcon.SetResourceReference(TextBlock.FontFamilyProperty, "IconFont");
+            copyIcon.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+            _shCopyText = ThemedText("", 11.5, "InkBrush");
+            _shCopy = new Button
+            {
+                Style = Ui.S("GhostPill"), Margin = new Thickness(0, 0, 6, 0), Content = Ui.H(5, copyIcon, _shCopyText),
+                ToolTip = "Pune fișierele pe clipboard (ca un Ctrl+C din Explorer); dă apoi Ctrl+V în folderul în care le vrei",
+            };
+            AutomationProperties.SetAutomationId(_shCopy, SmokeMode.ShelfCopyFilesAutomationId);
+            _shCopy.Click += (o, e) => { e.Handled = true; _ = ShelfRunAsync(ShelfActions.CopyFilesId, _shSelection.Keys(_shModel.Items)); };
             var clear = new Button { Style = Ui.S("GhostPill"), Margin = new Thickness(0, 0, 6, 0), Content = "Golește", ToolTip = "Scoate tot din raft (fișierele rămân pe disc)" };
             AutomationProperties.SetAutomationId(clear, SmokeMode.ShelfClearAutomationId);
             AutomationProperties.SetName(clear, "Golește");
             clear.Click += (o, e) => { e.Handled = true; _ = ShelfRunAsync(ShelfActions.ClearId, null); };
             var close = new Button { Style = Ui.S("AccentPill"), Content = "Închide" };
             close.Click += (o, e) => { e.Handled = true; ShelfHidePanel(); };
-            var head = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto, Ui.Auto);
+            var head = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto, Ui.Auto, Ui.Auto);
             head.Put(Ui.H(8, title, _shCount));
-            head.Put(clear, 2);
-            head.Put(close, 3);
+            head.Put(_shCopy, 2);
+            head.Put(clear, 3);
+            head.Put(close, 4);
 
             _shMessage = ThemedText("", 11.5, "DimBrush");
             _shMessage.Visibility = Visibility.Collapsed;
@@ -413,7 +465,8 @@ namespace WinNotch
             OverlayHost.Children.Remove(_shPanel);
             _shPanel = null;
             _shList = null;
-            _shCount = _shMessage = _shEmpty = null;
+            _shCount = _shMessage = _shEmpty = _shCopyText = null;
+            _shCopy = null;
             _shPressAt = null;
             _shPressed = null;
             if (relayout) RelayoutPanel();
@@ -426,8 +479,10 @@ namespace WinNotch
             ShelfUpdateToggle();
             if (_shPanel == null || _shList == null) return;
             var items = _shModel.Items;
+            _shSelection.Prune(items);
             _shCount.Text = items.Count + " / " + ShelfModel.MaxItems;
             _shEmpty.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            ShelfUpdateCopy(items);
             if (_shDrawn == _shModel.Version) return;
             _shDrawn = _shModel.Version;
             _shList.Children.Clear();
@@ -457,10 +512,11 @@ namespace WinNotch
                 buttons.Children.Add(ShelfButton(ShelfActions.GConvert, it.ConvertsTo == ShelfImageFormat.Jpeg ? "Fă o copie JPG (alături)" : "Fă o copie PNG (alături)", ShelfActions.ConvertId, "shelf-convert-", it));
             buttons.Children.Add(ShelfButton(ShelfActions.GRemove, "Scoate din raft (fișierul rămâne)", ShelfActions.RemoveId, SmokeMode.ShelfRemovePrefix, it));
 
-            var g = Ui.Cols(Ui.Px(26), Ui.Star(), Ui.Auto);
-            g.Put(icon);
-            g.Put(text, 1);
-            g.Put(buttons, 2);
+            var g = Ui.Cols(Ui.Px(30), Ui.Px(26), Ui.Star(), Ui.Auto);
+            g.Put(ShelfTick(it));
+            g.Put(icon, 1);
+            g.Put(text, 2);
+            g.Put(buttons, 3);
             var row = new Border
             {
                 CornerRadius = new CornerRadius(12), Padding = new Thickness(8, 5, 6, 5), Margin = new Thickness(0, 0, 0, 4), Child = g,
@@ -483,6 +539,35 @@ namespace WinNotch
             for (; d != null && d != stop; d = d is Visual || d is System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d))
                 if (d is ButtonBase) return true;
             return false;
+        }
+
+        /// <summary>
+        /// The tick at the start of a row: what „Copiază selecția” and a drag out of the shelf take. Only the shown glyph
+        /// and the header's label change (no row is rebuilt), so the list doesn't flicker while you tick.
+        /// </summary>
+        private Button ShelfTick(ShelfItem it)
+        {
+            var glyph = new TextBlock { FontSize = 14, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+            glyph.SetResourceReference(TextBlock.FontFamilyProperty, "IconFont");
+            var b = new Button { Style = Ui.S("IconButton"), Width = 26, Height = 26, Content = glyph, ToolTip = "Alege acest element (pentru „Copiază selecția”)" };
+            AutomationProperties.SetAutomationId(b, SmokeMode.ShelfSelectPrefix + it.Id);
+            string id = it.Id;
+            void Draw()
+            {
+                bool on = _shSelection.Has(id);
+                glyph.Text = on ? ShelfActions.GTicked : ShelfActions.GUnticked;
+                glyph.SetResourceReference(TextBlock.ForegroundProperty, on ? "AccentBrush" : "DimBrush");
+                AutomationProperties.SetName(b, (on ? "Ales: " : "Alege: ") + it.Name);
+            }
+            Draw();
+            b.Click += (o, e) =>
+            {
+                e.Handled = true;
+                _shSelection.Toggle(id);
+                Draw();
+                ShelfUpdateCopy(_shModel.Items);
+            };
+            return b;
         }
 
         private Button ShelfButton(string glyph, string tip, string actionId, string automationPrefix, ShelfItem it)
@@ -513,11 +598,16 @@ namespace WinNotch
             if (Math.Abs(d.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(d.Y) < SystemParameters.MinimumVerticalDragDistance) return;
             _shPressAt = null;
             _shPressed = null;
-            if (it.Exists == false || ShelfPaths.TryNormalize(it.Path, out var path, out _) != ShelfRefusal.None) return;
+            // the ticked rows travel together when the dragged one is among them (dragging an unticked row takes only it)
+            var dragged = _shSelection.Count > 1 && _shSelection.Has(it.Id) ? _shSelection.Chosen(_shModel.Items) : new[] { it };
+            var paths = new List<string>();
+            foreach (var x in dragged)
+                if (x.Exists != false && ShelfPaths.TryNormalize(x.Path, out var p, out _) == ShelfRefusal.None) paths.Add(p);
+            if (paths.Count == 0) return;
             try
             {
                 var data = new DataObject();
-                data.SetData(DataFormats.FileDrop, new[] { path });
+                data.SetData(DataFormats.FileDrop, paths.ToArray());
                 data.SetData(ShelfDragFormat, "1");
                 DragDrop.DoDragDrop(row, data, DragDropEffects.Copy | DragDropEffects.Link);
             }
@@ -536,7 +626,8 @@ namespace WinNotch
                 if (actionId == ShelfActions.ZipId) ShelfShowMessage("Arhivez…", true);
                 else if (actionId == ShelfActions.OcrId) ShelfShowMessage("Citesc textul…", true);
                 else if (actionId == ShelfActions.ConvertId) ShelfShowMessage("Convertesc…", true);
-                var args = element == null ? null : new Dictionary<string, string> { [ShelfActions.ElementParam] = element };
+                string param = actionId == ShelfActions.CopyFilesId ? ShelfActions.ElementsParam : ShelfActions.ElementParam;
+                var args = element == null ? null : new Dictionary<string, string> { [param] = element };
                 var r = await reg.InvokeAsync(actionId, args, ActionInvoker.UI);
                 await Dispatcher.InvokeAsync(() =>
                 {
@@ -583,6 +674,7 @@ namespace WinNotch.Features.Shelf
         public ShelfModel Model => _n.ShelfItems;
         public IShelfFileSystem Files => LocalShelfFileSystem.Instance;
         public bool SetText(string text) => _n.ShelfWriteClipboard(text);
+        public bool SetFiles(IReadOnlyList<string> paths) => _n.ShelfWriteFiles(paths);
         public void Changed() => _n.ShelfChanged();
 
         /// <summary>A local folder (checked by the action off the UI thread), never a file: through Shell.Open, with a "\" at the end.</summary>

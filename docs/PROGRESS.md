@@ -85,3 +85,23 @@
 - **Teste:** 668 C# (27 noi, NG1–NG27) + 23 extensie + fum 20 / 17 (+4 SKIP). Fumul B1 (golire intenționată + 20 de cicluri) a fost scris și apoi **scos la cererea autorului** (testează el pe Windows); comenzile `smoke-empty-panel` / `smoke-empty-pill` rămân.
 - **Abateri:** comutatorul „notch-guard” e Stabil și pornit (reparație anunțată în 0.6.18); fără abonare la `FeatureFlags.Changed` (citit la fiecare verificare, ca P27).
 - **Publicare:** 0.6.18, merge --no-ff 96c9d7b + caee8a5 pe `main`; release v0.6.18 cu WinNotch.exe (SHA-256 9781e0a2…d59e) + WinNotch.exe.sig, semnătura ECDSA verificată cu cheia publică din `Services/Updater.cs` („Verified OK”).
+
+
+## P23 — copierea în bloc din raft (cerere a autorului, 6 oct 2026)
+
+- **Cerut:** „pun mai multe fișiere în raft și după le copiez pe toate în locația de care am nevoie”, cu conflictele de nume
+  rezolvate „ca la copy-paste”.
+- **Făcut:** bifă pe fiecare rând al raftului (`ShelfSelection`, pură, doar în memorie) și butonul „Copiază selecția (N)” /
+  „Copiază tot (N)” în antet; acțiunea `shelf.copy-files` (Safe, parametrul opțional `elemente`: id-uri sau poziții,
+  gol = tot raftul) pune căile pe clipboard ca `FileDrop` + „Preferred DropEffect” = copiere, prin `IShelfHost.SetFiles`;
+  copierea însăși e a Windows-ului, la `Ctrl+V` (progresul și întrebarea lui la nume luate), deci WinNotch tot nu scrie,
+  nu mută și nu șterge niciun fișier al utilizatorului. Căile sunt verificate din nou în fundal înainte de copiere (șterse
+  → scoase din raft și sărite; unitate deconectată → rămân, mesaj). Rândurile bifate se trag împreună din raft.
+- **Teste:** 672 C# (4 noi, SH35–SH38; SH17, SH29, SH33 actualizate) + 23 extensie; `dotnet run --project
+  tests/WinNotch.Tests.csproj` verde pe Linux. Partea WPF (`NotchWindow.Shelf.cs`) nu se compilează pe Linux: rămâne de
+  verificat la primul build pe Windows (`build.bat`) și de făcut verificările manuale noi P23.20–P23.23.
+- **Abateri:** fără selector de folder în WinNotch (ales de autor: clipboard + `Ctrl+V`), deci fără motor de copiere
+  propriu și fără acțiune `Confirm`.
+- **Publicare:** 0.6.19 (versiunea, `RELEASE_NOTES.md`, istoricul din `DOCUMENTATIE.md` și „Noutăți” din `README.md`);
+  release-ul îl face GitHub Actions la push-ul pe `main`.
+

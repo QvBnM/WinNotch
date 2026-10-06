@@ -42,12 +42,14 @@ namespace WinNotch
             public ShelfModel Model { get; } = new ShelfModel();
             public IShelfFileSystem Files { get; set; }
             public readonly List<string> Written = new List<string>(), Folders = new List<string>(), Ocr = new List<string>();
+            public readonly List<string[]> Copied = new List<string[]>();
             public readonly List<(string Path, ShelfImageFormat To)> Converts = new List<(string, ShelfImageFormat)>();
             public bool Busy;
             public string OcrText = "linia unu\nlinia doi";
             public string ConvertError;
             public int ChangedCount;
             public bool SetText(string text) { if (Busy) return false; Written.Add(text); return true; }
+            public bool SetFiles(IReadOnlyList<string> paths) { if (Busy) return false; Copied.Add(paths.ToArray()); return true; }
             public string OpenFolder(string folder) { Folders.Add(folder); return null; }
             public string OcrError;
             public Task<string> RecognizeTextAsync(string imagePath, CancellationToken ct)
@@ -128,6 +130,11 @@ namespace WinNotch
 
         static ActionResult ShelfRun(ActionRegistry r, string id, string element = null, ActionInvoker inv = ActionInvoker.UI) =>
             r.InvokeAsync(id, element == null ? null : new Dictionary<string, string> { [ShelfActions.ElementParam] = element }, inv).GetAwaiter().GetResult();
+
+        /// <summary>"shelf.copy-files": the group parameter ("elemente"), left out when <paramref name="elements"/> is null.</summary>
+        static ActionResult ShelfCopyFiles(ActionRegistry r, string elements = null, ActionInvoker inv = ActionInvoker.UI) =>
+            r.InvokeAsync(ShelfActions.CopyFilesId, elements == null ? null : new Dictionary<string, string> { [ShelfActions.ElementsParam] = elements }, inv)
+             .GetAwaiter().GetResult();
 
         /// <summary>
         /// P23 "Raft": the switch, every form of network path (refused before the disk is touched) and valid local paths,
@@ -324,13 +331,15 @@ namespace WinNotch
             var reg = new ActionRegistry(new FeatureFlags(onStore), new InlineUiDispatcher(), l => logs.Add(l));
             ShelfActions.Register(reg, host);
             var all = ShelfActions.AllIds.Select(reg.Get).ToList();
-            Check("SH17", "7 acțiuni „shelf.*” înregistrate: id-uri unice zonă.verb, titlu și alias-uri în română și engleză, categoria Raft, iconiță, Safe, FeatureId „shelf”; parametrul „element” (text scurt) la cele pe un element; UI doar unde trebuie; API-ul local nu",
-                  all.All(a => a != null) && ShelfActions.AllIds.Distinct().Count() == 7 && all.All(a => Regex.IsMatch(a.Id, @"^shelf\.[a-z]+(-[a-z]+)*$") && a.Title.StartsWith("Raft: ", StringComparison.Ordinal) &&
+            Check("SH17", "8 acțiuni „shelf.*” înregistrate: id-uri unice zonă.verb, titlu și alias-uri în română și engleză, categoria Raft, iconiță, Safe, FeatureId „shelf”; parametrul „element” (text scurt) la cele pe un element, „elemente” (opțional) la copierea fișierelor; UI doar unde trebuie; API-ul local nu",
+                  all.All(a => a != null) && ShelfActions.AllIds.Distinct().Count() == 8 && all.All(a => Regex.IsMatch(a.Id, @"^shelf\.[a-z]+(-[a-z]+)*$") && a.Title.StartsWith("Raft: ", StringComparison.Ordinal) &&
                       a.Aliases.Count >= 2 && a.Category == "Raft" && a.Icon.Length > 0 && a.Safety == ActionSafety.Safe && a.FeatureId == "shelf" && (a.AllowedInvokers & ActionInvoker.LocalApi) == 0 &&
                       !string.IsNullOrEmpty(a.UnavailableMessage)) &&
-                  all.Where(a => a.Id != ShelfActions.ClearId).All(a => a.Parameters.Count == 1 && a.Parameters[0].Name == "element" && a.Parameters[0].Kind == ParamKind.Text && a.Parameters[0].MaxLength == 16) &&
+                  all.Where(a => a.Id != ShelfActions.ClearId && a.Id != ShelfActions.CopyFilesId).All(a => a.Parameters.Count == 1 && a.Parameters[0].Name == "element" && a.Parameters[0].Kind == ParamKind.Text && a.Parameters[0].MaxLength == 16 && a.Parameters[0].Required) &&
                   reg.Get(ShelfActions.ClearId).Parameters.Count == 0 &&
-                  new[] { ShelfActions.CopyPathId, ShelfActions.OpenFolderId, ShelfActions.OcrId }.All(i => reg.Get(i).RequiresUiThread) &&
+                  reg.Get(ShelfActions.CopyFilesId).Parameters.Count == 1 && reg.Get(ShelfActions.CopyFilesId).Parameters[0].Name == "elemente" &&
+                  !reg.Get(ShelfActions.CopyFilesId).Parameters[0].Required && reg.Get(ShelfActions.CopyFilesId).Parameters[0].MaxLength == ShelfActions.ElementsMaxLength &&
+                  new[] { ShelfActions.CopyPathId, ShelfActions.OpenFolderId, ShelfActions.OcrId, ShelfActions.CopyFilesId }.All(i => reg.Get(i).RequiresUiThread) &&
                   new[] { ShelfActions.ZipId, ShelfActions.ConvertId, ShelfActions.RemoveId, ShelfActions.ClearId }.All(i => !reg.Get(i).RequiresUiThread) &&
                   reg.Get(ShelfActions.ZipId).Timeout == TimeSpan.FromMinutes(10) && reg.Get(ShelfActions.OcrId).Timeout == TimeSpan.FromSeconds(60));
             var emptyCopy = ShelfRun(reg, ShelfActions.CopyPathId, "1");
@@ -389,6 +398,63 @@ namespace WinNotch
                   logs.Count >= 20 && logs.All(l => Regex.IsMatch(l, @"^Acțiune shelf\.[a-z-]+ \((UI|LocalApi)\): (reușită|eșuată)$")) &&
                   logs.All(l => !l.Contains("doc") && !l.Contains("poza") && !l.Contains(@"C:\") && !l.Contains(imgId)),
                   string.Join(" | ", logs.Where(l => !Regex.IsMatch(l, @"^Acțiune shelf\.[a-z-]+ \((UI|LocalApi)\): (reușită|eșuată)$"))));
+
+            // ---- P23.2: the ticks and "copiază fișierele" (the files on the clipboard, Ctrl+V does the copying)
+            var cfs = new FakeShelfFs().File(@"C:\p\a.txt").File(@"C:\p\b.txt").Folder(@"C:\Proiect").File(@"E:\stick\c.txt").File(@"C:\p\d.txt");
+            var chost = new FakeShelfHost { Files = cfs };
+            foreach (var x in new[] { @"C:\p\a.txt", @"C:\p\b.txt", @"C:\Proiect", @"E:\stick\c.txt", @"C:\p\d.txt" })
+                chost.Model.TryAdd(x, x == @"C:\Proiect");
+            var items = chost.Model.Items;
+            string idB = items[1].Id, idD = items[4].Id;
+            var sel = new ShelfSelection();
+            bool onB = sel.Toggle(idB), onD = sel.Toggle(idD), offB = sel.Toggle(idB);
+            Check("SH35", "Alegerea rândurilor: bifa pune / scoate, nimic bifat = tot raftul, ordinea raftului se păstrează, cheile sunt id-uri; elementele scoase din raft sunt uitate",
+                  onB && onD && !offB && sel.Count == 1 && sel.Has(idD) && !sel.Has(idB) &&
+                  sel.Chosen(items).Select(x => x.Path).SequenceEqual(new[] { @"C:\p\d.txt" }) && sel.Keys(items) == idD &&
+                  sel.Toggle(idB) && sel.Chosen(items).Select(x => x.Path).SequenceEqual(new[] { @"C:\p\b.txt", @"C:\p\d.txt" }) &&
+                  sel.Keys(items) == idB + "," + idD &&
+                  new ShelfSelection().Chosen(items).Count == 5 && new ShelfSelection().Keys(items) == null &&
+                  sel.Prune(items.Where(x => x.Id != idD).ToList()) && sel.Count == 1 && sel.Has(idB) && !sel.Prune(items));
+            var many = chost.Model.FindMany(idB + "," + idD);
+            Check("SH36", "„elemente”: id-uri, poziții sau amândouă, separate prin virgulă / spațiu; gol, „tot” sau „all” = tot raftul; dubluri și chei inexistente ignorate; mereu în ordinea raftului",
+                  many.Select(x => x.Path).SequenceEqual(new[] { @"C:\p\b.txt", @"C:\p\d.txt" }) &&
+                  chost.Model.FindMany("5, 2").Select(x => x.Path).SequenceEqual(new[] { @"C:\p\b.txt", @"C:\p\d.txt" }) &&
+                  chost.Model.FindMany("2 2 " + idB).Count == 1 && chost.Model.FindMany("1," + idB + ",gunoi,0,21").Count == 2 &&
+                  chost.Model.FindMany(null).Count == 5 && chost.Model.FindMany("  ").Count == 5 && chost.Model.FindMany("tot").Count == 5 &&
+                  chost.Model.FindMany("All").Count == 5 && chost.Model.FindMany("gunoi").Count == 0 &&
+                  new ShelfModel().FindMany(null).Count == 0);
+            var creg = new ActionRegistry(new FeatureFlags(onStore), new InlineUiDispatcher());
+            ShelfActions.Register(creg, chost);
+            var copyAll = ShelfCopyFiles(creg);
+            var copySome = ShelfCopyFiles(creg, idB + "," + idD);
+            chost.Busy = true; var copyBusy = ShelfCopyFiles(creg, idB); chost.Busy = false;
+            int afterBusy = chost.Copied.Count;                                      // nothing went on the clipboard while it was busy
+            cfs.Entries.Remove(@"C:\p\d.txt");                                     // deleted after it was added
+            int changed0 = chost.ChangedCount;
+            var copyGone = ShelfCopyFiles(creg, idB + "," + idD);
+            cfs.Drives[@"E:\"] = ShelfDrive.Missing;                                // the stick is unplugged: its item stays
+            var copyStick = ShelfCopyFiles(creg, "3," + ShelfPaths.IdOf(@"E:\stick\c.txt"));
+            var copyNothing = ShelfCopyFiles(creg, ShelfPaths.IdOf(@"E:\stick\c.txt"));
+            Check("SH37", "„Copiază fișierele”: căile pe clipboard (tot raftul sau doar cele alese, în ordine, foldere incluse); clipboard ocupat → mesaj; element șters de pe disc → scos din raft și sărit; unitate deconectată → rămâne în raft, mesaj, nimic copiat",
+                  copyAll.Success && chost.Copied[0].SequenceEqual(new[] { @"C:\p\a.txt", @"C:\p\b.txt", @"C:\Proiect", @"E:\stick\c.txt", @"C:\p\d.txt" }) &&
+                  copyAll.Message == "5 fișiere pe clipboard · dă Ctrl+V unde le vrei" &&
+                  copySome.Success && chost.Copied[1].SequenceEqual(new[] { @"C:\p\b.txt", @"C:\p\d.txt" }) &&
+                  !copyBusy.Success && copyBusy.Message.Contains("Clipboard") && afterBusy == 2 &&
+                  copyGone.Success && chost.Copied[2].SequenceEqual(new[] { @"C:\p\b.txt" }) && copyGone.Message.EndsWith("(unul sărit)", StringComparison.Ordinal) &&
+                  chost.Model.Count == 4 && chost.ChangedCount == changed0 + 1 &&
+                  copyStick.Success && chost.Copied[3].SequenceEqual(new[] { @"C:\Proiect" }) && chost.Model.Count == 4 &&
+                  !copyNothing.Success && copyNothing.Message.Contains("nu e conectată") && chost.Copied.Count == 4 &&
+                  ShelfActions.CopiedMessage(1, 0) == "Un fișier pe clipboard · dă Ctrl+V unde îl vrei" && ShelfActions.CopiedMessage(2, 2) == "2 fișiere pe clipboard · dă Ctrl+V unde le vrei (2 sărite)");
+            var cregOff = new ActionRegistry(new FeatureFlags(AppSettings.NewFeatures()), new InlineUiDispatcher());
+            ShelfActions.Register(cregOff, chost);
+            var emptyHost = new FakeShelfHost { Files = cfs };
+            var ereg = new ActionRegistry(new FeatureFlags(onStore), new InlineUiDispatcher());
+            ShelfActions.Register(ereg, emptyHost);
+            Check("SH38", "„Copiază fișierele”: comutator oprit → refuzată; raft gol → indisponibilă; API-ul local refuzat; chei care nu există → „Raftul e gol.”, fără excepție; parametru prea lung refuzat",
+                  !ShelfCopyFiles(cregOff).Success && !ShelfCopyFiles(ereg).Success && ShelfCopyFiles(ereg).Message == "Raftul e gol." &&
+                  !ShelfCopyFiles(creg, idB, ActionInvoker.LocalApi).Success && !ShelfCopyFiles(creg, "gunoi").Success &&
+                  ShelfCopyFiles(creg, "gunoi").Message == "Raftul e gol." && !ShelfCopyFiles(creg, new string('1', ShelfActions.ElementsMaxLength + 1)).Success &&
+                  emptyHost.Copied.Count == 0);
 
             // ---- the drop's report, the settings, the hover while dragging
             var rep = new ShelfAddReport();
@@ -458,11 +524,14 @@ namespace WinNotch
                   Norm(NoComments(MethodBody(part, "private bool ShelfDragHover(bool inside)"))).StartsWith("{ if (!_shOn) return false;", StringComparison.Ordinal) &&
                   Norm(NoComments(MethodBody(part, "private void ShelfOnOpen()"))).StartsWith("{ if (!_shOn) return;", StringComparison.Ordinal) &&
                   Count(partN, "FeatureFlags.Current?.ReportError(ShelfActions.FeatureId, ex);") >= 5 && !partN.Contains("async void"));
-            Check("SH29", "Drop doar pe notch-ul deschis (fără editare, fără drag-ul nostru), efect Link/Copy, niciodată Move; tragerea în afară: FileDrop cu calea locală, doar dacă nu s-a găsit lipsă, Copy|Link; verificările în fundal (Task.Run)",
+            Check("SH29", "Drop doar pe notch-ul deschis (fără editare, fără drag-ul nostru), efect Link/Copy, niciodată Move; tragerea în afară: FileDrop cu căile locale (rândurile bifate merg împreună), doar cele care nu s-au găsit lipsă, Copy|Link; clipboard-ul cu fișiere: FileDrop + „Preferred DropEffect” copiere, niciodată mutare; verificările în fundal (Task.Run)",
                   Norm(NoComments(MethodBody(part, "private bool ShelfAccepts(DragEventArgs e)"))).Contains("if (!_shOn || _mode != Mode.Expanded || Editing || e?.Data == null) return false;") &&
                   partN.Contains("!e.Data.GetDataPresent(ShelfDragFormat)") && !Regex.IsMatch(partN, @"DragDropEffects\.Move|DragDropEffects\.All") &&
-                  partN.Contains("data.SetData(DataFormats.FileDrop, new[] { path });") && partN.Contains("DragDrop.DoDragDrop(row, data, DragDropEffects.Copy | DragDropEffects.Link);") &&
-                  partN.Contains("if (it.Exists == false || ShelfPaths.TryNormalize(it.Path, out var path, out _) != ShelfRefusal.None) return;") &&
+                  Count(partN, "data.SetData(DataFormats.FileDrop, paths.ToArray());") == 2 && partN.Contains("DragDrop.DoDragDrop(row, data, DragDropEffects.Copy | DragDropEffects.Link);") &&
+                  partN.Contains("var dragged = _shSelection.Count > 1 && _shSelection.Has(it.Id) ? _shSelection.Chosen(_shModel.Items) : new[] { it };") &&
+                  partN.Contains("if (x.Exists != false && ShelfPaths.TryNormalize(x.Path, out var p, out _) == ShelfRefusal.None) paths.Add(p);") &&
+                  partN.Contains("data.SetData(\"Preferred DropEffect\", new System.IO.MemoryStream(BitConverter.GetBytes((int)(DragDropEffects.Copy | DragDropEffects.Link))));") &&
+                  partN.Contains("Clipboard.SetDataObject(data, true);") && Count(partN, "_ignoreClip = true;") == 2 && Count(partN, "_ignoreClip = false;") == 2 &&
                   Norm(NoComments(MethodBody(part, "private async Task ShelfAddPathsAsync(string[] raw)"))).Contains("await Task.Run(") &&
                   Norm(NoComments(MethodBody(part, "private async Task ShelfPruneAsync()"))).Contains("await Task.Run(") &&
                   partN.Contains("PreviewDragEnterEvent") && partN.Contains("PreviewDropEvent"));
@@ -493,7 +562,9 @@ namespace WinNotch
                   partN.Contains("SmokeMode.ShelfClearAutomationId") && partN.Contains("SmokeMode.ShelfMessageAutomationId") && partN.Contains("CornerRadius = new CornerRadius(16)"));
             Check("SH33", "Butoanele pornesc acțiunile doar prin ActionRegistry.Current.InvokeAsync (UI, fără confirmare, fără ExecuteAsync); același click de două ori cât rulează → o dată",
                   Regex.Matches(partN, @"(?<!Dispatcher)\.InvokeAsync\(").Count == 1 && partN.Contains("var r = await reg.InvokeAsync(actionId, args, ActionInvoker.UI);") &&
-                  !partN.Contains("ExecuteAsync(") && !partN.Contains("confirmed") && partN.Contains("if (!_shRunning.Add(key)) return;") && Count(partN, "_ = ShelfRunAsync(") == 2);
+                  !partN.Contains("ExecuteAsync(") && !partN.Contains("confirmed") && partN.Contains("if (!_shRunning.Add(key)) return;") && Count(partN, "_ = ShelfRunAsync(") == 3 &&
+                  partN.Contains("_ = ShelfRunAsync(ShelfActions.CopyFilesId, _shSelection.Keys(_shModel.Items));") &&
+                  partN.Contains("string param = actionId == ShelfActions.CopyFilesId ? ShelfActions.ElementsParam : ShelfActions.ElementParam;"));
 
             // ---- the smoke test
             string sp = SmokeSrc("SmokeShelf.cs");

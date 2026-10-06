@@ -16,6 +16,10 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.19
+
+- Raft: bifezi rândurile și le copiezi pe toate deodată — „Copiază selecția”, apoi `Ctrl+V` unde ai nevoie (experimental, din Setări › Funcții noi).
+
 ## Noutăți în 0.6.18
 
 - Reparat: notch-ul care se deschidea uneori gol și pastila care părea să arate doar ora; o plasă de siguranță îl reface singur dacă se mai întâmplă.

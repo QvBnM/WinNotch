@@ -1,7 +1,4 @@
 ## Nou
-- În Setări › Funcții noi apare „Plasa de siguranță a notch-ului” (pornită): dacă notch-ul se deschide gol sau pastila rămâne fără conținut, îl reface singur — întâi pagina pe care erai, apoi Acasă.
-
-## Reparat
-- Notch-ul, pastila mică sau o alertă (chiar una mare, ca Memorie sau Captură) nu mai rămân uneori goale, doar cu fundalul.
-- Pe tema luminoasă iconița vremii din pastilă, de pe Acasă și din widget se vede din nou (pastila nu mai pare să arate doar ora).
-- Pastila mică arată mereu „ora · data”, niciodată doar ora.
+- Raftul (Setări › Funcții noi › „Raft”): fiecare rând are acum o bifă, iar sus apare „Copiază selecția” / „Copiază tot”. Tragi odată toate fișierele peste notch, alegi ce vrei și le copiezi pe toate deodată: dai apoi `Ctrl+V` în folderul în care le vrei (sau într-un e-mail, în Word, într-un chat) și Windows le copiază, cu bara lui de progres și cu întrebarea lui când un nume e deja luat. WinNotch nu mută și nu șterge nimic.
+- Dacă tragi din raft un rând bifat, toate rândurile bifate pleacă împreună spre aplicația în care le lași.
+- Comanda nouă în Command Bar: „raft copiază fișierele”.
