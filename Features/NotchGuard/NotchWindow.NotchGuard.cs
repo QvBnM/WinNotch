@@ -29,10 +29,11 @@ namespace WinNotch
         /// <summary>Which step of the open notch's repair comes next (0: none tried since this opening).</summary>
         private int _ngAttempt;
         private RecoveryStep _ngLastStep;
-        private bool _ngRepairing, _ngBudgetLogged;
+        private bool _ngRepairing, _ngBudgetLogged, _ngWaited;
         /// <summary>Repairs done since start (the smoke status: ";b1r=").</summary>
         private int _ngRecoveries;
         private readonly RecoveryBudget _ngPillBudget = new RecoveryBudget(NotchGuardInfo.PillBudget, NotchGuardInfo.BudgetWindow);
+        private readonly RecoveryBudget _ngPanelBudget = new RecoveryBudget(NotchGuardInfo.PanelBudget, NotchGuardInfo.BudgetWindow);
 
         private static bool NotchGuardEnabled() => FeatureFlags.Current?.IsEnabled(NotchGuardInfo.FeatureId) ?? false;
 
@@ -41,6 +42,7 @@ namespace WinNotch
         {
             if (_ngRepairing || !NotchGuardEnabled()) return;
             _ngAttempt = 0;
+            _ngWaited = false;
             _ngSettle?.Stop();
             _ngOpen = NotchGuardRestart(_ngOpen, NotchGuardInfo.OpenCheckMs, NotchGuardOpenCheck);
         }
@@ -48,7 +50,7 @@ namespace WinNotch
         /// <summary>Hook, last line of ApplyMode (and of the Command Bar's layout): the pill is checked when its fades are over.</summary>
         private void NotchGuardLaidOut()
         {
-            if (!IsLoaded || (_mode == Mode.Expanded && !_cmdOpen)) return;    // the open panel: checked after the opening
+            if (_ngRepairing || !IsLoaded || (_mode == Mode.Expanded && !_cmdOpen)) return;    // a repair reads its own result; the open panel: checked after the opening
             if (!NotchGuardEnabled()) return;
             _ngSettle = NotchGuardRestart(_ngSettle, NotchGuardInfo.SettleCheckMs, NotchGuardSettleCheck);
         }
@@ -84,6 +86,18 @@ namespace WinNotch
                 var p = NotchContentRules.Check(v);
                 if (_ngAttempt > 0) App.Log(NotchGuardLog.ResultLine(p, _ngLastStep));
                 if (p == NotchProblem.None) { _ngAttempt = 0; return; }
+                if (_ngAttempt == 0 && !_ngWaited && NotchContentRules.OnlyFading(p))
+                {
+                    _ngWaited = true;                   // R1: a fade-in still running (slow machine): one more look before repairing
+                    _ngOpen?.Start();
+                    return;
+                }
+                if (_ngAttempt == 0 && !_ngPanelBudget.TryTake())
+                {
+                    if (!_ngBudgetLogged) App.Log(NotchGuardLog.Prefix + NotchContentRules.Names(p) + " · prea multe reparații ale panoului într-un minut; aștept.");
+                    _ngBudgetLogged = true;
+                    return;
+                }
                 var step = NotchRecovery.Next(v, p, _ngAttempt);
                 App.Log(NotchGuardLog.Line(v, p, CurrentPageId(), NotchGuardFlagsOn(), NotchGuardActivity(), NotchGuardOverlays(), step));
                 if (step == RecoveryStep.GiveUp || step == RecoveryStep.None) { _ngAttempt = 0; return; }

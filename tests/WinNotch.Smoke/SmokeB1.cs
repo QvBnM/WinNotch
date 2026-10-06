@@ -32,12 +32,12 @@ namespace WinNotch.Smoke
 
             // (1) the safety net repairs what it is meant to
             OpenNotchB1();
-            int before = ReadStatus().B1r, logged = LogCount("B1 recover: ");
+            int before = ReadStatus().B1r, logged = LogCount("B1 recover: "), seen = LogCount("conținutul se vede"), named = LogCount("B1 recover: PanelHidden, NoTabs");
             Command("smoke-empty-panel");
             WaitFor(() => LogCount("Test de fum: panoul golit intenționat."), n => n > 0, TimeSpan.FromSeconds(5), "panoul golit intenționat");
             WaitFor(ReadStatus, s => s.B1r > before && s.B1 == 0 && s.Mode == "Expanded", TimeSpan.FromSeconds(5), "plasa de siguranță a refăcut panoul (;b1r crește, fără ;b1=)");
-            WaitFor(() => LogCount("conținutul se vede"), n => n > 0, TimeSpan.FromSeconds(5), "„B1 recover: … conținutul se vede” în log");
-            if (LogCount("B1 recover: PanelHidden, NoTabs") == 0) Fail("Rândul „B1 recover” nu numește problemele panoului golit:\n" + LogTail(6));
+            WaitFor(() => LogCount("conținutul se vede"), n => n > seen, TimeSpan.FromSeconds(5), "„B1 recover: … conținutul se vede” în log");
+            if (LogCount("B1 recover: PanelHidden, NoTabs") <= named) Fail("Rândul „B1 recover” nu numește problemele panoului golit:\n" + LogTail(6));
             CloseNotchB1();
             SettledIdle();
             before = ReadStatus().B1r;

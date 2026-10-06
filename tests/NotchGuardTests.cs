@@ -220,6 +220,13 @@ namespace WinNotch
                   NotchRecovery.Next(pill, NotchContentRules.Check(pill), 0) == RecoveryStep.RepairPill && NotchRecovery.Next(pill, NotchProblem.IdleEmpty, 1) == RecoveryStep.GiveUp &&
                   NotchRecovery.Next(Panel(), NotchProblem.None, 0) == RecoveryStep.None && NotchRecovery.Next(null, NotchProblem.NoTabs, 0) == RecoveryStep.None);
 
+            Check("NG27", "R1: la prima verificare, „doar transparent” (panoul sau pastila, încă în fade) primește încă o privire înainte de reparație; restul se repară imediat",
+                  NotchContentRules.OnlyFading(NotchProblem.PanelTransparent) && NotchContentRules.OnlyFading(NotchProblem.PanelTransparent | NotchProblem.PillTransparent) &&
+                  !NotchContentRules.OnlyFading(NotchProblem.None) && !NotchContentRules.OnlyFading(NotchProblem.PanelTransparent | NotchProblem.NoTabs) &&
+                  !NotchContentRules.OnlyFading(NotchProblem.PanelHidden) &&
+                  Norm(NoComments(Src("Features/NotchGuard/NotchWindow.NotchGuard.cs"))).Contains("if (_ngAttempt == 0 && !_ngWaited && NotchContentRules.OnlyFading(p)) { _ngWaited = true; _ngOpen?.Start(); return; }") &&
+                  Norm(NoComments(Src("Features/NotchGuard/NotchWindow.NotchGuard.cs"))).Contains("if (_ngRepairing || !IsLoaded ||"));
+
             var clock = new DateTime(2026, 10, 6, 12, 0, 0);
             var budget = new RecoveryBudget(3, TimeSpan.FromMinutes(1), () => clock);
             bool first3 = budget.TryTake() && budget.TryTake() && budget.TryTake();
@@ -229,7 +236,7 @@ namespace WinNotch
             clock = clock.AddSeconds(2);
             bool later = budget.TryTake();
             Check("NG17", "Pastila e reparată de cel mult 3 ori pe minut (o stare blocată nu umple log-ul)", first3 && !fourth && !still && later &&
-                  NotchGuardInfo.PillBudget == 3 && NotchGuardInfo.BudgetWindow == TimeSpan.FromMinutes(1) && NotchGuardInfo.OpenCheckMs == 300 && NotchGuardInfo.SettleCheckMs == 450);
+                  NotchGuardInfo.PillBudget == 3 && NotchGuardInfo.PanelBudget == 4 && NotchGuardInfo.BudgetWindow == TimeSpan.FromMinutes(1) && NotchGuardInfo.OpenCheckMs == 300 && NotchGuardInfo.SettleCheckMs == 450);
 
             string line = NotchGuardLog.Line(empty, NotchContentRules.Check(empty), "home", new[] { "activity-manager", "shelf", "Titlu Fereastră", null, "shelf" }, "Single/Normal",
                                              new[] { "raft", "quick-actions", "C:\\Users\\x" }, RecoveryStep.RebuildPage);

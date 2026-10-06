@@ -68,3 +68,20 @@ termină cu notch-ul deschis: prezentatorul nu desenează în `Expanded`), reven
 - Dacă problema apare din nou, `log.txt` spune ce era pe ecran: rândurile „B1 recover” și, înainte de ele, eventualele
   „Eroare neprevăzută”.
 - `;b1=` / `;b1r=` și comenzile `smoke-empty-*` sunt folosite de testul de fum.
+
+## Note după revizia R1
+- **Pin-ul QA27** (starea de fum) actualizat pentru câmpurile `;b1=` / `;b1r=` adăugate după contoarele Quick Actions.
+- **Verificarea de la 300 ms** cădea înainte de sfârșitul fade-ului panoului (120 + 220 ms): pe o mașină lentă „doar
+  transparent” ar fi declanșat o reparație falsă. Acum, la prima verificare, problemele care sunt doar `PanelTransparent` /
+  `PillTransparent` (stratul vizibil) primesc încă 300 ms înainte de orice reparație (`NotchContentRules.OnlyFading`, NG27);
+  restul (panou colapsat, fără tab-uri, fără pagină) se repară la 300 ms, ca în cerință. Reparațiile panoului au și ele un
+  buget: cel mult 4 pe minut.
+- **O reparație nu mai pornește o altă verificare** (`NotchGuardLaidOut` ignoră apelurile din timpul reparației); rezultatul
+  ei e citit o singură dată.
+- **Comutatorul fără abonare la `FeatureFlags.Changed`** (abatere asumată, ca la „Pagina după context”, ADR 0008): plasa nu
+  are nimic de pornit sau oprit; fiecare legătură și fiecare verificare citesc `IsEnabled` în acel moment, deci oprirea are
+  efect imediat (un cronometru deja pornit nu mai face nimic).
+- **Testul de fum** numără rândurile „B1 recover” de dinaintea golirii intenționate (o reparație anterioară nu mai poate
+  satisface așteptarea).
+- Rămas așa (Minor): `WeatherBrush()` dă o pensulă fixă (nu o referință de resursă); standby-ul, Acasă și widget-ul o recitesc
+  la reîmprospătare și la schimbarea temei.

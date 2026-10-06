@@ -340,7 +340,7 @@ namespace WinNotch
                   Src("Core/Context/ContextEngine.cs").Contains("internal bool ForceMeetingForSmoke(AudioOutputKind? output)") &&
                   Norm(NoComments(MethodBody(smoke0, "private void SmokeFakeMeeting("))).Contains("if (!SmokeMode.On) return;") &&
                   Norm(NoComments(smoke0)).Contains("case SmokeCommandKind.FakeMeeting: SmokeFakeMeeting(c.Argument); break;") &&
-                  Norm(NoComments(smoke0)).Contains("CurrentPageId(), ctx) + SmokeMode.QuickActionsStatus(_qaInvoked, _qaSuggested));"), string.Join(",", callers));
+                  Norm(NoComments(smoke0)).Contains("CurrentPageId(), ctx) + SmokeMode.QuickActionsStatus(_qaInvoked, _qaSuggested) + NotchGuardSmokeStatus());") /* B1: the safety net's fields after them */, string.Join(",", callers));
 
             // ---- R1
             var drives = new FakeQuickCatalog().Add(Act("device.open-e")).Add(Act("device.eject-e", ActionSafety.Confirm));

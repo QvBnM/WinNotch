@@ -22,6 +22,8 @@ namespace WinNotch.Features.NotchGuard
         public const int SettleCheckMs = 450;
         /// <summary>At most this many repairs of the pill in <see cref="BudgetWindow"/> (a stuck state must not fill the log).</summary>
         public const int PillBudget = 3;
+        /// <summary>R1: at most this many repairs of the open notch in <see cref="BudgetWindow"/> (step 2 rebuilds every page).</summary>
+        public const int PanelBudget = 4;
         public static readonly TimeSpan BudgetWindow = TimeSpan.FromMinutes(1);
     }
 
@@ -146,6 +148,13 @@ namespace WinNotch.Features.NotchGuard
             }
             return p;
         }
+
+        /// <summary>
+        /// R1: only "transparent" (the panel or the whole pill), the layer visible: at the first check its fade-in (120 ms
+        /// delay + 220 ms) may still be running on a slow machine, so it gets one more check before anything is repaired.
+        /// </summary>
+        public static bool OnlyFading(NotchProblem p) =>
+            p != NotchProblem.None && (p & ~(NotchProblem.PanelTransparent | NotchProblem.PillTransparent)) == NotchProblem.None;
 
         /// <summary>The problems by name, for the log ("PanelTransparent, NoTabs"; "—" for none).</summary>
         public static string Names(NotchProblem p)
