@@ -32,3 +32,12 @@
 - **Teste:** 490 C# (35 noi, CP1–CP28) + 23 extensie + fum 16 / 16 (+1 SKIP); fereastra de 10 minute și paginile ascunse doar în teste unitare.
 - **Abatere:** categoria „Creator” în plus față de PLAN (există în motor); alegerea manuală ținută în memorie (se pierde la repornire).
 
+
+## Rularea 4 — P20 Quick Actions + P21 Smart Clipboard (6 oct 2026)
+
+### P20 Quick Actions
+- **Făcut:** `Features/QuickActions` (tabel de date cu 4 reguli: întâlnire + căști → mută/pornește microfonul, volum 40%; media → pauză, următor; stick USB → deschide; baterie sub 20% → economisire, setări ecran), evaluare pură peste ActionRegistry (indisponibile și Confirm/Dangerous excluse), rândul de 1–4 butoane sub pastilă la deschidere pe ambele drumuri, sugestie nesolicitată doar cu activity-manager pornit (peek Low, max. una la 10 minute, „Nu mai arăta” per regulă în setări); acțiuni noi `device.open-<literă>`, `settings.battery-saver`, `quick-actions.show-hidden`; comutatorul „quick-actions” Experimental, oprit; ADR 0009.
+- **Revizia R1:** aprobat cu reparații, 0 Critic/Major, 2 Medii (rezultatul click-ului invizibil; citirea stick-urilor pe firul UI la fiecare deschidere), 5 Minore; reparate în 1d81729 (mesaj 4 s în rând, stick din context + reîmprospătare în fundal, limita doar pe peek afișat, eticheta clară, rândul revine după editare, „1–4” în documentație); rămas: testele QA27–QA36 caută șiruri în sursă (precedent).
+- **CI:** run 29 și run 30 verzi din prima; fumul Quick Actions pe ambele drumuri (oprit: fără sugestii; pornit: o sugestie, a doua amânată, „Nu mai arăta”).
+- **Teste:** 532 C# (42 noi, QA1–QA39) + 23 extensie + fum 17 / 17 (+1 SKIP).
+- **Abateri:** stick-ul are un singur buton (Scoate cere confirmare, deci exclus); economisirea bateriei deschide pagina din Windows (fără API documentat); ramura de lucru e `claude/mod-pilot-automat-rularea-4-lneluy` (cea a sesiunii), unită local în `main` cu `--no-ff`.
