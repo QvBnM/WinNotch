@@ -195,6 +195,7 @@ namespace WinNotch
             StopActivities();
             StopCommandBar();
             StopQuickActions();
+            StopSmartClipboard();
             _poll.Stop(); _sec.Stop(); _mon.Stop(); _audioTick.Stop();
             CompositionTarget.Rendering -= OnFrame;
             S.PinnedClips = Clips.Where(c => c.Pinned).Select(c => c.Text).ToList();
@@ -1366,6 +1367,7 @@ namespace WinNotch
         private void OnClipboard()
         {
             if (_ignoreClip) { _ignoreClip = false; return; }
+            SmartClipboardForget();                    // P21 hook (Features/SmartClipboard): no chips until this text is known
             try
             {
                 if (!Clipboard.ContainsText()) return;
@@ -1378,13 +1380,15 @@ namespace WinNotch
                 var unpinned = Clips.Where(c => !c.Pinned).ToList();
                 foreach (var old in unpinned.Skip(20)) Clips.Remove(old);
                 _tools.ClipsChanged();
+                SmartClipboardCopied(t);               // P21 hook: recorded (not private, not empty) → chips, perhaps a peek
             }
             catch { /* clipboard busy in another app */ }
         }
 
         /// <summary>
         /// Password managers (KeePass, Bitwarden, 1Password…) mark copied secrets so clipboard tools don't record them;
-        /// Windows' own clipboard history respects the same markers.
+        /// Windows' own clipboard history respects the same markers. The markers are checked in
+        /// Features/SmartClipboard/ClipboardPrivacy.cs (pure, tested; any error there counts as private too).
         /// </summary>
         private static bool IsPrivateClip()
         {
@@ -1392,22 +1396,14 @@ namespace WinNotch
             {
                 var d = Clipboard.GetDataObject();
                 if (d == null) return false;
-                if (d.GetDataPresent("ExcludeClipboardContentFromMonitorProcessing") || d.GetDataPresent("Clipboard Viewer Ignore")) return true;
-                foreach (var fmt in new[] { "CanIncludeInClipboardHistory", "CanUploadToCloudClipboard" })
-                {
-                    if (!d.GetDataPresent(fmt)) continue;
-                    var o = d.GetData(fmt);
-                    byte[] b = o is System.IO.MemoryStream ms ? ms.ToArray() : o as byte[];
-                    if (b != null && b.Length >= 4 && BitConverter.ToInt32(b, 0) == 0) return true;
-                }
+                return Features.SmartClipboard.ClipboardPrivacy.IsPrivate(d.GetDataPresent, d.GetData);
             }
             catch { return true; }        // clipboard busy right after a password manager wrote to it: when in doubt, don't record
-            return false;
         }
 
         internal void CopyToClipboard(string text)
         {
-            try { _ignoreClip = true; Clipboard.SetText(text); }
+            try { _ignoreClip = true; Clipboard.SetText(text); SmartClipboardOurs(text); }       // P21 hook: the chips follow our own write
             catch { _ignoreClip = false; }
         }
 

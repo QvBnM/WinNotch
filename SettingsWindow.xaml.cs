@@ -160,6 +160,7 @@ namespace WinNotch
             BuildWorkspaces();
             TabsBox.IsChecked = s.BrowserTabs;
             BuildContextPages();                // P27 (Features/ContextPages)
+            ClipPeekBox.IsChecked = s.SmartClipboardPeek;       // P21 (Features/SmartClipboard)
             BuildFeatures();
             UpdateExtStatus();
             _extTimer.Tick += (o, e) => UpdateExtStatus();
@@ -382,6 +383,7 @@ namespace WinNotch
             foreach (var (ws, nm) in _workspaces) ws.Name = string.IsNullOrWhiteSpace(nm) ? ws.Name : nm.Trim();
             _s.Workspaces = _workspaces.Select(x => x.Ws).ToList();
             _s.ContextPages = ContextPagesChosen();         // P27 (Features/ContextPages)
+            _s.SmartClipboardPeek = ClipPeekBox.IsChecked == true;     // P21 (Features/SmartClipboard)
             var flags = Core.Flags.FeatureFlags.Current;
             // only the switches you changed here (one switched off automatically meanwhile stays off); they start or stop right away
             flags?.ApplyChoices(_featuresShown, _features);

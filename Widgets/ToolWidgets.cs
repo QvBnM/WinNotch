@@ -124,10 +124,12 @@ namespace WinNotch.Widgets
         private readonly StackPanel _list = new StackPanel();
         private readonly TextBox _search;
         private string _sig;
+        /// <summary>P21 (Features/SmartClipboard): chips for the text copied last; collapsed (zero height) with the switch off.</summary>
+        private readonly Features.SmartClipboard.SmartClipChips _smart;
 
         public ClipboardWidget(NotchWindow w, WidgetSlot s) : base(w, s)
         {
-            var g = Ui.Rows(Ui.Auto, Ui.Px(6), Ui.Star());
+            var g = Ui.Rows(Ui.Auto, Ui.Px(6), Ui.Auto, Ui.Star());
             var head = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto);
             head.Put(Cap("CLIPBOARD"));
             if (Ch >= 3)
@@ -138,13 +140,15 @@ namespace WinNotch.Widgets
                 head.Put(new Border { Background = Ui.B("ChipHoverBrush"), CornerRadius = new CornerRadius(7), Padding = new Thickness(7, 0, 7, 0), Height = 24, Child = _search, ToolTip = "Caută în istoric" }, 2);
             }
             g.Put(head);
-            g.Put(new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _list }, 0, 2);
+            g.Put(_smart = new Features.SmartClipboard.SmartClipChips(W), 0, 2);      // P21 hook
+            g.Put(new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _list }, 0, 3);
             Children.Add(g);
             Refresh();
         }
 
         public override void Refresh()
         {
+            _smart.Refresh();                                                       // P21 hook: redraws only when the text or the switch changed
             string q = _search?.Text?.Trim() ?? "";
             var clips = W.Clips.Where(c => q.Length == 0 || c.Text.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
             string sig = q + "|" + string.Join("|", clips.Select(c => c.Text.GetHashCode() + "" + c.Pinned)) + DateTime.Now.Minute;

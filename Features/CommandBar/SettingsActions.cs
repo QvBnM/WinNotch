@@ -45,7 +45,7 @@ namespace WinNotch.Features.CommandBar
 
         private const string Standby = "Ce apare în standby", Behaviour = "Comportament", Home = "Acasă și sănătate",
             Tabs = "Tab-uri din browser", Spaces = "Spații de lucru", Accent = "Culoare accent", Weather = "Vremea", ContextPages = "Pagina după context",
-            New = "Funcții noi (experimental)";
+            SmartClipboard = "Smart Clipboard", New = "Funcții noi (experimental)";
 
         public static readonly IReadOnlyList<SettingsOption> All = new[]
         {
@@ -70,6 +70,7 @@ namespace WinNotch.Features.CommandBar
             new SettingsOption("settings.accent", "Setări: culoarea accent", "AccentPanel", Accent, "setări culoare", "accent", "accent color"),
             new SettingsOption("settings.weather", "Setări: vremea (orașul)", "CityBox", Weather, "setări vreme", "oraș", "coordonate", "weather"),
             new SettingsOption("settings.context-pages", "Setări: pagina după context", "ContextPageRows", ContextPages, "setări pagină context", "pagina după context", "pagini după context", "context pages"),
+            new SettingsOption("settings.clipboard-peek", "Setări: mesaj la copiere (Smart Clipboard)", "ClipPeekBox", SmartClipboard, "setări clipboard", "smart clipboard", "mesaj la copiere", "clipboard peek"),
             new SettingsOption("settings.features", "Setări: funcții noi (experimental)", "FeatureRows", New, "setări funcții noi", "experimental", "comutatoare", "feature flags"),
         };
 

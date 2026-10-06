@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace WinNotch.Features.Smoke
 {
-    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage, FakeMeeting }
+    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage, FakeMeeting, ClipboardPage }
 
     /// <summary>One line of smoke-commands.txt, checked.</summary>
     public sealed class SmokeCommand
@@ -16,6 +16,7 @@ namespace WinNotch.Features.Smoke
         /// <summary>Which persistent activity (1–3) or how many alerts in the burst (1–10).</summary>
         public int Number { get; init; }
         // P20: for FakeMeeting, Argument is the playback device ("Headphones"…; "" = back to the real context)
+        // P21: for ClipboardPage, Argument is "on" (add the test page with the Clipboard widget and show it) or "off" (remove it)
         /// <summary>P27: the page id for <see cref="SmokeCommandKind.SetContextPage"/> ("" = „—”).</summary>
         public string Page { get; init; } = "";
     }
@@ -46,6 +47,14 @@ namespace WinNotch.Features.Smoke
         public const string QuickActionsRowAutomationId = "qa-row";
         /// <summary>P20 (R1): the last click's result at the end of the row (its Name is the text; only while shown).</summary>
         public const string QuickActionMessageAutomationId = "qa-message";
+        /// <summary>P21: UI Automation id of a Smart Clipboard chip = this prefix + the action id ("sc-clipboard.format-json").</summary>
+        public const string SmartClipChipPrefix = "sc-";
+        /// <summary>P21: the row of chips in the Clipboard widget (only while it has chips).</summary>
+        public const string SmartClipRowAutomationId = "sc-row";
+        /// <summary>P21: the last click's result at the end of the chips (its Name is the text; only while shown).</summary>
+        public const string SmartClipMessageAutomationId = "sc-message";
+        /// <summary>P21: the id of the page "smoke-clipboard-page on" adds (in the smoke folder's settings only).</summary>
+        public const string SmokeClipboardPageId = "smoke-clipboard";
         /// <summary>Bigger files are ignored (and deleted): the commands are a few short lines.</summary>
         public const int MaxFileBytes = 4096;
         public const int MaxLines = 20;
@@ -87,7 +96,8 @@ namespace WinNotch.Features.Smoke
         /// "dismiss-activities", for the Command Bar (P14): "open-command-bar" (the same code path as its shortcut), and for the
         /// page by context (P27): "fake-context &lt;category|none&gt;" (into the context engine's snapshot) and
         /// "set-context-page &lt;category&gt; &lt;page id|none&gt;", and for Quick Actions (P20): "fake-meeting
-        /// &lt;headphones|speakers|bluetooth|none&gt;" (a meeting with that output, into the context engine's snapshot). Case and
+        /// &lt;headphones|speakers|bluetooth|none&gt;" (a meeting with that output, into the context engine's snapshot), and for
+        /// Smart Clipboard (P21): "smoke-clipboard-page &lt;on|off&gt;" (a page with the Clipboard widget, shown / removed). Case and
         /// extra spaces don't matter; anything else is null (ignored).
         /// </summary>
         public static SmokeCommand Parse(string line)
@@ -121,6 +131,8 @@ namespace WinNotch.Features.Smoke
                 if (w[1] == "none") return new SmokeCommand { Kind = SmokeCommandKind.FakeMeeting };
                 return MeetingOutputs.TryGetValue(w[1], out var output) ? new SmokeCommand { Kind = SmokeCommandKind.FakeMeeting, Argument = output } : null;
             }
+            if (w.Length == 2 && w[0] == "smoke-clipboard-page" && (w[1] == "on" || w[1] == "off"))
+                return new SmokeCommand { Kind = SmokeCommandKind.ClipboardPage, Argument = w[1] };
             if (w.Length == 3 && w[0] == "set-context-page" && ContextCategories.TryGetValue(w[1], out var category))
             {
                 if (w[2] == "none") return new SmokeCommand { Kind = SmokeCommandKind.SetContextPage, Argument = category };

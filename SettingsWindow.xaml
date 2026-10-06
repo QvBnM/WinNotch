@@ -233,6 +233,16 @@
 
                 <Border Style="{StaticResource Section}">
                     <StackPanel>
+                        <TextBlock Style="{StaticResource H}" Text="Smart Clipboard"/>
+                        <TextBlock Style="{StaticResource Hint}" Text="Widget-ul Clipboard recunoaște ce copiezi (JSON, link, culoare, e-mail, IP, cale, JWT, telefon) și îți dă butoane mici: formatează, curăță link-ul de urmărire, decodează. Parolele copiate din managerele de parole sunt ignorate, iar nimic din ce copiezi nu ajunge în log. Merge cu „Smart Clipboard” pornit în „Funcții noi”, mai jos."/>
+                        <CheckBox x:Name="ClipPeekBox" Margin="0,4,0,0">
+                            <TextBlock TextWrapping="Wrap" Text="Un mesaj scurt în pastilă când copiezi un JSON, un link cu urmărire sau un token JWT (doar cu „Manager de activități” pornit)"/>
+                        </CheckBox>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Section}">
+                    <StackPanel>
                         <TextBlock Style="{StaticResource H}" Text="Funcții noi (experimental)"/>
                         <TextBlock Style="{StaticResource Hint}" Text="Funcții încă în lucru. Le pornești sau le oprești aici, fără repornire. Una care dă erori repetate se oprește singură."/>
                         <TextBlock x:Name="SafeModeNote" Style="{StaticResource Hint}" Foreground="#B04A00" Visibility="Collapsed"
