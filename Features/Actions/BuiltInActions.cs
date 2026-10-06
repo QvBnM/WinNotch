@@ -18,7 +18,8 @@ namespace WinNotch.Features.Actions
         internal const string GVolume = "", GMute = "", GMic = "", GPlay = "", GNext = "", GPrev = "",
             GCamera = "", GCrop = "", GText = "", GMemory = "", GPin = "", GMonitor = "",
             GHalf = "", GMini = "", GWorkspace = "", GEject = "", GSettings = "", GNotch = "",
-            GSpeed = "", GBluetooth = "", GWifi = "", GUpdate = "";
+            GSpeed = "", GBluetooth = "", GWifi = "", GUpdate = "",
+            GBatterySaver = "", GFolder = "";
 
         private const string CatAudio = "Sunet", CatMedia = "Muzică", CatTools = "Unelte", CatWindow = "Fereastra activă",
             CatSettings = "Setări Windows", CatApp = "WinNotch";
@@ -110,6 +111,8 @@ namespace WinNotch.Features.Actions
                 Setting("settings.display", "Setări ecran", "ms-settings:display", GMonitor, "display", "rezoluție", "luminozitate"),
                 Setting("settings.wifi", "Setări Wi-Fi", "ms-settings:network-wifi", GWifi, "wifi", "wireless", "rețea"),
                 Setting("settings.update", "Windows Update", "ms-settings:windowsupdate", GUpdate, "update", "actualizări windows", "actualizare"),
+                // P20: the battery saver page (Windows 10 and 11; turning it on stays the user's click, there is no documented API)
+                Setting("settings.battery-saver", "Economisire baterie", "ms-settings:batterysaver", GBatterySaver, "battery saver", "economizor", "baterie", "economisire energie"),
 
                 // ---- WinNotch itself
                 new ActionDescriptor("winnotch.open", "Deschide notch-ul", (a, ct) => Do(h.OpenNotch))
@@ -189,7 +192,10 @@ namespace WinNotch.Features.Actions
         }
     }
 
-    /// <summary>"Scoate <unitate>" for every removable drive (asks for confirmation).</summary>
+    /// <summary>
+    /// For every removable drive: "Deschide &lt;unitate&gt;" (P20, Safe: Explorer on its root, as the old USB alert's
+    /// "Deschide") and "Scoate &lt;unitate&gt;" (asks for confirmation).
+    /// </summary>
     public sealed class DriveActions : IActionProvider
     {
         private readonly IBuiltInHost _h;
@@ -208,6 +214,16 @@ namespace WinNotch.Features.Actions
                 string letter = char.ToLowerInvariant(d.Root[0]).ToString();
                 string root = char.ToUpperInvariant(d.Root[0]) + ":\\";
                 string label = string.IsNullOrWhiteSpace(d.Name) ? "unitatea" : d.Name.Trim();
+                string drive = d.Root;
+                yield return new ActionDescriptor("device.open-" + letter, "Deschide " + label + " (" + root.TrimEnd('\\') + ")", (a, ct) =>
+                {
+                    _h.OpenUri(root);                    // through Services.Shell.Open, like the ms-settings links
+                    return ActionResult.OkTask("Am deschis " + label);
+                }, () => _h.RemovableDrives()?.Any(x => string.Equals(x?.Root, drive, StringComparison.OrdinalIgnoreCase)) ?? false)
+                {
+                    Aliases = new[] { "deschide stick", "deschide usb", "open usb", "open drive", "stick usb" }, Category = "Dispozitive", Icon = BuiltInActions.GFolder,
+                    RequiresUiThread = true, UnavailableMessage = "Unitatea nu mai e conectată.",
+                };
                 yield return new ActionDescriptor("device.eject-" + letter, "Scoate " + label + " (" + root.TrimEnd('\\') + ")", (a, ct) =>
                     Task.FromResult(_h.Eject(root) ? ActionResult.Ok("Poți scoate " + label) : ActionResult.Failed("Unitatea nu a putut fi scoasă (e folosită?).")),
                     () => _h.RemovableDrives()?.Any(x => string.Equals(x?.Root, d.Root, StringComparison.OrdinalIgnoreCase)) ?? false)

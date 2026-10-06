@@ -194,6 +194,7 @@ namespace WinNotch
             StopSmoke();
             StopActivities();
             StopCommandBar();
+            StopQuickActions();
             _poll.Stop(); _sec.Stop(); _mon.Stop(); _audioTick.Stop();
             CompositionTarget.Rendering -= OnFrame;
             S.PinnedClips = Clips.Where(c => c.Pinned).Select(c => c.Text).ToList();
@@ -435,6 +436,7 @@ namespace WinNotch
             if (_pane == _sources) ShowPane(_home);
             _pane.Shown();
             _pane.Refresh();
+            QuickActionsOnOpen();           // P20 hook (Features/QuickActions): the buttons for the current context; a no-op with the switch off
             HeaderClock.Text = DateTime.Now.ToString("HH:mm");
             ApplyMode();
             ApplyHidden();
@@ -453,6 +455,7 @@ namespace WinNotch
             _leaveStart = null;
             StopTyping();
             _pane?.Hidden();
+            QuickActionsOnClose();          // P20 hook (Features/QuickActions): the row goes with the panel
             SetClickThrough(true);
             ApplyMode();
             ApplyHidden();

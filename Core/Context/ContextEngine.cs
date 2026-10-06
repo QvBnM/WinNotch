@@ -85,6 +85,8 @@ namespace WinNotch.Core.Context
         private IDisposable _debounce, _poll;
         /// <summary>Smoke tests only (<see cref="ForceCategoryForSmoke"/>); null in the app.</summary>
         private AppCategory? _smokeCategory;
+        /// <summary>Smoke tests only (<see cref="ForceMeetingForSmoke"/>): a meeting with this output; null in the app.</summary>
+        private AudioOutputKind? _smokeMeetingOutput;
 
         public ContextEngine(ContextSources sources, FeatureFlags flags = null, IContextScheduler scheduler = null,
                              AppCategories categories = null, Action<string> log = null)
@@ -122,6 +124,22 @@ namespace WinNotch.Core.Context
             lock (_lock)
             {
                 _smokeCategory = category;
+                if (!_running || _disposed) return false;
+                ScheduleFlush();
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Smoke tests only (the "fake-meeting" test command, P20 / ADR 0009): from now on a meeting is going on ("Test")
+        /// with <paramref name="output"/> as the playback device; null = both back to the real ones. Like
+        /// <see cref="ForceCategoryForSmoke"/>: through the normal flush, false while the engine is off. The caller checks smoke mode.
+        /// </summary>
+        internal bool ForceMeetingForSmoke(AudioOutputKind? output)
+        {
+            lock (_lock)
+            {
+                _smokeMeetingOutput = output;
                 if (!_running || _disposed) return false;
                 ScheduleFlush();
                 return true;
@@ -343,9 +361,11 @@ namespace WinNotch.Core.Context
             var power = Value(_sources.Power, PowerState.Unknown) ?? PowerState.Unknown;
             string proc = AppCategories.Normalize(fg.Process);
             AppCategory? forced;
-            lock (_lock) forced = _smokeCategory;
+            AudioOutputKind? forcedMeeting;
+            lock (_lock) { forced = _smokeCategory; forcedMeeting = _smokeMeetingOutput; }
             var cat = forced ?? _categories.Categorize(proc);
             string meeting = ContextRules.Meeting(fg, cap, _categories);
+            if (forcedMeeting != null) meeting ??= "Test";
             return new ContextSnapshot
             {
                 ForegroundProcess = proc,
@@ -358,7 +378,7 @@ namespace WinNotch.Core.Context
                 MicrophoneApps = cap.MicrophoneInUse ? (cap.MicrophoneApps ?? Array.Empty<string>()).ToList() : Array.Empty<string>(),
                 CameraInUse = cap.CameraInUse,
                 CameraApps = cap.CameraInUse ? (cap.CameraApps ?? Array.Empty<string>()).ToList() : Array.Empty<string>(),
-                AudioOutput = Value(_sources.Audio, AudioOutputKind.Unknown),
+                AudioOutput = forcedMeeting ?? Value(_sources.Audio, AudioOutputKind.Unknown),
                 MeetingActive = meeting != null,
                 MeetingApp = meeting ?? "",
                 Online = net.Online,

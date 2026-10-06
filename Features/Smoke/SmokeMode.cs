@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace WinNotch.Features.Smoke
 {
-    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage }
+    public enum SmokeCommandKind { VolumeAlert, TrackAlert, ToggleFeature, PersistentActivity, BurstActivity, LowActivity, DismissActivities, OpenCommandBar, FakeContext, SetContextPage, FakeMeeting }
 
     /// <summary>One line of smoke-commands.txt, checked.</summary>
     public sealed class SmokeCommand
@@ -15,6 +15,7 @@ namespace WinNotch.Features.Smoke
         public string Argument { get; init; } = "";
         /// <summary>Which persistent activity (1–3) or how many alerts in the burst (1–10).</summary>
         public int Number { get; init; }
+        // P20: for FakeMeeting, Argument is the playback device ("Headphones"…; "" = back to the real context)
         /// <summary>P27: the page id for <see cref="SmokeCommandKind.SetContextPage"/> ("" = „—”).</summary>
         public string Page { get; init; } = "";
     }
@@ -37,6 +38,12 @@ namespace WinNotch.Features.Smoke
         public const string CommandBoxAutomationId = "WinNotchCommandBox";
         /// <summary>P14: UI Automation id of a result row = this prefix + the action id; the selected row's ItemStatus is "selected".</summary>
         public const string CommandResultAutomationPrefix = "WinNotchCommandResult:";
+        /// <summary>P20: UI Automation id of a Quick Actions button = this prefix + the action id ("qa-audio.mute-mic").</summary>
+        public const string QuickActionAutomationPrefix = "qa-";
+        /// <summary>P20: „Nu mai arăta” for a rule = this prefix + the rule id ("qa-hide-meeting-headphones").</summary>
+        public const string QuickActionHideAutomationPrefix = "qa-hide-";
+        /// <summary>P20: the row of Quick Actions buttons under the open notch's content.</summary>
+        public const string QuickActionsRowAutomationId = "qa-row";
         /// <summary>Bigger files are ignored (and deleted): the commands are a few short lines.</summary>
         public const int MaxFileBytes = 4096;
         public const int MaxLines = 20;
@@ -59,6 +66,15 @@ namespace WinNotch.Features.Smoke
             ["dev"] = "Dev", ["browser"] = "Browser", ["meeting"] = "Meeting", ["game"] = "Game", ["media"] = "Media", ["office"] = "Office", ["creator"] = "Creator",
         };
 
+        /// <summary>
+        /// P20: the playback devices "fake-meeting" accepts, lowercase → the name of Core.Context.AudioOutputKind (the tests
+        /// check the names match).
+        /// </summary>
+        public static readonly IReadOnlyDictionary<string, string> MeetingOutputs = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["headphones"] = "Headphones", ["speakers"] = "Speakers", ["bluetooth"] = "Bluetooth",
+        };
+
         /// <summary>A page id in a test command or in the status: "home", "devices" or a page of yours (32 hex digits).</summary>
         private static readonly Regex PageId = new Regex("^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.CultureInvariant);
         private static readonly Regex StatusText = new Regex("^[A-Za-z0-9-]{1,40}$", RegexOptions.CultureInvariant);
@@ -68,7 +84,9 @@ namespace WinNotch.Features.Smoke
         /// Activity Manager (P13): "post-activity persistent &lt;1–3&gt;", "post-activity burst &lt;1–10&gt;", "post-activity low",
         /// "dismiss-activities", for the Command Bar (P14): "open-command-bar" (the same code path as its shortcut), and for the
         /// page by context (P27): "fake-context &lt;category|none&gt;" (into the context engine's snapshot) and
-        /// "set-context-page &lt;category&gt; &lt;page id|none&gt;". Case and extra spaces don't matter; anything else is null (ignored).
+        /// "set-context-page &lt;category&gt; &lt;page id|none&gt;", and for Quick Actions (P20): "fake-meeting
+        /// &lt;headphones|speakers|bluetooth|none&gt;" (a meeting with that output, into the context engine's snapshot). Case and
+        /// extra spaces don't matter; anything else is null (ignored).
         /// </summary>
         public static SmokeCommand Parse(string line)
         {
@@ -95,6 +113,11 @@ namespace WinNotch.Features.Smoke
             {
                 if (w[1] == "none") return new SmokeCommand { Kind = SmokeCommandKind.FakeContext };
                 return ContextCategories.TryGetValue(w[1], out var cat) ? new SmokeCommand { Kind = SmokeCommandKind.FakeContext, Argument = cat } : null;
+            }
+            if (w.Length == 2 && w[0] == "fake-meeting")
+            {
+                if (w[1] == "none") return new SmokeCommand { Kind = SmokeCommandKind.FakeMeeting };
+                return MeetingOutputs.TryGetValue(w[1], out var output) ? new SmokeCommand { Kind = SmokeCommandKind.FakeMeeting, Argument = output } : null;
             }
             if (w.Length == 3 && w[0] == "set-context-page" && ContextCategories.TryGetValue(w[1], out var category))
             {
@@ -142,13 +165,20 @@ namespace WinNotch.Features.Smoke
         /// Activity Manager (P13) it can go on with what the pill shows: ";split=1" (two persistent activities),
         /// ";group=5" („5 noutăți”), ";peek=1" (a Low activity); with the Command Bar (P14) open, ";cmd=1". P27 adds, at the
         /// end, the page shown in the notch (";page=home") and the category in the context engine's snapshot (";ctx=Dev");
-        /// a value that isn't a plain id is left out.
+        /// a value that isn't a plain id is left out. P20 appends <see cref="QuickActionsStatus"/>.
         /// </summary>
         public static string Status(string mode, double pillWidth, double pillHeight, int split = 0, int group = 0, int peek = 0, int cmd = 0,
                                     string page = null, string ctx = null) =>
             "mode=" + mode + ";pill=" + Math.Round(pillWidth) + "x" + Math.Round(pillHeight) +
             (split > 0 ? ";split=" + split : "") + (group > 0 ? ";group=" + group : "") + (peek > 0 ? ";peek=" + peek : "") + (cmd > 0 ? ";cmd=" + cmd : "") +
             (page != null && StatusText.IsMatch(page) ? ";page=" + page : "") + (ctx != null && StatusText.IsMatch(ctx) ? ";ctx=" + ctx : "");
+
+        /// <summary>
+        /// P20, at the very end of the status: how many Quick Actions buttons ran through the registry with success (";qa=2")
+        /// and how many unasked suggestions were posted (";qs=1"); zero ones are left out.
+        /// </summary>
+        public static string QuickActionsStatus(int qa, int qs) =>
+            (qa > 0 ? ";qa=" + Math.Min(qa, 9999) : "") + (qs > 0 ? ";qs=" + Math.Min(qs, 9999) : "");
 
         /// <summary>Reads <see cref="Status"/> back: false if it isn't one.</summary>
         public static bool TryParseStatus(string status, out string mode, out int width, out int height) =>
@@ -163,12 +193,12 @@ namespace WinNotch.Features.Smoke
                                           out string page, out string ctx)
         {
             mode = ""; width = height = 0; page = ""; ctx = "";
-            var fields = new Dictionary<string, int>(StringComparer.Ordinal) { ["split"] = 0, ["group"] = 0, ["peek"] = 0, ["cmd"] = 0 };
+            var fields = new Dictionary<string, int>(StringComparer.Ordinal) { ["split"] = 0, ["group"] = 0, ["peek"] = 0, ["cmd"] = 0, ["qa"] = 0, ["qs"] = 0 };
             extra = fields;
-            var m = Regex.Match(status ?? "", @"^mode=(\w+);pill=(\d+)x(\d+)((?:;(?:split|group|peek|cmd)=\d{1,4})*)(;page=[A-Za-z0-9-]{1,40})?(;ctx=[A-Za-z0-9-]{1,40})?$");
+            var m = Regex.Match(status ?? "", @"^mode=(\w+);pill=(\d+)x(\d+)((?:;(?:split|group|peek|cmd)=\d{1,4})*)(;page=[A-Za-z0-9-]{1,40})?(;ctx=[A-Za-z0-9-]{1,40})?((?:;(?:qa|qs)=\d{1,4})*)$");
             if (!m.Success) return false;
             mode = m.Groups[1].Value;
-            foreach (Match f in Regex.Matches(m.Groups[4].Value, @";(\w+)=(\d+)")) fields[f.Groups[1].Value] = int.Parse(f.Groups[2].Value);
+            foreach (Match f in Regex.Matches(m.Groups[4].Value + m.Groups[7].Value, @";(\w+)=(\d+)")) fields[f.Groups[1].Value] = int.Parse(f.Groups[2].Value);
             if (m.Groups[5].Success) page = m.Groups[5].Value.Substring(";page=".Length);
             if (m.Groups[6].Success) ctx = m.Groups[6].Value.Substring(";ctx=".Length);
             return int.TryParse(m.Groups[2].Value, out width) && int.TryParse(m.Groups[3].Value, out height);
