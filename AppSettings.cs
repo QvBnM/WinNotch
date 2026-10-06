@@ -129,6 +129,7 @@ namespace WinNotch
                         s.PinnedClips ??= new List<string>();
                         s.NormalizeFeatures();
                         s.NormalizeContextPages();           // P27 (Features/ContextPages)
+                        s.NormalizeQuickActions();           // P20 (Features/QuickActions)
                         return s;
                     }
                 }

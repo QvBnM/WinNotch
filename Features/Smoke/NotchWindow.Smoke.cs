@@ -28,8 +28,9 @@ namespace WinNotch
         }
 
         /// <summary>
-        /// Mode, pill size, what the Activity Manager shows (split, group, peek), the open Command Bar, the page shown (P27) and
-        /// the category in the context engine's snapshot (P27), read by the smoke test from the window's ItemStatus.
+        /// Mode, pill size, what the Activity Manager shows (split, group, peek), the open Command Bar, the page shown (P27),
+        /// the category in the context engine's snapshot (P27) and the Quick Actions counters (P20), read by the smoke test
+        /// from the window's ItemStatus.
         /// </summary>
         private void UpdateSmokeStatus()
         {
@@ -37,7 +38,7 @@ namespace WinNotch
             var snap = Core.Context.ContextEngine.Current?.Snapshot;      // the category the page choice actually uses (meeting/game win)
             string ctx = snap == null ? null : Features.ContextPages.ContextPageRules.EffectiveCategory(snap).ToString();
             AutomationProperties.SetItemStatus(this, SmokeMode.Status(_mode.ToString(), Pill.ActualWidth, Pill.ActualHeight, split, group, peek, CommandBarOpen ? 1 : 0,
-                                                                      CurrentPageId(), ctx));
+                                                                      CurrentPageId(), ctx) + SmokeMode.QuickActionsStatus(_qaInvoked, _qaSuggested));
         }
 
         /// <summary>Reads smoke-commands.txt from the smoke folder, deletes it, runs the valid lines in order.</summary>
@@ -99,6 +100,9 @@ namespace WinNotch
                     break;
                 case SmokeCommandKind.SetContextPage:
                     SmokeSetContextPage(c.Argument, c.Page);
+                    break;
+                case SmokeCommandKind.FakeMeeting:
+                    SmokeFakeMeeting(c.Argument);
                     break;
             }
             UpdateSmokeStatus();
@@ -173,6 +177,25 @@ namespace WinNotch
             S.ContextPages = S.WithContextPage(cat.Value, page);
             S.Save();
             App.Log("Test de fum: pagina pentru „" + cat.Value + "”: " + (string.IsNullOrEmpty(page) ? "—" : page) + ".");
+        }
+
+        /// <summary>
+        /// P20 "fake-meeting": a meeting with that playback device goes into the context engine (its snapshot and Changed,
+        /// through the normal flush), so Quick Actions read it exactly like a real one. Only smoke mode runs these commands.
+        /// </summary>
+        private void SmokeFakeMeeting(string output)
+        {
+            if (!SmokeMode.On) return;                     // test mode only, whoever calls it
+            Core.Context.AudioOutputKind? forced = null;
+            if (!string.IsNullOrEmpty(output))
+            {
+                if (!Enum.TryParse(output, false, out Core.Context.AudioOutputKind parsed) || parsed == Core.Context.AudioOutputKind.Unknown) { App.Log("Test de fum: ieșire audio necunoscută."); return; }
+                forced = parsed;
+            }
+            var engine = Core.Context.ContextEngine.Current;
+            if (engine == null) { App.Log("Test de fum: motorul de context lipsește; întâlnirea falsă e ignorată."); return; }
+            bool now = engine.ForceMeetingForSmoke(forced);
+            App.Log("Test de fum: întâlnire falsă „" + (forced?.ToString() ?? "niciuna") + "”" + (now ? "." : " (motorul de context e oprit; se aplică la pornirea lui)."));
         }
 
         private void StopSmoke()

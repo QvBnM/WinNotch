@@ -150,7 +150,30 @@ Pregătire: Setări › „Pagina după context”: Programare → Sistem, Brows
 | P27.8 | Motorul de context oprit | Debifează „Motorul de context” › Salvează; deschide notch-ul din VS Code. Apoi `WinNotch.exe --safe-mode`. | Nicio schimbare de pagină în ambele cazuri. |
 | P27.9 | Fără consum | Comutator pornit, notch închis, 10 minute; Task Manager › WinNotch.exe. | CPU ca înainte (aproape 0%): funcția nu rulează nimic cât notch-ul e închis. |
 | P27.10 | Acțiunea de setări | Cu Command Bar pornit: `Win+Alt+Space`, „setari pagina context”, Enter. | Fereastra WinNotch se deschide la Setări, la secțiunea „Pagina după context”. |
-| P27.11 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Rularea cu activity-manager oprit are „PASS  Pagina după context…” (16 PASS); cea cu el pornit scrie „SKIP  Pagina după context…” (tot 16 PASS). |
+| P27.11 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Rularea cu activity-manager oprit are „PASS  Pagina după context…” (16 PASS; 17 din P20); cea cu el pornit scrie „SKIP  Pagina după context…” (tot 16 PASS; 17 din P20). |
+
+### P20 — Quick Actions (experimental, oprit implicit)
+
+Cu comutatorul oprit, notch-ul arată ca înainte (niciun rând de butoane, nicio sugestie). Verificările de mai jos sunt cu
+„Quick Actions” pornit (Setări › Funcții noi › bifează › Salvează) și „Motorul de context” pornit (implicit), dacă nu scrie altfel.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P20.1 | Oprit = nimic | Comutatorul oprit (implicit). Într-un apel Teams / Zoom cu căștile puse, deschide notch-ul. | Notch-ul arată ca înainte, fără rând de butoane; în log nu apare „Quick Actions”. |
+| P20.2 | Întâlnire cu căști | Comutatorul pornit. Într-un apel (microfonul pornit), cu căști (cu fir sau Bluetooth), hover pe notch. | Sub pagină, centrat, un rând cu „Mută / pornește microfonul” și „Volum 40%”, butoane mici rotunjite în culorile temei; pagina nu e acoperită. |
+| P20.3 | Butoanele merg | În P20.2: click pe microfon, apoi pe „Volum 40%”. Click din nou pe microfon. | Microfonul se oprește în toate aplicațiile (și pornește la al doilea click); volumul devine 40%. La capătul rândului apare 4 s rezultatul („Microfon oprit (în toate aplicațiile)”, „Volum 40%”, „Microfon pornit”). Notch-ul rămâne deschis. În log „Acțiune audio.mute-mic (QuickAction): reușită”, fără valori. |
+| P20.4 | Boxe = altă regulă | Același apel, cu boxele ca ieșire. | Nu apare rândul întâlnirii (eventual cel pentru muzică / stick, dacă e cazul). |
+| P20.5 | Muzică | Pornește o piesă în Spotify (sau YouTube cu extensia), deschide notch-ul. | „Pauză” și „Următoarea”; merg pe sursa care cântă. Fără sursă media nu apare nimic. |
+| P20.6 | Stick USB | Conectează un stick, deschide notch-ul. | Un buton „Deschide <nume> (E:)” care deschide stick-ul în Explorer. „Scoate” nu apare (cere confirmare: rămâne în pagina Dispozitive și în Command Bar). |
+| P20.7 | Baterie sub 20% | Pe laptop, pe baterie, sub 20%: deschide notch-ul. | „Economisire” deschide pagina Windows de economisire a bateriei; „Luminozitate” deschide Setări › Ecran. Nicio sugestie nesolicitată (alerta de baterie rămâne). |
+| P20.8 | Prioritatea | În apel cu căști și cu muzică pornită. | Apare doar rândul întâlnirii. |
+| P20.9 | Modul de editare | Cu rândul vizibil, intră în editare (creionul), apoi „Gata”. | În editare rândul dispare și nota de jos a paginii standard apare normal; după „Gata” rândul revine. |
+| P20.15 | Stick scos între timp | Cu un stick conectat, deschide notch-ul; scoate stick-ul fără „Scoate” și dă imediat click pe „Deschide …”. Apoi conectează un stick adormit / lent și deschide notch-ul. | Rezultatul „Unitatea nu mai e conectată.” apare în rând (portocaliu). Deschiderea notch-ului nu se blochează așteptând stick-ul. |
+| P20.10 | Sugestie, doar cu Activity Manager | Pornește și „Manager de activități”. Intră într-un apel cu căștile puse (notch-ul închis). Ieși din apel și intră din nou în 2–3 minute. | La prima intrare, pastila se lărgește 2 s cu „Întâlnire cu căști · acțiuni rapide la hover”; la a doua, nimic (în log „sugestie amânată”). Cu „Manager de activități” oprit: nicio sugestie. |
+| P20.11 | „Nu mai arăta” | Cu Activity Manager pornit, deschide notch-ul în apel cu căști; click pe „Nu mai arăta”. După 10 minute, intră iar într-un apel. | Butonul dispare (celelalte rămân); nu mai vine sugestia pentru întâlnire, dar butoanele apar la deschidere. Command Bar › „sugestii” › „Quick Actions: arată din nou sugestiile ascunse” le readuce. |
+| P20.12 | Motorul de context oprit | Debifează „Motorul de context” › Salvează; în apel cu căști, deschide notch-ul. Apoi `WinNotch.exe --safe-mode`. | Niciun rând de butoane în ambele cazuri. |
+| P20.13 | Fără consum | Comutator pornit, notch închis, 10 minute; Task Manager › WinNotch.exe. | CPU ca înainte (aproape 0%): nimic nu rulează periodic. |
+| P20.14 | Testul de fum | GitHub › Actions › ultima rulare CI › pașii „Smoke tests”. | Ambele rulări au „PASS  Quick Actions: …” (17 PASS); cea cu activity-manager pornit spune și „o singură sugestie (peek) la 10 minute; „Nu mai arăta””. |
 
 ### P02 — Teste de fum (CI)
 
@@ -158,8 +181,8 @@ Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai 
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
-| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 16 rânduri PASS și „TEST DE FUM (activity-manager oprit): 16 PASS, 0 FAIL” (15 până la P27); WinNotch se închide singur. Cu `-- publish\WinNotch.exe smoke-artifacts --activity-manager=on`: 16 PASS și un rând „SKIP  Pagina după context” (12 / 13 până la P14). În timpul rulării apare o fereastră mică a testului; nu da click în ea. |
+| P02.1 | Rulare locală | Închide WinNotch. `dotnet publish WinNotch.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish`, apoi `dotnet run --project tests/WinNotch.Smoke/WinNotch.Smoke.csproj -- publish\WinNotch.exe`. Nu atinge mouse-ul și tastatura ~1 minut. | 17 rânduri PASS și „TEST DE FUM (activity-manager oprit): 17 PASS, 0 FAIL” (16 până la P20, 15 până la P27); WinNotch se închide singur. Cu `-- publish\WinNotch.exe smoke-artifacts --activity-manager=on`: 17 PASS și un rând „SKIP  Pagina după context” (12 / 13 până la P14). În timpul rulării apare o fereastră mică a testului; nu da click în ea. |
 | P02.2 | Setările tale nu sunt atinse | După P02.1, compară `%AppData%\WinNotch\settings.json` și `log.txt` cu cele dinainte. | Neschimbate; testul a scris doar în `%AppData%\WinNotch\smoke\`. |
 | P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
 | P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
-| P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 16 PASS în ambele (din P27; 15 / 16 din P14; 12 / 13 în 0.6.14). |
+| P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 17 PASS în ambele (din P20; 16 din P27; 15 / 16 din P14; 12 / 13 în 0.6.14). |

@@ -33,6 +33,10 @@ namespace WinNotch.Smoke
     /// on the run with the Activity Manager off; the other run prints SKIP): a fake "Dev" context goes into the context
     /// engine's snapshot ("fake-context dev"), "Dev" is mapped to the "devices" page; with "context-pages" off Win+Alt+N
     /// opens on the old page, switched on it opens on "devices" (read from the notch's status, ";page=").
+    /// P20, on both runs: a fake meeting with headphones goes into the context engine ("fake-meeting headphones"); with
+    /// "quick-actions" off Win+Alt+N opens without buttons, switched on the row has "Microfon" and "Volum 40%" (UI Automation,
+    /// "qa-&lt;action id&gt;"), a click on "Microfon" runs through the registry (twice: the microphone ends as it was); with the
+    /// Activity Manager on also one suggestion (a peek, ";qs=1"), none more within 10 minutes, and „Nu mai arăta”.
     /// log.txt is copied to the artifacts folder after every run; on a failure also a screenshot and the notch's state.
     /// </summary>
     public static class SmokeProgram
@@ -86,6 +90,9 @@ namespace WinNotch.Smoke
                 Run(step = "Win+Alt+N deschide și închide notch-ul", Hotkey);
                 if (!_activityOn) Run(step = "Pagina după context: contextul „Dev” din motor deschide notch-ul pe pagina mapată, doar cu „context-pages” pornit", ContextPages);
                 else Console.WriteLine("SKIP  Pagina după context (rulează o singură dată, în rularea cu activity-manager oprit)");
+                Run(step = _activityOn
+                    ? "Quick Actions: întâlnire cu căști → butoanele sub pastilă; click pe „Mută / pornește microfonul” prin registru, cu rezultatul în rând; o singură sugestie (peek) la 10 minute; „Nu mai arăta”"
+                    : "Quick Actions: întâlnire cu căști → butoanele sub pastilă; click pe „Mută / pornește microfonul” prin registru, cu rezultatul în rând; fără sugestii nesolicitate", QuickActions);
                 Run(step = "Command Bar oprit: Win+Alt+Space nu deschide nimic", CommandBarOff);
                 Run(step = "Command Bar: se deschide, „volum” găsește un rezultat, o alertă nu ia pastila, Esc închide și focusul revine", CommandBarSearchAndEscape);
                 Run(step = "Command Bar: Enter pe „settings.position” (sigură) deschide Setări în fereastra WinNotch", CommandBarRunsAction);
@@ -154,6 +161,8 @@ namespace WinNotch.Smoke
             public int Cmd;
             /// <summary>P27: the page shown in the notch and the category in the context engine's snapshot ("" when not given).</summary>
             public string Page = "", Ctx = "";
+            /// <summary>P20: Quick Actions buttons that ran with success, unasked suggestions posted.</summary>
+            public int Qa, Qs;
             public override string ToString() => Raw;
             public bool SameSize(Status o) => Math.Abs(W - o.W) <= 2 && Math.Abs(H - o.H) <= 2;
         }
@@ -162,7 +171,7 @@ namespace WinNotch.Smoke
         {
             string raw = _notch.Properties.ItemStatus.ValueOrDefault ?? "";
             return SmokeMode.TryParseStatus(raw, out var m, out int w, out int h, out var x, out var page, out var ctx)
-                ? new Status { Mode = m, W = w, H = h, Raw = raw, Split = x["split"], Group = x["group"], Peek = x["peek"], Cmd = x["cmd"], Page = page, Ctx = ctx }
+                ? new Status { Mode = m, W = w, H = h, Raw = raw, Split = x["split"], Group = x["group"], Peek = x["peek"], Cmd = x["cmd"], Page = page, Ctx = ctx, Qa = x["qa"], Qs = x["qs"] }
                 : new Status { Mode = "", Raw = raw };
         }
 
@@ -354,6 +363,116 @@ namespace WinNotch.Smoke
             Command("set-context-page dev none");
             Command("fake-context none");
             WaitFor(() => LogCount("Test de fum: context fals „niciunul”"), n => n > 0, TimeSpan.FromSeconds(10), "contextul fals scos");
+            SettledIdle();
+        }
+
+        // ------------------------------------------------------------------ P20: Quick Actions
+
+        private const string QuickActionsFeature = "quick-actions";
+        private const string QaMic = SmokeMode.QuickActionAutomationPrefix + "audio.mute-mic";
+        private const string QaVolume = SmokeMode.QuickActionAutomationPrefix + "audio.volume-set";
+        private const string QaHide = SmokeMode.QuickActionHideAutomationPrefix + "meeting-headphones";
+        /// <summary>The context engine logs a meeting change (its log line names the meeting app, "Test" for the fake one).</summary>
+        private const string MeetingOnLog = ", întâlnire Test,", MeetingOffLog = ", întâlnire nu,";
+
+        private static List<AutomationElement> QuickButtons() =>
+            _notch.FindAllDescendants(cf => cf.ByControlType(ControlType.Button))
+                  .Where(e => IdOf(e).StartsWith(SmokeMode.QuickActionAutomationPrefix, StringComparison.Ordinal)).ToList();
+
+        private static AutomationElement QuickButton(string id) => QuickButtons().FirstOrDefault(b => IdOf(b) == id);
+
+        /// <summary>"fake-meeting …" and the engine's own log line for it (the snapshot changed, after its debounce).</summary>
+        private static void FakeMeeting(string output)
+        {
+            string expect = output == "none" ? MeetingOffLog : MeetingOnLog;
+            int before = LogCount(expect);
+            Command("fake-meeting " + output);
+            WaitFor(() => LogCount(expect), n => n > before, TimeSpan.FromSeconds(10), "„" + expect.Trim(',', ' ') + "” în log (motorul de context)");
+        }
+
+        /// <summary>
+        /// What is exercised: the meeting comes from the real ContextEngine (the test command forces "a meeting with
+        /// headphones" inside the engine, through its normal debounce and Changed), the switch through FeatureFlags, the open
+        /// through the real Win+Alt+N → Expand → the P20 hook, the buttons through UI Automation and the click through the
+        /// registry ("Acțiune audio.mute-mic (QuickAction): reușită"; pressed twice, so the microphone is as before). With
+        /// the Activity Manager on: one suggestion (a Low peek, ";qs=1"), not a second one within 10 minutes, and
+        /// „Nu mai arăta”. With it off: no suggestion and no „Nu mai arăta”. Unit tests only: the other rules, the 10:00 edge.
+        /// </summary>
+        private static void QuickActions()
+        {
+            SettledIdle();
+            FakeMeeting("headphones");
+
+            // switch off: nothing under the pill, nothing suggested
+            OpenNotchByHotkey();
+            Thread.Sleep(800);
+            if (QuickButtons().Count > 0 || ReadStatus().Qs != 0) Fail("Cu „" + QuickActionsFeature + "” oprit au apărut Quick Actions: " + ReadStatus());
+            CloseNotchByHotkey();
+            FakeMeeting("none");
+
+            int on = LogCount("Quick Actions: pornit.");
+            Command("toggle feature " + QuickActionsFeature);
+            WaitFor(() => LogCount("Quick Actions: pornit."), n => n > on, TimeSpan.FromSeconds(10), "„Quick Actions: pornit.” în log");
+            SettledIdle();
+            FakeMeeting("headphones");
+            if (_activityOn)
+            {
+                WaitFor(ReadStatus, st => st.Qs == 1, TimeSpan.FromSeconds(8), "o sugestie nesolicitată (;qs=1)");
+                WaitFor(() => LogCount("Quick Actions: sugestie meeting-headphones."), n => n == 1, TimeSpan.FromSeconds(5), "„Quick Actions: sugestie meeting-headphones.” în log");
+                SettledIdle();                                                    // the 2 s peek is over
+                // the same rule again within 10 minutes: no second suggestion
+                int later = LogCount("Quick Actions: sugestie amânată (meeting-headphones");
+                FakeMeeting("none");
+                FakeMeeting("headphones");
+                WaitFor(() => LogCount("Quick Actions: sugestie amânată (meeting-headphones"), n => n > later, TimeSpan.FromSeconds(8), "a doua sugestie amânată (limita de 10 minute)");
+                if (ReadStatus().Qs != 1) Fail("A doua sugestie a apărut în mai puțin de 10 minute: " + ReadStatus());
+            }
+            else
+            {
+                Thread.Sleep(2500);
+                if (ReadStatus().Qs != 0 || LogCount("Quick Actions: sugestie") > 0) Fail("Fără Activity Manager a apărut o sugestie nesolicitată: " + ReadStatus());
+            }
+
+            // open: the meeting rule's buttons
+            SettledIdle();
+            OpenNotchByHotkey();
+            var mic = WaitFor(() => QuickButton(QaMic), b => b != null, TimeSpan.FromSeconds(8), "butonul „" + QaMic + "”");
+            var buttons = QuickButtons().Where(b => !IdOf(b).StartsWith(SmokeMode.QuickActionHideAutomationPrefix, StringComparison.Ordinal)).ToList();
+            if (QuickButton(QaVolume) == null) Fail("Lipsește butonul „" + QaVolume + "”.");
+            if (buttons.Count < 2 || buttons.Count > 4) Fail("Quick Actions ar trebui să aibă 2–4 butoane, are " + buttons.Count + ": " + string.Join(", ", buttons.Select(IdOf)));
+            Console.WriteLine("      (" + string.Join(", ", buttons.Select(IdOf)) + ")");
+            bool hide = QuickButton(QaHide) != null;
+            if (hide != _activityOn) Fail(_activityOn ? "Lipsește „Nu mai arăta”." : "„Nu mai arăta” apare deși fără Activity Manager nu vin sugestii.");
+
+            // a click goes through the registry as QuickAction; twice, so the microphone is back as it was
+            const string ran = "Acțiune audio.mute-mic (QuickAction): reușită";
+            int before = LogCount(ran), qa = ReadStatus().Qa;
+            mic.AsButton().Invoke();
+            WaitFor(ReadStatus, st => st.Qa == qa + 1, TimeSpan.FromSeconds(8), "clickul pe „Microfon” executat (;qa=" + (qa + 1) + ")");
+            var msg = WaitFor(() => _notch.FindFirstDescendant(cf => cf.ByAutomationId(SmokeMode.QuickActionMessageAutomationId)), m => m != null && (m.Properties.Name.ValueOrDefault ?? "").Length > 0,
+                              TimeSpan.FromSeconds(3), "rezultatul clickului în rând („" + SmokeMode.QuickActionMessageAutomationId + "”)");
+            Console.WriteLine("      (rezultat: " + msg.Properties.Name.ValueOrDefault + ")");
+            QuickButton(QaMic)?.AsButton().Invoke();
+            WaitFor(ReadStatus, st => st.Qa == qa + 2, TimeSpan.FromSeconds(8), "al doilea click pe „Microfon” executat (;qa=" + (qa + 2) + ")");
+            WaitFor(() => LogCount(ran), n => n >= before + 2, TimeSpan.FromSeconds(5), "„" + ran + "” de două ori în log");
+            if (ReadStatus().Mode != "Expanded") Fail("Notch-ul s-a închis după un click pe Quick Actions: " + ReadStatus());
+
+            if (_activityOn)
+            {
+                int hidden = LogCount("Quick Actions: sugestiile pentru „meeting-headphones” nu mai apar.");
+                QuickButton(QaHide).AsButton().Invoke();
+                WaitFor(() => LogCount("Quick Actions: sugestiile pentru „meeting-headphones” nu mai apar."), n => n > hidden, TimeSpan.FromSeconds(8), "„Nu mai arăta” salvat (log)");
+                WaitFor(() => QuickButton(QaHide), b => b == null, TimeSpan.FromSeconds(5), "„Nu mai arăta” dispărut din rând");
+                if (QuickButton(QaMic) == null) Fail("După „Nu mai arăta”, butoanele trebuie să rămână (doar sugestiile dispar).");
+            }
+            CloseNotchByHotkey();
+            WaitFor(() => QuickButtons().Count, n => n == 0, TimeSpan.FromSeconds(5), "rândul Quick Actions dispărut după închidere");
+
+            // back as before: switch off, the real context
+            int off = LogCount("Quick Actions: oprit.");
+            Command("toggle feature " + QuickActionsFeature);
+            WaitFor(() => LogCount("Quick Actions: oprit."), n => n > off, TimeSpan.FromSeconds(10), "„Quick Actions: oprit.” în log");
+            FakeMeeting("none");
             SettledIdle();
         }
 

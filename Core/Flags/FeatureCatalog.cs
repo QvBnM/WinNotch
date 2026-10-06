@@ -41,6 +41,8 @@ namespace WinNotch.Core.Flags
         public const string CommandBar = "command-bar";
         /// <summary>Features/ContextPages: same id as ContextPageRules.FeatureId (the tests check they match).</summary>
         public const string ContextPages = "context-pages";
+        /// <summary>Features/QuickActions: same id as QuickActionRules.FeatureId (the tests check they match).</summary>
+        public const string QuickActions = "quick-actions";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -57,6 +59,9 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Experimental, false),
             // P27: off by default; off (or the context engine off) = the notch opens on the page it was on, as before
             new FeatureInfo(ContextPages, "Pagina după context", "La deschidere, notch-ul alege pagina după ce faci (programare, browser, întâlnire, joc…), cum alegi în Setări. O pagină aleasă de tine rămâne 10 minute.",
+                            FeatureStage.Experimental, false),
+            // P20: off by default; off = no buttons under the pill and no suggestions, nothing subscribed
+            new FeatureInfo(QuickActions, "Quick Actions", "Câteva butoane sub pastilă, la deschidere, după ce faci: în întâlnire cu căști mută microfonul, la muzică pauză, la stick deschide-l. Cu Activity Manager pornit, cel mult o sugestie la 10 minute.",
                             FeatureStage.Experimental, false),
         };
 
