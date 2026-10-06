@@ -45,9 +45,13 @@ namespace WinNotch.Smoke
     /// made by the test goes through the drop's checks ("smoke-shelf-add"), shows in the shelf (UI Automation,
     /// "shelf-item-&lt;id&gt;"), „Copiază calea” runs through the registry and the clipboard holds exactly its path, „Golește”
     /// empties the shelf (the file stays); the path never reaches the log.
+    /// P30, once (only on the run with the Activity Manager off; the other run prints SKIP): with "audio-switch" on, the list
+    /// of outputs opens on the Home page ("smoke-audio-outputs"), says „Nicio ieșire audio” on a machine without audio (or
+    /// shows the rows, at most one default), the button beside the volume ("audio-outputs-toggle") closes and reopens it,
+    /// and the switch doesn't turn itself off; nothing is chosen (that would change the machine's default output).
     /// log.txt is copied to the artifacts folder after every run; on a failure also a screenshot and the notch's state.
     /// This file: Main, the order of the checks, the shared helpers and the basic checks; the areas are in SmokeAlerts.cs,
-    /// SmokeCommandBar.cs, SmokeContext.cs (P27, P20), SmokeClipboard.cs (P21) and SmokeShelf.cs (P23), the same partial class.
+    /// SmokeCommandBar.cs, SmokeContext.cs (P27, P20), SmokeClipboard.cs (P21), SmokeShelf.cs (P23) and SmokeAudio.cs (P30), the same partial class.
     /// </summary>
     public static partial class SmokeProgram
     {
@@ -107,6 +111,8 @@ namespace WinNotch.Smoke
                 else Console.WriteLine("SKIP  Smart Clipboard (rulează o singură dată, în rularea cu activity-manager oprit)");
                 if (!_activityOn) Run(step = "Raft: un fișier local adăugat ca la tragere → apare în raft; „Copiază calea” prin registru → exact calea în clipboard; „Golește” → raftul gol", Shelf);
                 else Console.WriteLine("SKIP  Raft (rulează o singură dată, în rularea cu activity-manager oprit)");
+                if (!_activityOn) Run(step = "Căști/boxe: lista ieșirilor audio de lângă volum se deschide și fără niciun dispozitiv („Nicio ieșire audio”), butonul o închide și o redeschide, comutatorul nu se oprește singur", AudioOutputs);
+                else Console.WriteLine("SKIP  Căști/boxe (rulează o singură dată, în rularea cu activity-manager oprit)");
                 Run(step = "Command Bar oprit: Win+Alt+Space nu deschide nimic", CommandBarOff);
                 Run(step = "Command Bar: se deschide, „volum” găsește un rezultat, o alertă nu ia pastila, Esc închide și focusul revine", CommandBarSearchAndEscape);
                 Run(step = "Command Bar: Enter pe „settings.position” (sigură) deschide Setări în fereastra WinNotch", CommandBarRunsAction);

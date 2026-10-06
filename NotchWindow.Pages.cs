@@ -142,6 +142,7 @@ namespace WinNotch
             _editBtn.Visibility = SettingsBtn.Visibility = HeaderClock.Visibility = Editing ? Visibility.Collapsed : Visibility.Visible;
             _addWidgetBtn.IsEnabled = _pane is WidgetPage;
             _addWidgetBtn.Opacity = _pane is WidgetPage ? 1 : 0.4;
+            AudioSwitchHeaderChanged();                // P30 hook (Features/AudioSwitch): edit mode closes the list of outputs
             ShelfHeaderChanged();                      // P23 hook (Features/Shelf): edit mode takes the shelf's place
             QuickActionsHeaderChanged();               // P20 hook (Features/QuickActions): edit mode takes the place of the row
         }
