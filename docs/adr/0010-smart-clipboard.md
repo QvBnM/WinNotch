@@ -84,3 +84,14 @@ conținutul clipboard-ului în log, fișierele mari atinse doar cu legături de 
 - Textele din log „Smart Clipboard: pornit.” / „oprit (…)”, comanda `smoke-clipboard-page`, id-urile `sc-*` și pagina
   `smoke-clipboard` sunt folosite de testul de fum.
 - După o repornire nu există „ultimul text” până la prima copiere (clipurile fixate nu au chip-uri).
+
+## Note după revizia R1
+- **Liste JSON mici:** o listă e oferită doar dacă are înăuntru un obiect sau o listă, ori are cel puțin 8 caractere
+  (`MinPlainArray`): „[1]” (notă de subsol) și „[1,2]” nu mai au chip-uri.
+- **„::”** singur nu mai e IP: IPv6 cere cel puțin o cifră hex („::1” rămâne IP).
+- **Link fără browser:** `Shell.Open` poate arunca `Win32Exception`; `OpenUrl` o prinde și întoarce „Link-ul nu a putut fi
+  deschis.” (ca `OpenFolder`), deci nu se numără ca eroare a funcției. `ISmartClipboardHost.OpenUrl` întoarce acum motivul.
+- **Folderul** e deschis cu `\` la final (`folder.TrimEnd('\\', '/') + "\\"`), ca să fie clar un director; „C:\” rămâne „C:\”.
+- **O singură memorie a recunoașterii:** notch-ul își dă `SmartClipCache` acțiunilor (`Register(registry, host, cache)`), deci
+  un text e analizat o dată pentru widget și registru.
+- **Testul de fum:** `smoke-clipboard-page off` mută notch-ul pe Acasă dacă era pe pagina scoasă și o scoate și din `_userPanes`.

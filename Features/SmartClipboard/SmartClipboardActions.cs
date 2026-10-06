@@ -25,8 +25,8 @@ namespace WinNotch.Features.SmartClipboard
         string CurrentText { get; }
         /// <summary>UI thread: puts the text in the clipboard as WinNotch's own (not recorded again, no peek); false if the clipboard is busy.</summary>
         bool SetText(string text);
-        /// <summary>UI thread: an http(s) link, already checked, through Shell.Open.</summary>
-        void OpenUrl(string url);
+        /// <summary>UI thread: an http(s) link, already checked, through Shell.Open; null when done, else a short Romanian reason.</summary>
+        string OpenUrl(string url);
         /// <summary>UI thread: opens the folder of a local path (checked again there); null when done, else a short Romanian reason.</summary>
         string OpenFolder(string path);
     }
@@ -113,10 +113,11 @@ namespace WinNotch.Features.SmartClipboard
 
         // ------------------------------------------------------------------ the actions
 
-        public static IReadOnlyList<ActionDescriptor> Create(ISmartClipboardHost host)
+        /// <param name="cache">The notch's own cache (R1: a text is analyzed once for the widget and the actions); null = a new one.</param>
+        public static IReadOnlyList<ActionDescriptor> Create(ISmartClipboardHost host, SmartClipCache cache = null)
         {
             if (host == null) throw new ArgumentNullException(nameof(host));
-            var cache = new SmartClipCache();
+            cache ??= new SmartClipCache();
             SmartClip Current() => cache.Get(host.CurrentText);
 
             ActionDescriptor Make(string id, string title, SmartClipKind kind, string icon, string unavailable, string[] aliases,
@@ -150,8 +151,8 @@ namespace WinNotch.Features.SmartClipboard
                      c => true, c =>
                      {
                          if (!SmartClipRecognizer.IsUrl(c.Text)) return ActionResult.Failed("Nu ai copiat un link http sau https.");     // checked again, right before
-                         host.OpenUrl(c.Text);
-                         return ActionResult.Ok("Link deschis în browser");
+                         string why = host.OpenUrl(c.Text);
+                         return why == null ? ActionResult.Ok("Link deschis în browser") : ActionResult.Failed(why);
                      }),
                 Make(DecodeJwtId, "Smart Clipboard: decodează token-ul JWT copiat (local)", SmartClipKind.Jwt, GKey, "Nu ai copiat un token JWT.",
                      new[] { "decodează jwt", "token", "jwt decode", "decode token" },
@@ -180,9 +181,9 @@ namespace WinNotch.Features.SmartClipboard
         }
 
         /// <summary>Registered once at startup, from App.RegisterActions.</summary>
-        public static void Register(ActionRegistry registry, ISmartClipboardHost host)
+        public static void Register(ActionRegistry registry, ISmartClipboardHost host, SmartClipCache cache = null)
         {
-            foreach (var a in Create(host)) registry.Register(a);
+            foreach (var a in Create(host, cache)) registry.Register(a);
         }
     }
 }

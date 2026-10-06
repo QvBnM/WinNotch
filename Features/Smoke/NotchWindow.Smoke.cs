@@ -226,6 +226,8 @@ namespace WinNotch
             {
                 if (page != null)
                 {
+                    if (_userPanes.TryGetValue(page.Id, out var shown) && _pane == shown) ShowPane(_home);     // R1: not left on the removed page
+                    _userPanes.Remove(page.Id);
                     S.Pages.Remove(page);
                     S.Save();
                 }

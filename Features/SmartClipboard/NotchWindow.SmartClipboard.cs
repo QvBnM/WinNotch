@@ -31,6 +31,8 @@ namespace WinNotch
         internal bool SmartClipboardOn => _scOn;
         internal string SmartClipboardText => _scOn ? _scLatest : null;
         internal SmartClip SmartClipboardCurrent() => _scOn ? _scCache.Get(_scLatest) : SmartClip.None;
+        /// <summary>Shared with the "clipboard.*" actions (thread-safe): a text is analyzed once.</summary>
+        internal SmartClipCache SmartClipboardCache => _scCache;
 
         /// <summary>Called once at startup (App.StartApp), after the actions. UI thread.</summary>
         internal void StartSmartClipboard()
@@ -133,10 +135,18 @@ namespace WinNotch.Features.SmartClipboard
 
         public bool SetText(string text) => _n.SmartClipboardWrite(text);
 
-        public void OpenUrl(string url)
+        public string OpenUrl(string url)
         {
-            if (!SmartClipRecognizer.IsUrl(url)) return;               // http(s) only, whoever calls it
-            Services.Shell.Open(url);
+            if (!SmartClipRecognizer.IsUrl(url)) return "Nu ai copiat un link http sau https.";       // http(s) only, whoever calls it
+            try
+            {
+                Services.Shell.Open(url);
+                return null;
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception || ex is InvalidOperationException || ex is FileNotFoundException)
+            {
+                return "Link-ul nu a putut fi deschis.";             // no browser set (R1): a fixed reason, not counted as a feature error
+            }
         }
 
         /// <summary>
@@ -153,7 +163,7 @@ namespace WinNotch.Features.SmartClipboard
                     return "Calea e pe o unitate de rețea sau lipsă; nu o deschid.";
                 string folder = Directory.Exists(p) ? p : File.Exists(p) ? Path.GetDirectoryName(p) : null;
                 if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder)) return "Calea copiată nu există pe acest PC.";
-                Services.Shell.Open(folder);
+                Services.Shell.Open(folder.TrimEnd('\\', '/') + "\\");      // R1: a trailing "\" names a folder ("C:\" stays "C:\")
                 return null;
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException || ex is NotSupportedException || ex is System.ComponentModel.Win32Exception)

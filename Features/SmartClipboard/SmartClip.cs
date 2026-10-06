@@ -56,6 +56,8 @@ namespace WinNotch.Features.SmartClipboard
         public const int MaxJsonDepth = 64;
         /// <summary>A formatted JSON bigger than this is not offered (deep nesting multiplies the indentation).</summary>
         public const int MaxJsonOutput = 1024 * 1024;
+        /// <summary>A JSON array of plain values shorter than this ("[1]", "[1,2]") is not offered.</summary>
+        public const int MinPlainArray = 8;
         public const int MaxUrl = 8192, MaxJwt = 16 * 1024, MaxEmail = 254, MaxPath = 1024, MaxPhone = 32;
 
         /// <summary>The kinds, in the order they are tried (the first that matches wins).</summary>
@@ -97,7 +99,10 @@ namespace WinNotch.Features.SmartClipboard
 
         // ------------------------------------------------------------------ JSON
 
-        /// <summary>An object or an array, the whole text (nothing after it), at most <see cref="MaxJsonDepth"/> deep.</summary>
+        /// <summary>
+        /// An object or an array, the whole text (nothing after it), at most <see cref="MaxJsonDepth"/> deep. An array must
+        /// hold an object or an array, or be at least <see cref="MinPlainArray"/> characters (R1: "[1]" is a footnote, not JSON).
+        /// </summary>
         public static bool TryJson(string t, out string formatted, out string minified)
         {
             formatted = minified = null;
@@ -107,6 +112,9 @@ namespace WinNotch.Features.SmartClipboard
             try
             {
                 using var doc = JsonDocument.Parse(t, new JsonDocumentOptions { MaxDepth = MaxJsonDepth });
+                var root = doc.RootElement;
+                if (root.ValueKind == JsonValueKind.Array && t.Length < MinPlainArray &&
+                    !root.EnumerateArray().Any(e => e.ValueKind == JsonValueKind.Object || e.ValueKind == JsonValueKind.Array)) return false;
                 formatted = Write(doc.RootElement, true);
                 minified = Write(doc.RootElement, false);
             }
@@ -324,7 +332,7 @@ namespace WinNotch.Features.SmartClipboard
                 normalized = t;
                 return true;
             }
-            if (t.Count(c => c == ':') < 2) return false;
+            if (t.Count(c => c == ':') < 2 || !t.Any(IsHexDigit)) return false;      // R1: "::" alone isn't offered
             foreach (char c in t) if (!IsHexDigit(c) && c != ':' && c != '.') return false;
             if (!IPAddress.TryParse(t, out var addr) || addr.AddressFamily != AddressFamily.InterNetworkV6) return false;
             normalized = addr.ToString();

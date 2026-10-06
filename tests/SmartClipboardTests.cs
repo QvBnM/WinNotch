@@ -24,7 +24,8 @@ namespace WinNotch
             public bool Busy;
             public string FolderAnswer;
             public bool SetText(string text) { if (Busy) return false; Written.Add(text); CurrentText = text; return true; }
-            public void OpenUrl(string url) => Urls.Add(url);
+            public string UrlAnswer;
+            public string OpenUrl(string url) { Urls.Add(url); return UrlAnswer; }
             public string OpenFolder(string path) { Folders.Add(path); return FolderAnswer; }
         }
 
@@ -68,7 +69,7 @@ namespace WinNotch
                   j.Formatted.Contains("9.50") && j.Formatted.Contains("1e3") && Regex.Matches(j.Formatted, "\"dublu\"").Count == 2 &&
                   KindOf("[1, 2, {\"a\": [true]}]") == SmartClipKind.Json && KindOf("{}") == SmartClipKind.Json, j.Formatted);
             string deep64 = new string('[', 64) + new string(']', 64), deep65 = new string('[', 65) + new string(']', 65);
-            var notJson = new[] { "{nu e json}", "[1,2,", "{} extra", "{\"a\":1}}", "{'a':1}", "[1,]", "{\"a\":1,}", "{/*x*/}", "{\"a\":01}", "{\"a\":NaN}", "[1] [2]", "{\"a\"}", deep65 };
+            var notJson = new[] { "{nu e json}", "[1,2,", "{} extra", "{\"a\":1}}", "{'a':1}", "[1,]", "{\"a\":1,}", "{/*x*/}", "{\"a\":01}", "{\"a\":NaN}", "[1] [2]", "{\"a\"}", deep65, "[1]", "[1,2]", "[\"a\"]", "[]" };
             Check("SC3", "JSON fals: text între acolade, neterminat, cu ceva după, ghilimele simple, virgule în plus, comentarii, 01, NaN, două valori, prea adânc (65) → nu e JSON; 64 de niveluri merg; un număr sau un șir singur nu sunt JSON aici",
                   notJson.All(s => KindOf(s) != SmartClipKind.Json) && notJson.All(s => !SmartClipRecognizer.TryJson(s, out _, out _)) && KindOf(deep64) == SmartClipKind.Json &&
                   KindOf("42") != SmartClipKind.Json && KindOf("\"text\"") != SmartClipKind.Json && KindOf("true") != SmartClipKind.Json,
@@ -143,7 +144,7 @@ namespace WinNotch
                 ["192.168.1.1"] = "192.168.1.1", ["0.0.0.0"] = "0.0.0.0", ["255.255.255.255"] = "255.255.255.255", ["::1"] = "::1",
                 ["2001:DB8:0:0:0:0:0:1"] = "2001:db8::1", ["::ffff:192.0.2.1"] = "::ffff:192.0.2.1", ["fe80::1"] = "fe80::1",
             };
-            var badIp = new[] { "256.1.1.1", "1.2.3", "01.2.3.4", "1", "0x7f.0.0.1", "1.2.3.4.5", "fe80::1%eth0", "12:30", "12:30:45", "std::map", "1.2.3.-4", "1.2.3.4/24", "1..2.3", "999.999.999.999", "1.2.3.4:80" };
+            var badIp = new[] { "::", ":::", "256.1.1.1", "1.2.3", "01.2.3.4", "1", "0x7f.0.0.1", "1.2.3.4.5", "fe80::1%eth0", "12:30", "12:30:45", "std::map", "1.2.3.-4", "1.2.3.4/24", "1..2.3", "999.999.999.999", "1.2.3.4:80" };
             Check("SC13", "IP: IPv4 strict și IPv6 (normalizat: litere mici, forma scurtă); fals: >255, 3 sau 5 părți, zerouri în față, hex, zonă, ore („12:30”), cod („std::map”), port, mască",
                   goodIp.All(kv => SmartClipRecognizer.Recognize(kv.Key) is { Kind: SmartClipKind.Ip } r && r.Normalized == kv.Value) && badIp.All(i => KindOf(i) != SmartClipKind.Ip),
                   string.Join(" ", goodIp.Keys.Where(k => SmartClipRecognizer.Recognize(k).Normalized != goodIp[k]).Concat(badIp.Where(i => KindOf(i) == SmartClipKind.Ip))));
@@ -385,6 +386,24 @@ namespace WinNotch
                   xaml.Contains("<CheckBox x:Name=\"ClipPeekBox\"") && xaml.Contains("Text=\"Smart Clipboard\"") &&
                   Count(settingsCs, "ClipPeekBox.IsChecked = s.SmartClipboardPeek;") == 1 && Count(settingsCs, "_s.SmartClipboardPeek = ClipPeekBox.IsChecked == true;") == 1);
 
+            // ---- R1
+            var r1Host = new FakeClipHost { CurrentText = "https://x.ro/a", UrlAnswer = "Link-ul nu a putut fi deschis." };
+            var shared = new SmartClipCache();
+            var r1Flags = new FeatureFlags(onStore);
+            var r1Reg = new ActionRegistry(r1Flags, new InlineUiDispatcher());
+            SmartClipboardActions.Register(r1Reg, r1Host, shared);
+            var noBrowser = r1Reg.InvokeAsync(SmartClipboardActions.OpenUrlId, null, ActionInvoker.UI).GetAwaiter().GetResult();
+            var cachedClip = shared.Get(r1Host.CurrentText);
+            string part0 = Src("Features/SmartClipboard/NotchWindow.SmartClipboard.cs");
+            string smokeOff = Norm(NoComments(MethodBody(Src("Features/Smoke/NotchWindow.Smoke.cs"), "private void SmokeClipboardPage(")));
+            Check("SC45", "R1: „[1]”, „[1,2]”, „::” nu mai sunt oferite (lista cu un obiect sau de cel puțin 8 caractere da); browser lipsă → mesaj fix, nu eroare de funcție; memoria recunoașterii comună notch–acțiuni; pagina de fum scoasă și din notch",
+                  KindOf("[1, 2, 3]") == SmartClipKind.Json && KindOf("[{}]") == SmartClipKind.Json && KindOf("[1]") == SmartClipKind.None && KindOf("::") == SmartClipKind.None &&
+                  KindOf("::1") == SmartClipKind.Ip && !noBrowser.Success && noBrowser.Message == "Link-ul nu a putut fi deschis." && r1Flags.IsEnabled(SmartClipboardActions.FeatureId) &&
+                  ReferenceEquals(shared.Get(r1Host.CurrentText), cachedClip) && cachedClip.Kind == SmartClipKind.Url &&
+                  Norm(NoComments(MethodBody(part0, "public string OpenUrl(string url)"))).Contains("catch (Exception ex) when (ex is System.ComponentModel.Win32Exception") &&
+                  Norm(NoComments(part0)).Contains("internal SmartClipCache SmartClipboardCache => _scCache;") &&
+                  smokeOff.Contains("if (_userPanes.TryGetValue(page.Id, out var shown) && _pane == shown) ShowPane(_home); _userPanes.Remove(page.Id); S.Pages.Remove(page);"));
+
             SmartClipboardSourcePins();
         }
 
@@ -401,7 +420,7 @@ namespace WinNotch
                   widget.Contains("g.Put(_smart = new Features.SmartClipboard.SmartClipChips(W), 0, 2); g.Put(new ScrollViewer { Style = Ui.S(\"SlimScroll\"), Content = _list }, 0, 3);") &&
                   widget.Contains("public override void Refresh() { _smart.Refresh(); string q =") &&
                   Norm(NoComments(Src("App.xaml.cs"))).Contains("_notch.StartQuickActions(); _notch.StartSmartClipboard();") &&
-                  Norm(NoComments(Src("App.xaml.cs"))).Contains("Features.SmartClipboard.SmartClipboardActions.Register(registry, new Features.SmartClipboard.NotchSmartClipboardHost(_notch));"));
+                  Norm(NoComments(Src("App.xaml.cs"))).Contains("Features.SmartClipboard.SmartClipboardActions.Register(registry, new Features.SmartClipboard.NotchSmartClipboardHost(_notch), _notch.SmartClipboardCache);"));
             Check("SC34", "Cu comutatorul oprit widget-ul arată ca azi: rândul de chip-uri pornește ascuns (înălțime 0), se ascunde la oprire și pentru text simplu; desenat doar când textul sau comutatorul se schimbă",
                   chipsN.Contains("Visibility = Visibility.Collapsed; Margin = new Thickness(0, 0, 0, 6);") &&
                   Norm(NoComments(MethodBody(chips, "private void Clear()"))).Contains("Visibility = Visibility.Collapsed;") &&
@@ -430,9 +449,9 @@ namespace WinNotch
             Check("SC38", "Fără timer de polling, fără citirea clipboard-ului sau a ferestrei din față, procese doar prin Shell.Open (link doar http/https, folder local, niciodată fișierul); un singur DispatcherTimer, o dată (rezultatul click-ului)",
                   files.Count == 6 && found.Count == 0 && Count(chipsN, "new DispatcherTimer") == 1 && chipsN.Contains("_messageTimer.Tick += (o, e) => { _messageTimer.Stop();") &&
                   files.Where(f => f != Chips).All(f => !NoComments(Src(f)).Contains("DispatcherTimer")) &&
-                  Count(partN, "Services.Shell.Open(") == 2 && partN.Contains("if (!SmartClipRecognizer.IsUrl(url)) return; Services.Shell.Open(url);") &&
+                  Count(partN, "Services.Shell.Open(") == 2 && partN.Contains("if (!SmartClipRecognizer.IsUrl(url)) return \"Nu ai copiat un link http sau https.\"; try { Services.Shell.Open(url); return null; }") &&
                   partN.Contains("DriveType.Network") && partN.Contains("string folder = Directory.Exists(p) ? p : File.Exists(p) ? Path.GetDirectoryName(p) : null;") &&
-                  partN.Contains("Services.Shell.Open(folder);"), string.Join(" | ", found) + " · " + string.Join(",", files));
+                  partN.Contains("Services.Shell.Open(folder.TrimEnd('\\\\', '/') + \"\\\\\");"), string.Join(" | ", found) + " · " + string.Join(",", files));
             var logCalls = files.SelectMany(f => Src(f).Split('\n').Where(l => l.Contains("App.Log(", StringComparison.Ordinal)).Select(l => l.Trim())).ToList();
             Check("SC39", "În log, din Features/SmartClipboard, doar texte fixe și contorul de recunoașteri: niciun text copiat, tip lângă conținut, mesaj de excepție sau parametru",
                   logCalls.Count == 2 && logCalls.Any(l => l.Contains("App.Log(\"Smart Clipboard: pornit.\")")) &&

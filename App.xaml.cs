@@ -231,7 +231,7 @@ namespace WinNotch
                 Features.Activity.ActivityActions.Register(registry, new NotchActivityHost());
                 Features.CommandBar.SettingsActions.Register(registry, new Features.CommandBar.AppSettingsHost(this));
                 Features.QuickActions.QuickActionsActions.Register(registry, new NotchQuickActionsHost(_notch));
-                Features.SmartClipboard.SmartClipboardActions.Register(registry, new Features.SmartClipboard.NotchSmartClipboardHost(_notch));
+                Features.SmartClipboard.SmartClipboardActions.Register(registry, new Features.SmartClipboard.NotchSmartClipboardHost(_notch), _notch.SmartClipboardCache);
                 Core.Actions.ActionRegistry.Current = registry;
             }
             catch (Exception ex) { Log("Acțiuni: înregistrarea a eșuat: " + ex.GetType().Name); }
