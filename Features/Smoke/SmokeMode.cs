@@ -44,6 +44,8 @@ namespace WinNotch.Features.Smoke
         public const string QuickActionHideAutomationPrefix = "qa-hide-";
         /// <summary>P20: the row of Quick Actions buttons under the open notch's content.</summary>
         public const string QuickActionsRowAutomationId = "qa-row";
+        /// <summary>P20 (R1): the last click's result at the end of the row (its Name is the text; only while shown).</summary>
+        public const string QuickActionMessageAutomationId = "qa-message";
         /// <summary>Bigger files are ignored (and deleted): the commands are a few short lines.</summary>
         public const int MaxFileBytes = 4096;
         public const int MaxLines = 20;

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Threading;
 using WinNotch.Core.Actions;
 using WinNotch.Core.Context;
 using WinNotch.Core.Flags;
@@ -32,6 +33,12 @@ namespace WinNotch
         /// <summary>UI-thread copy of the switch.</summary>
         private bool _qaOn;
         private StackPanel _qaRow;
+        /// <summary>The last click's result, at the end of the row, for <see cref="QuickActionsMessageTime"/>.</summary>
+        private TextBlock _qaMessage;
+        /// <summary>One-shot (stopped on its first tick, and when the row goes): hides the result. Nothing ticks otherwise.</summary>
+        private DispatcherTimer _qaMessageTimer;
+        private static readonly TimeSpan QuickActionsMessageTime = TimeSpan.FromSeconds(4);
+        private const int QuickActionsMessageMax = 60;
         private readonly QuickActionSuggester _qaSuggester = new QuickActionSuggester();
         /// <summary>For the smoke status: buttons that ran with success, suggestions posted.</summary>
         private int _qaInvoked, _qaSuggested;
@@ -52,6 +59,7 @@ namespace WinNotch
 
         private void StopQuickActions()
         {
+            _qaMessageTimer?.Stop();
             if (_qaFlagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _qaFlagHandler;
             _qaFlagHandler = null;
             UnsubscribeQuickActionsContext();
@@ -85,9 +93,27 @@ namespace WinNotch
             {
                 // a timer thread: only the fields a suggestion reads go on, to the UI thread
                 if (e == null || (e.Fields & fields) == 0) return;
+                if (e.Has(ContextField.UsbDrive)) QuickActionsReadDrives();
                 Dispatcher.InvokeAsync(() => QuickActionsContextChanged(e));
             };
             _qaEngine.Changed += _qaContextHandler;
+            _ = Task.Run(QuickActionsReadDrives);        // the drives' list read once off the UI thread, before the first open
+        }
+
+        /// <summary>
+        /// A stick came or went (timer thread, R1): the registry's list of drive actions is read again here, off the UI thread
+        /// (a sleeping stick can take seconds), so the row built on open uses the cached list and never reads the drives.
+        /// </summary>
+        private static void QuickActionsReadDrives()
+        {
+            try
+            {
+                var reg = ActionRegistry.Current;
+                if (reg == null) return;
+                reg.Refresh();
+                _ = reg.All;
+            }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(QuickActionRules.FeatureId, ex); }
         }
 
         private void UnsubscribeQuickActionsContext()
@@ -118,7 +144,7 @@ namespace WinNotch
                 var snapshot = ContextEngine.Current?.Snapshot ?? ContextSnapshot.Empty;
                 var reg = ActionRegistry.Current;
                 if (reg == null) return;
-                if (snapshot.UsbDriveConnected) reg.Refresh();          // the drives' actions are read again (a stick just plugged in)
+                // no Refresh here: the drives' list is read again off the UI thread when the context says a stick came (R1)
                 var choice = QuickActionRules.ForHover(true, snapshot, new RegistryQuickActionCatalog(reg, FeatureFlags.Current));
                 if (choice == null) return;
                 ShowQuickActionsRow(choice);
@@ -155,6 +181,11 @@ namespace WinNotch
             var rule = choice.Rule;
             // „Nu mai arăta” only where a suggestion can come: the Activity Manager on, a rule that suggests, not hidden yet
             if (_activityOn && rule.Suggest && !(S.QuickActionsHidden?.Contains(rule.Id) ?? false)) row.Children.Add(QuickActionsHideButton(rule));
+            _qaMessage = ThemedText("", 11, "DimBrush");
+            _qaMessage.Margin = new Thickness(8, 0, 2, 0);
+            _qaMessage.Visibility = Visibility.Collapsed;
+            AutomationProperties.SetAutomationId(_qaMessage, SmokeMode.QuickActionMessageAutomationId);
+            row.Children.Add(_qaMessage);
             _qaRow = row;
             OverlayHost.Children.Add(row);
             PaneHost.Margin = new Thickness(0, 0, 0, QuickActionsRowHeight);      // the page keeps its own height above the row
@@ -164,6 +195,8 @@ namespace WinNotch
 
         private void RemoveQuickActionsRow()
         {
+            _qaMessageTimer?.Stop();
+            _qaMessage = null;
             if (_qaRow == null) return;
             OverlayHost.Children.Remove(_qaRow);
             _qaRow = null;
@@ -227,10 +260,36 @@ namespace WinNotch
                 await Dispatcher.InvokeAsync(() =>
                 {
                     if (r != null && r.Success) _qaInvoked++;
+                    QuickActionsShowResult(r);
                     UpdateSmokeStatusIfOn();
                 });
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(QuickActionRules.FeatureId, ex); }
+        }
+
+        /// <summary>
+        /// What the click did, in the row for a few seconds (R1: "Microfon oprit", "Unitatea nu mai e conectată."): the action's
+        /// own short sentence, never logged. Gone with the row (notch closed) → nothing to show.
+        /// </summary>
+        private void QuickActionsShowResult(ActionResult r)
+        {
+            if (_qaRow == null || _qaMessage == null || r == null) return;
+            string text = QuickActionRules.ShortMessage(r.Message, r.Success, QuickActionsMessageMax);
+            _qaMessage.Text = text;
+            _qaMessage.SetResourceReference(TextBlock.ForegroundProperty, r.Success ? "DimBrush" : "WarnBrush");
+            _qaMessage.Visibility = Visibility.Visible;
+            AutomationProperties.SetName(_qaMessage, text);
+            if (_qaMessageTimer == null)
+            {
+                _qaMessageTimer = new DispatcherTimer { Interval = QuickActionsMessageTime };
+                _qaMessageTimer.Tick += (o, e) =>
+                {
+                    _qaMessageTimer.Stop();                    // one shot
+                    if (_qaMessage != null) _qaMessage.Visibility = Visibility.Collapsed;
+                };
+            }
+            _qaMessageTimer.Stop();
+            _qaMessageTimer.Start();
         }
 
         // ------------------------------------------------------------------ unasked suggestions (Activity Manager only)
@@ -253,7 +312,7 @@ namespace WinNotch
                     Duration = Core.Activity.ActivityManager.PeekDuration, Title = QuickActionRules.SuggestionTitle(choice.Rule),
                     Glyph = QuickActionsActions.GQuick,
                 });
-                if (posted == Core.Activity.PostResult.Dropped) return;     // notch open, fullscreen: the 10 minutes don't start
+                if (!QuickActionSuggestions.ConsumesInterval(posted)) return;     // not on screen (dropped, queued, grouped): the 10 minutes don't start
                 _qaSuggester.Shown();
                 _qaSuggested++;
                 App.Log("Quick Actions: sugestie " + choice.Rule.Id + ".");     // the rule id only, never the context

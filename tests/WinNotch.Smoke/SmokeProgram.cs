@@ -91,8 +91,8 @@ namespace WinNotch.Smoke
                 if (!_activityOn) Run(step = "Pagina după context: contextul „Dev” din motor deschide notch-ul pe pagina mapată, doar cu „context-pages” pornit", ContextPages);
                 else Console.WriteLine("SKIP  Pagina după context (rulează o singură dată, în rularea cu activity-manager oprit)");
                 Run(step = _activityOn
-                    ? "Quick Actions: întâlnire cu căști → butoanele sub pastilă; click pe „Microfon” prin registru; o singură sugestie (peek) la 10 minute; „Nu mai arăta”"
-                    : "Quick Actions: întâlnire cu căști → butoanele sub pastilă; click pe „Microfon” prin registru; fără sugestii nesolicitate", QuickActions);
+                    ? "Quick Actions: întâlnire cu căști → butoanele sub pastilă; click pe „Mută / pornește microfonul” prin registru, cu rezultatul în rând; o singură sugestie (peek) la 10 minute; „Nu mai arăta”"
+                    : "Quick Actions: întâlnire cu căști → butoanele sub pastilă; click pe „Mută / pornește microfonul” prin registru, cu rezultatul în rând; fără sugestii nesolicitate", QuickActions);
                 Run(step = "Command Bar oprit: Win+Alt+Space nu deschide nimic", CommandBarOff);
                 Run(step = "Command Bar: se deschide, „volum” găsește un rezultat, o alertă nu ia pastila, Esc închide și focusul revine", CommandBarSearchAndEscape);
                 Run(step = "Command Bar: Enter pe „settings.position” (sigură) deschide Setări în fereastra WinNotch", CommandBarRunsAction);
@@ -449,6 +449,9 @@ namespace WinNotch.Smoke
             int before = LogCount(ran), qa = ReadStatus().Qa;
             mic.AsButton().Invoke();
             WaitFor(ReadStatus, st => st.Qa == qa + 1, TimeSpan.FromSeconds(8), "clickul pe „Microfon” executat (;qa=" + (qa + 1) + ")");
+            var msg = WaitFor(() => _notch.FindFirstDescendant(cf => cf.ByAutomationId(SmokeMode.QuickActionMessageAutomationId)), m => m != null && (m.Properties.Name.ValueOrDefault ?? "").Length > 0,
+                              TimeSpan.FromSeconds(3), "rezultatul clickului în rând („" + SmokeMode.QuickActionMessageAutomationId + "”)");
+            Console.WriteLine("      (rezultat: " + msg.Properties.Name.ValueOrDefault + ")");
             QuickButton(QaMic)?.AsButton().Invoke();
             WaitFor(ReadStatus, st => st.Qa == qa + 2, TimeSpan.FromSeconds(8), "al doilea click pe „Microfon” executat (;qa=" + (qa + 2) + ")");
             WaitFor(() => LogCount(ran), n => n >= before + 2, TimeSpan.FromSeconds(5), "„" + ran + "” de două ori în log");

@@ -61,7 +61,7 @@ namespace WinNotch.Core.Flags
             new FeatureInfo(ContextPages, "Pagina după context", "La deschidere, notch-ul alege pagina după ce faci (programare, browser, întâlnire, joc…), cum alegi în Setări. O pagină aleasă de tine rămâne 10 minute.",
                             FeatureStage.Experimental, false),
             // P20: off by default; off = no buttons under the pill and no suggestions, nothing subscribed
-            new FeatureInfo(QuickActions, "Quick Actions", "2–4 butoane sub pastilă, la deschidere, după ce faci: în întâlnire cu căști mută microfonul, la muzică pauză, la stick deschide-l. Cu Activity Manager pornit, cel mult o sugestie la 10 minute.",
+            new FeatureInfo(QuickActions, "Quick Actions", "Câteva butoane sub pastilă, la deschidere, după ce faci: în întâlnire cu căști mută microfonul, la muzică pauză, la stick deschide-l. Cu Activity Manager pornit, cel mult o sugestie la 10 minute.",
                             FeatureStage.Experimental, false),
         };
 

@@ -68,3 +68,16 @@ fără polling, `NotchWindow.xaml.cs` atins doar cu legături de un rând, logic
 - Textele din log „Quick Actions: pornit/oprit.”, „sugestie <regulă>.”, „sugestie amânată (<regulă>…”, „sugestiile pentru
   „<regulă>” nu mai apar.”, comanda `fake-meeting`, id-urile `qa-*` și câmpurile `;qa=` / `;qs=` sunt folosite de testul de fum.
 - Ora ultimei sugestii nu se păstrează după repornire (cel mult o sugestie în plus după un restart).
+
+## Note după revizia R1
+- **Rezultatul click-ului** apare 4 s la capătul rândului (propoziția acțiunii, tăiată la 60 de caractere, `DimBrush` / `WarnBrush`
+  la eșec), ascuns de un `DispatcherTimer` oprit la prima tragere și la dispariția rândului (nu e polling). Nu ajunge în log.
+- **Stick-ul fără citiri pe firul UI:** referințele cu prefix ale regulii `usb-drive` au `TrustContext`: disponibilitatea vine din
+  condiția regulii (`UsbDriveConnected` din motor), nu din `IsAvailable` (care citește unitățile); comutatorul acțiunii tot contează,
+  iar registrul verifică din nou la click. `QuickActionsOnOpen` nu mai cheamă `Refresh`; lista acțiunilor de stick e citită din nou
+  pe firul timerului motorului, la o schimbare `UsbDrive`, și o dată la pornirea funcției (`Task.Run`). Rămâne: după Command Bar
+  (care cere `Refresh` la deschidere), prima deschidere a notch-ului citește lista o dată pe firul UI.
+- **Limita de 10 minute** pornește doar pentru `PostResult.Shown` / `Updated` (`QuickActionSuggestions.ConsumesInterval`):
+  o sugestie pusă la coadă sau strânsă în „N noutăți” nu o consumă (rar, poate apărea mai târziu din coadă).
+- Rândul are 1–4 butoane (stick: doar „Deschide”); eticheta microfonului e „Mută / pornește microfonul”; la ieșirea din modul
+  de editare, cu notch-ul deschis, rândul e ales din nou (o legătură de un rând în `ExitEdit`).

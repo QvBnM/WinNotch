@@ -26,7 +26,10 @@ namespace WinNotch
             public FakeQuickCatalog Add(ActionDescriptor a) { Actions[a.Id] = a; return this; }
             public ActionDescriptor Get(string id) => id != null && Actions.TryGetValue(id, out var a) ? a : null;
             public IEnumerable<ActionDescriptor> WithPrefix(string p) => Actions.Values.Where(a => a.Id.StartsWith(p, StringComparison.Ordinal)).OrderBy(a => a.Id, StringComparer.Ordinal);
-            public bool IsAvailable(ActionDescriptor a) => a != null && !Unavailable.Contains(a.Id);
+            public readonly HashSet<string> Off = new HashSet<string>(StringComparer.Ordinal);
+            public readonly List<string> AvailabilityAsked = new List<string>();
+            public bool FeatureOn(ActionDescriptor a) => a != null && !Off.Contains(a.Id);
+            public bool IsAvailable(ActionDescriptor a) { AvailabilityAsked.Add(a?.Id); return a != null && !Unavailable.Contains(a.Id); }
         }
 
         sealed class FakeQuickHost : IQuickActionsHost
@@ -107,8 +110,8 @@ namespace WinNotch
             // ---- what each context shows, with the real built-in actions
             string Ids(QuickActionChoice c) => c == null ? "-" : c.Rule.Id + ":" + string.Join("+", c.Items.Select(i => i.ActionId));
             var cMeeting = QuickActionRules.ForHover(true, meeting, cat);
-            Check("QA6", "Întâlnire cu căști → „Microfon” (audio.mute-mic) și „Volum 40%” (audio.volume-set cu valoare=40)",
-                  Ids(cMeeting) == "meeting-headphones:audio.mute-mic+audio.volume-set" && cMeeting.Items[0].Label == "Microfon" && cMeeting.Items[1].Label == "Volum 40%" &&
+            Check("QA6", "Întâlnire cu căști → „Mută / pornește microfonul” (audio.mute-mic) și „Volum 40%” (audio.volume-set cu valoare=40)",
+                  Ids(cMeeting) == "meeting-headphones:audio.mute-mic+audio.volume-set" && cMeeting.Items[0].Label == "Mută / pornește microfonul" && cMeeting.Items[1].Label == "Volum 40%" &&
                   cMeeting.Items[1].Args["valoare"] == "40" && cMeeting.Items.All(i => i.Icon.Length > 0 && i.Title.Length > 0), Ids(cMeeting));
             Check("QA7", "Baterie sub 20% → economisire și luminozitate; media → pauză și următoarea; stick → doar „Deschide” (scoaterea cere confirmare, deci nu e Quick Action)",
                   Ids(QuickActionRules.ForHover(true, battery, cat)) == "battery-low:settings.battery-saver+settings.display" &&
@@ -149,7 +152,7 @@ namespace WinNotch
             Check("QA11", "Doar ce poate porni Quick Actions: fără ActionInvoker.QuickAction nu; comutatorul acțiunii oprit nu; parametri lipsă, necunoscuți sau invalizi nu",
                   !QuickActionRules.Usable(Act("x.a", inv: ActionInvoker.UI | ActionInvoker.CommandBar), null, risky) &&
                   QuickActionRules.Usable(Act("x.a", inv: ActionInvoker.QuickAction), null, risky) &&
-                  !new RegistryQuickActionCatalog(regOff, flagsOff).IsAvailable(regOff.Get("audio.mute-mic")) &&
+                  !new RegistryQuickActionCatalog(regOff, flagsOff).FeatureOn(regOff.Get("audio.mute-mic")) && new RegistryQuickActionCatalog(regOff, flagsOn).FeatureOn(regOff.Get("audio.mute-mic")) &&
                   QuickActionRules.ForHover(true, meeting, new RegistryQuickActionCatalog(regOff, flagsOff)) == null &&
                   !QuickActionRules.Usable(Act("x.v", ps: pct), null, risky) &&
                   QuickActionRules.Usable(Act("x.v", ps: pct), new Dictionary<string, string> { ["valoare"] = "40" }, risky) &&
@@ -339,6 +342,34 @@ namespace WinNotch
                   Norm(NoComments(smoke0)).Contains("case SmokeCommandKind.FakeMeeting: SmokeFakeMeeting(c.Argument); break;") &&
                   Norm(NoComments(smoke0)).Contains("CurrentPageId(), ctx) + SmokeMode.QuickActionsStatus(_qaInvoked, _qaSuggested));"), string.Join(",", callers));
 
+            // ---- R1
+            var drives = new FakeQuickCatalog().Add(Act("device.open-e")).Add(Act("device.eject-e", ActionSafety.Confirm));
+            drives.Unavailable.Add("device.open-e");                 // would need a drive read: never asked when the context says a stick is there
+            var trusted = QuickActionRules.ForHover(true, usb, drives);
+            bool notAsked = drives.AvailabilityAsked.Count == 0;
+            drives.Off.Add("device.open-e");
+            var featureOff = QuickActionRules.ForHover(true, usb, drives);
+            var exact = new FakeQuickCatalog().Add(Act("audio.mute-mic")).Add(Act("audio.volume-set", ps: pct));
+            QuickActionRules.ForHover(true, meeting, exact);
+            Check("QA37", "R1: butonul stick-ului se bazează pe contextul motorului (UsbDrive), fără IsAvailable (care ar citi unitățile pe firul UI); comutatorul acțiunii tot contează; restul acțiunilor își cer disponibilitatea",
+                  Ids(trusted) == "usb-drive:device.open-e" && notAsked && featureOff == null && table[3].Actions.All(a => a.TrustContext) &&
+                  table.Take(3).SelectMany(r => r.Actions).All(a => !a.TrustContext) && exact.AvailabilityAsked.SequenceEqual(new[] { "audio.mute-mic", "audio.volume-set" }) &&
+                  !Norm(NoComments(MethodBody(Src("Features/QuickActions/NotchWindow.QuickActions.cs"), "private void QuickActionsOnOpen()"))).Contains("Refresh()") &&
+                  Norm(NoComments(Src("Features/QuickActions/NotchWindow.QuickActions.cs"))).Contains("if (e.Has(ContextField.UsbDrive)) QuickActionsReadDrives();"),
+                  string.Join(",", drives.AvailabilityAsked));
+            Check("QA38", "R1: doar o sugestie chiar afișată (Shown / Updated) pornește cele 10 minute; Queued, Grouped, Dropped nu",
+                  QuickActionSuggestions.ConsumesInterval(Core.Activity.PostResult.Shown) && QuickActionSuggestions.ConsumesInterval(Core.Activity.PostResult.Updated) &&
+                  !QuickActionSuggestions.ConsumesInterval(Core.Activity.PostResult.Queued) && !QuickActionSuggestions.ConsumesInterval(Core.Activity.PostResult.Grouped) &&
+                  !QuickActionSuggestions.ConsumesInterval(Core.Activity.PostResult.Dropped) &&
+                  Norm(NoComments(Src("Features/QuickActions/NotchWindow.QuickActions.cs"))).Contains("if (!QuickActionSuggestions.ConsumesInterval(posted)) return; _qaSuggester.Shown();"));
+            Check("QA39", "R1: rezultatul click-ului în rând: propoziția acțiunii pe un rând, tăiată la 60 de caractere cu „…”; gol → „Gata” / „Nu a mers”; arătat și la eșec, cu pensula temei",
+                  QuickActionRules.ShortMessage("Microfon oprit (în toate aplicațiile)", true) == "Microfon oprit (în toate aplicațiile)" &&
+                  QuickActionRules.ShortMessage("", true) == "Gata" && QuickActionRules.ShortMessage(null, false) == "Nu a mers" &&
+                  QuickActionRules.ShortMessage("a\nb", true) == "a b" && QuickActionRules.ShortMessage(new string('x', 100), false).Length == 60 &&
+                  QuickActionRules.ShortMessage(new string('x', 100), false).EndsWith("…") &&
+                  Norm(NoComments(Src("Features/QuickActions/NotchWindow.QuickActions.cs"))).Contains("QuickActionsShowResult(r);") &&
+                  Norm(NoComments(Src("Features/QuickActions/NotchWindow.QuickActions.cs"))).Contains("r.Success ? \"DimBrush\" : \"WarnBrush\""));
+
             QuickActionsSourcePins();
         }
 
@@ -359,7 +390,8 @@ namespace WinNotch
             Check("QA29", "NotchWindow.Pages.cs: un rând în PanelH (loc pentru rând) și unul la finalul UpdateHeader (modul de editare ia locul rândului); App pornește funcția după motorul de context",
                   Norm(NoComments(MethodBody(Src("NotchWindow.Pages.cs"), "private double PanelH()"))).Contains("if (_banner != null) h += 22; h += QuickActionsExtraHeight(); return h;") &&
                   Norm(NoComments(MethodBody(Src("NotchWindow.Pages.cs"), "private void UpdateHeader()"))).EndsWith("QuickActionsHeaderChanged(); }", StringComparison.Ordinal) &&
-                  Count(pages, "QuickActions") == 2 &&
+                  Count(pages, "QuickActions") == 3 &&
+                  Norm(NoComments(MethodBody(Src("NotchWindow.Pages.cs"), "internal void ExitEdit()"))).Contains("S.Save(); if (_mode == Mode.Expanded) QuickActionsOnOpen(); RelayoutPanel();") &&
                   Norm(NoComments(Src("App.xaml.cs"))).Contains("Features.Context.ContextStartup.Start(_notch, Log); _notch.StartQuickActions();"));
             Check("QA30", "Abonările au dezabonare: comutatorul (FeatureFlags.Changed) și motorul de context (Changed); UI prin Dispatcher; comutatorul citit în handler",
                   partN.Contains("FeatureFlags.Current.Changed += _qaFlagHandler;") && partN.Contains("FeatureFlags.Current.Changed -= _qaFlagHandler;") &&
@@ -371,11 +403,13 @@ namespace WinNotch
                   Regex.Matches(partN, @"(?<!Dispatcher)\.InvokeAsync\(").Count == 1 && partN.Contains("reg.InvokeAsync(id, args, ActionInvoker.QuickAction, CancellationToken.None)") &&
                   !partN.Contains("ExecuteAsync(") && !partN.Contains("confirmed") && !partN.Contains("async void") && partN.Contains("_ = RunQuickActionAsync(id, args);") &&
                   Count(partN, "FeatureFlags.Current?.ReportError(QuickActionRules.FeatureId, ex);") >= 4);
-            var forbidden = new[] { "DispatcherTimer", "new Timer", "Thread.Sleep", "Task.Delay", "GetForegroundWindow", "ForegroundSource", "SetWinEventHook", "Process.GetProcess", "ShowLive(", "Alert(" };
+            var forbidden = new[] { "new Timer", "Thread.Sleep", "Task.Delay", "GetForegroundWindow", "ForegroundSource", "SetWinEventHook", "Process.GetProcess", "ShowLive(", "Alert(" };
             var files = new[] { Part, "Features/QuickActions/QuickActions.cs", "Features/QuickActions/QuickActionsActions.cs", "Features/QuickActions/QuickActionsSettings.cs" };
             var found = files.SelectMany(f => forbidden.Where(x => NoComments(Src(f)).Contains(x)).Select(x => f + ": " + x)).ToList();
             Check("QA32", "Fără timer, polling sau hook propriu, fără citirea ferestrei din față; sugestia doar prin ActivityManager (Post, Low), nu prin alertele vechi",
-                  found.Count == 0 && partN.Contains("_activity.Post(new Core.Activity.Activity") && partN.Contains("Priority = Core.Activity.ActivityPriority.Low") &&
+                  found.Count == 0 && !NoComments(Src("Features/QuickActions/QuickActions.cs")).Contains("DispatcherTimer") && Count(partN, "new DispatcherTimer") == 1 &&
+                  partN.Contains("_qaMessageTimer.Tick += (o, e) => { _qaMessageTimer.Stop();") && partN.Contains("_qaMessageTimer?.Stop(); _qaMessage = null;") &&
+                  partN.Contains("_activity.Post(new Core.Activity.Activity") && partN.Contains("Priority = Core.Activity.ActivityPriority.Low") &&
                   partN.Contains("bool manager = _activityOn && _activity != null;"), string.Join(" | ", found));
             Check("QA33", "Fără culori scrise în cod: pensulele temei (SetResourceReference / ThemedText) și stilul GhostPill; id-uri UI Automation stabile",
                   !Regex.IsMatch(part, @"Color\.From|#[0-9A-Fa-f]{6}|new SolidColorBrush|Brushes\.") && Count(partN, "SetResourceReference(") >= 2 && Count(partN, "Ui.S(\"GhostPill\")") == 2 &&

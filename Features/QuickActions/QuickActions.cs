@@ -14,6 +14,12 @@ namespace WinNotch.Features.QuickActions
         public string Id { get; init; }
         /// <summary>Actions that come and go ("device.open-" → "device.open-e"): the first usable one, in id order.</summary>
         public string Prefix { get; init; }
+        /// <summary>
+        /// The rule's condition already says the action can run (a stick is connected: the context engine's UsbDrive), so its
+        /// own IsAvailable isn't asked when the row is built (it would read the drives on the UI thread; R1). Its feature
+        /// switch is still checked, and the registry checks availability again when it is clicked.
+        /// </summary>
+        public bool TrustContext { get; init; }
         /// <summary>Short Romanian text on the button; null = the action's title.</summary>
         public string Label { get; init; }
         /// <summary>Fixed parameter values ("valoare" = "40" for "Volum 40%"), checked like any other caller's.</summary>
@@ -66,7 +72,9 @@ namespace WinNotch.Features.QuickActions
     {
         ActionDescriptor Get(string id);
         IEnumerable<ActionDescriptor> WithPrefix(string prefix);
-        /// <summary>Its feature switch is on and it can run now (a song for "pauză", a stick for "deschide").</summary>
+        /// <summary>Its feature switch is on (or it has none).</summary>
+        bool FeatureOn(ActionDescriptor a);
+        /// <summary>It can run now (a song for "pauză"); asked only after <see cref="FeatureOn"/>.</summary>
         bool IsAvailable(ActionDescriptor a);
     }
 
@@ -88,14 +96,17 @@ namespace WinNotch.Features.QuickActions
             string.IsNullOrEmpty(prefix) ? Enumerable.Empty<ActionDescriptor>()
                 : _r.All.Where(a => a.Id.StartsWith(prefix, StringComparison.Ordinal)).OrderBy(a => a.Id, StringComparer.Ordinal);
 
+        public bool FeatureOn(ActionDescriptor a)
+        {
+            if (a == null) return false;
+            if (string.IsNullOrEmpty(a.FeatureId)) return true;
+            var f = _flags ?? FeatureFlags.Current;
+            return f != null && f.IsEnabled(a.FeatureId);
+        }
+
         public bool IsAvailable(ActionDescriptor a)
         {
             if (a == null) return false;
-            if (!string.IsNullOrEmpty(a.FeatureId))
-            {
-                var f = _flags ?? FeatureFlags.Current;
-                if (f == null || !f.IsEnabled(a.FeatureId)) return false;
-            }
             try { return a.IsAvailable(); } catch { return false; }
         }
     }
@@ -130,7 +141,7 @@ namespace WinNotch.Features.QuickActions
             Id = id, Label = label, Args = arg == null ? null : new Dictionary<string, string>(StringComparer.Ordinal) { [arg] = value },
         };
 
-        private static QuickActionRef P(string prefix, string label) => new QuickActionRef { Prefix = prefix, Label = label };
+        private static QuickActionRef P(string prefix, string label) => new QuickActionRef { Prefix = prefix, Label = label, TrustContext = true };
 
         /// <summary>
         /// The rules, most important first (the first that matches and has a usable action wins). To add one: a new row
@@ -143,7 +154,7 @@ namespace WinNotch.Features.QuickActions
             {
                 Id = MeetingHeadphones, Title = "Întâlnire cu căști", Fields = ContextField.Meeting | ContextField.AudioOutput, Suggest = true,
                 When = s => s.MeetingActive && (s.AudioOutput == AudioOutputKind.Headphones || s.AudioOutput == AudioOutputKind.Bluetooth),
-                Actions = new[] { A("audio.mute-mic", "Microfon"), A("audio.volume-set", "Volum 40%", "valoare", "40") },
+                Actions = new[] { A("audio.mute-mic", "Mută / pornește microfonul"), A("audio.volume-set", "Volum 40%", "valoare", "40") },
             },
             // the battery alert already warns (20 % / 10 %): no suggestion of our own, only the buttons on hover
             new QuickActionRule
@@ -183,9 +194,10 @@ namespace WinNotch.Features.QuickActions
 
         /// <summary>
         /// May this action be a quick action now: Safe only, allowed for <see cref="ActionInvoker.QuickAction"/>, its
-        /// parameters known, the required ones given and valid, and the catalog says it is on and available.
+        /// parameters known, the required ones given and valid, its feature on and (unless <paramref name="trustContext"/>:
+        /// the rule's condition stands for it) available.
         /// </summary>
-        public static bool Usable(ActionDescriptor a, IReadOnlyDictionary<string, string> args, IQuickActionCatalog catalog)
+        public static bool Usable(ActionDescriptor a, IReadOnlyDictionary<string, string> args, IQuickActionCatalog catalog, bool trustContext = false)
         {
             if (a == null || catalog == null) return false;
             if (a.Safety != ActionSafety.Safe) return false;
@@ -197,7 +209,8 @@ namespace WinNotch.Features.QuickActions
                 if (!args.TryGetValue(p.Name, out var v)) { if (p.Required) return false; continue; }
                 if (!p.TryConvert(v, out _, out _)) return false;
             }
-            return catalog.IsAvailable(a);
+            if (!catalog.FeatureOn(a)) return false;
+            return trustContext || catalog.IsAvailable(a);
         }
 
         /// <summary>The rule's usable buttons, in order, without duplicates, at most <see cref="MaxActions"/>.</summary>
@@ -210,7 +223,7 @@ namespace WinNotch.Features.QuickActions
                 if (r == null || items.Count >= MaxActions) continue;
                 IEnumerable<ActionDescriptor> candidates = !string.IsNullOrEmpty(r.Id) ? new[] { catalog.Get(r.Id) }
                     : catalog.WithPrefix(r.Prefix) ?? Enumerable.Empty<ActionDescriptor>();
-                var a = candidates.FirstOrDefault(c => c != null && items.All(i => i.ActionId != c.Id) && Usable(c, r.Args, catalog));
+                var a = candidates.FirstOrDefault(c => c != null && items.All(i => i.ActionId != c.Id) && Usable(c, r.Args, catalog, r.TrustContext));
                 if (a == null) continue;
                 // a prefixed one (one per drive) shows its own title: it names the drive
                 string label = r.Prefix != null && string.IsNullOrEmpty(r.Id) ? a.Title : r.Label ?? a.Title;
@@ -270,12 +283,34 @@ namespace WinNotch.Features.QuickActions
         /// <summary>The peek's text (Romanian, no personal data: the rule's title only).</summary>
         public static string SuggestionTitle(QuickActionRule rule) => (rule?.Title ?? "Quick Actions") + " · acțiuni rapide la hover";
 
+        /// <summary>
+        /// The click's result for the row: the action's sentence on one line, cut to <paramref name="max"/> characters (with
+        /// "…"); empty → "Gata" / "Nu a mers".
+        /// </summary>
+        public static string ShortMessage(string message, bool success, int max = 60)
+        {
+            string m = (message ?? "").Replace('\r', ' ').Replace('\n', ' ').Trim();
+            if (m.Length == 0) m = success ? "Gata" : "Nu a mers";
+            if (max < 2) max = 2;
+            return m.Length <= max ? m : m.Substring(0, max - 1).TrimEnd() + "…";
+        }
+
         /// <summary>Rule ids as stored for „Nu mai arăta”: lowercase words with dashes, at most 40 characters.</summary>
         public static bool IsValidRuleId(string id) =>
             !string.IsNullOrEmpty(id) && id.Length <= 40 && System.Text.RegularExpressions.Regex.IsMatch(id, "^[a-z0-9]+(-[a-z0-9]+)*$");
     }
 
     public enum SuggestionOutcome { None, Suggest, TooSoon }
+
+    public static class QuickActionSuggestions
+    {
+        /// <summary>
+        /// The peek is on screen (Shown) or replaced one in place (Updated): the 10 minutes start. Queued, Grouped (folded
+        /// into „N noutăți”) or Dropped: nothing was seen yet, the limit isn't used up (R1).
+        /// </summary>
+        public static bool ConsumesInterval(Core.Activity.PostResult r) =>
+            r == Core.Activity.PostResult.Shown || r == Core.Activity.PostResult.Updated;
+    }
 
     /// <summary>
     /// The unasked suggestions' memory: when the last one was shown. Clock injected (UTC; the tests drive it). UI thread

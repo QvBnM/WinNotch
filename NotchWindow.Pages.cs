@@ -168,6 +168,7 @@ namespace WinNotch
             RebuildTabs();                             // hidden pages leave the tab bar again
             UpdateHeader();
             S.Save();
+            if (_mode == Mode.Expanded) QuickActionsOnOpen();      // P20 hook (Features/QuickActions): the row comes back after edit mode
             RelayoutPanel();
         }
 
