@@ -262,7 +262,7 @@ namespace WinNotch
             var callers = appSources.Where(f => Src(f).Contains("ForceCategoryForSmoke(")).ToList();
             string smokeSide0 = Src("Features/Smoke/NotchWindow.Smoke.cs");
             string smokeSide = Norm(NoComments(smokeSide0));
-            string smokeProgram = Src("tests/WinNotch.Smoke/SmokeProgram.cs");
+            string smokeProgram = SmokeSrc("SmokeContext.cs");
             Check("CP27", "Injecția de context: definită în motor (internal), apelată doar din NotchWindow.Smoke.cs (comenzi citite doar cu --smoke); starea arată pagina și categoria",
                   callers.OrderBy(f => f).SequenceEqual(new[] { "Core/Context/ContextEngine.cs", "Features/Smoke/NotchWindow.Smoke.cs" }) &&
                   Src("Core/Context/ContextEngine.cs").Contains("internal bool ForceCategoryForSmoke(AppCategory? category)") &&

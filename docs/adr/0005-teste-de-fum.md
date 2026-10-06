@@ -12,7 +12,9 @@ de CI și ar ajunge la utilizator prin actualizarea automată (protecția din AD
 ## Decizie
 - **Un proiect separat, `tests/WinNotch.Smoke`** (consolă .NET 8 pentru Windows, FlaUI.UIA3), rulat în `ci.yml` pe
   `windows-latest`, după `dotnet publish`, pe `publish\WinNotch.exe`. Eșecul face CI-ul roșu; captura de ecran și `log.txt`
-  sunt păstrate ca artefacte.
+  sunt păstrate ca artefacte. Codul: `SmokeProgram.cs` (pornirea, ordinea verificărilor, utilitarele comune, verificările de
+  bază) și câte un fișier pe zonă, aceeași clasă `partial`: `SmokeAlerts.cs`, `SmokeCommandBar.cs`, `SmokeContext.cs`,
+  `SmokeClipboard.cs` (fiecare adăugat în `WinNotch.Smoke.csproj`).
 - **Argumentul `--smoke`** (`Features/Smoke/SmokeMode.cs`), citit primul la pornire:
   - folder de date separat, `%AppData%\WinNotch\smoke` (`AppSettings.Folder`), ca testul să nu atingă niciodată setările,
     log-ul sau `startup.json` adevărate și să pornească mereu „ca la prima rulare”;

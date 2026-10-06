@@ -19,6 +19,8 @@
     <Compile Include="ContextPagesTests.cs" />
     <Compile Include="QuickActionsTests.cs" />
     <Compile Include="SmartClipboardTests.cs" />
+    <Compile Include="ShelfTests.cs" />
+    <Compile Include="ShelfR1Tests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -66,5 +68,10 @@
     <Compile Include="..\Features\SmartClipboard\ClipboardPrivacy.cs" />
     <Compile Include="..\Features\SmartClipboard\SmartClipboardActions.cs" />
     <Compile Include="..\Features\SmartClipboard\SmartClipboardSettings.cs" />
+    <Compile Include="..\Features\Shelf\Shelf.cs" />
+    <Compile Include="..\Features\Shelf\ShelfShortcuts.cs" />
+    <Compile Include="..\Features\Shelf\ShelfFiles.cs" />
+    <Compile Include="..\Features\Shelf\ShelfActions.cs" />
+    <Compile Include="..\Features\Shelf\ShelfSettings.cs" />
   </ItemGroup>
 </Project>

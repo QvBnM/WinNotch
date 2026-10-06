@@ -14,7 +14,13 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="FlaUI.UIA3" Version="5.0.0" />
+    <!-- Main, the order of the checks and the shared helpers; the checks of each area in their own file (one partial class) -->
     <Compile Include="SmokeProgram.cs" />
+    <Compile Include="SmokeAlerts.cs" />
+    <Compile Include="SmokeCommandBar.cs" />
+    <Compile Include="SmokeContext.cs" />
+    <Compile Include="SmokeClipboard.cs" />
+    <Compile Include="SmokeShelf.cs" />
     <!-- the same status format and file names as the app -->
     <Compile Include="..\..\Features\Smoke\SmokeMode.cs" />
   </ItemGroup>

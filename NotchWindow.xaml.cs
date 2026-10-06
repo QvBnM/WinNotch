@@ -196,6 +196,7 @@ namespace WinNotch
             StopCommandBar();
             StopQuickActions();
             StopSmartClipboard();
+            StopShelf();
             _poll.Stop(); _sec.Stop(); _mon.Stop(); _audioTick.Stop();
             CompositionTarget.Rendering -= OnFrame;
             S.PinnedClips = Clips.Where(c => c.Pinned).Select(c => c.Text).ToList();
@@ -379,7 +380,8 @@ namespace WinNotch
             if (_dodging) { _dodging = false; if (!ins) Fade(Pill, 1, 220); }
 
             // A click while the mouse rests on the notch was meant for the window below: don't open on top of it.
-            if (ins && (Native.GetAsyncKeyState(0x01) < 0 || Native.GetAsyncKeyState(0x02) < 0)) _clickedThrough = true;   // left / right button
+            bool shelfDrag = ShelfDragHover(ins);     // P23 hook (Features/Shelf): a drag carried onto the pill may open it; false with the switch off
+            if (ins && !shelfDrag && (Native.GetAsyncKeyState(0x01) < 0 || Native.GetAsyncKeyState(0x02) < 0)) _clickedThrough = true;   // left / right button
             if (!ins) _clickedThrough = false;
             if (_clickedThrough) { ClearDwell(); return; }
 
@@ -442,6 +444,7 @@ namespace WinNotch
             ApplyMode();
             ApplyHidden();
             UpdateVisualizer();
+            ShelfOnOpen();                  // P23 hook (Features/Shelf): the shelf when a drag opened the notch; a no-op with the switch off
         }
 
         private void Collapse()
@@ -454,6 +457,7 @@ namespace WinNotch
             _pinned = false;
             _mouseWasInside = false;
             _leaveStart = null;
+            ShelfOnClose();                 // P23 hook (Features/Shelf): the overlay goes with the panel
             StopTyping();
             _pane?.Hidden();
             QuickActionsOnClose();          // P20 hook (Features/QuickActions): the row goes with the panel

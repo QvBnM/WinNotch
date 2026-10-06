@@ -50,4 +50,4 @@
 - **Abateri:** chip-uri doar pentru ultimul text copiat; parametrii de urmărire comparați exact cu litere mici (`UTM_SOURCE` rămâne); „#123” nu e culoare; JWT-ul decodat se copiază, nu se afișează.
 
 ### Publicare
-- 0.6.16 (P20 + P21), un singur push pe `main`; release.yml și verificarea exe + .sig mai jos.
+- 0.6.16 (P20 + P21), un singur push pe `main` (12923df); release.yml run 16 verde (fum de două ori înainte de „Sign”); release v0.6.16 cu WinNotch.exe (SHA-256 67d7e994…854c) + WinNotch.exe.sig, semnătura ECDSA verificată cu cheia publică din `Services/Updater.cs`.

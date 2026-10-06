@@ -77,7 +77,7 @@ namespace WinNotch.Panes
                 if (_editing == value) return;
                 _editing = value;
                 _hint.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
-                AllowDrop = value;
+                if (value) AllowDrop = true; else ClearValue(AllowDropProperty);       // P23: off = inherited again (the shelf's drop on the open notch)
                 _host.Margin = value ? new Thickness(4, 6, 4, 10) : new Thickness(0);      // room for the corner badges
                 Background = value ? Brushes.Transparent : null;     // empty cells must catch drops too
                 if (!value) SelectedSlot = null;
