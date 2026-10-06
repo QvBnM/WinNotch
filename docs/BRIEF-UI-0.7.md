@@ -187,6 +187,41 @@ sau pe ecran), tasta Esc, deschiderea altui panou de același nivel, închiderea
 
 ---
 
+## P51b — O alertă nu stă în calea unei acțiuni
+
+**Problema raportată:** era afișată alerta „Pauză pentru ochi”; utilizatorul a început un drag cu fișiere pentru Raft,
+iar notch-ul a rămas pe alertă — nu s-a transformat în țintă de drop. Regula lipsește în general: modul `Live` (alertă)
+blochează interacțiunea, oricare ar fi ea.
+
+**Regula:** o alertă e informație, nu o stare. Orice intenție clară a utilizatorului are prioritate și alerta
+se dă la o parte imediat (fără animația de 140 ms de ieșire, direct `EndLive()`), apoi se execută acțiunea.
+
+**Intenții care întrerup o alertă:**
+1. **Drag cu fișiere deasupra pastilei** → `EndLive()` și se deschide notch-ul ca țintă pentru Raft
+   (`Features/Shelf/NotchWindow.Shelf.cs:134` `ShelfDragHover` e azi apelat doar pe ramura Idle din `PollTick`;
+   trebuie să fie verificat și când `_mode == Mode.Live`).
+2. **Hover intenționat** peste pastilă (dwell-ul obișnuit) → se deschide notch-ul, alerta nu mai „ține” pastila.
+   Excepție: alertele interactive la care utilizatorul trebuie să apese ceva (actualizare, memorie plină, pauză pentru
+   ochi, confirmări) — acolo hover-ul nu le închide, dar un click în afara lor da.
+3. **Scurtătura `Win+Alt+N`**, Command Bar (`Win+Space`) și orice acțiune din tray → închid alerta și execută.
+4. **Deschiderea unui panou** (ieșire audio, raft) → alerta dispare.
+
+**Nu întrerup:** mișcarea obișnuită a mouse-ului pe ecran, tastatul în altă aplicație, o altă alertă de prioritate mai
+mică (aceea se așază la coadă, cum face deja `ActivityManager`).
+
+**Ce rămâne din alerta întreruptă:** nimic pe ecran, dar dacă avea o acțiune nefăcută (ex. „Actualizează”), ea se oferă
+din nou mai târziu, prin mecanismul existent de amânare. Pauza pentru ochi se consideră sărită, ca la butonul „Sari”.
+
+**Unde se leagă:** `PollTick` (`NotchWindow.xaml.cs:340`) — ramura `_mode == Mode.Live` nu testează azi nici dwell-ul,
+nici drag-ul; `ShowLive` / `EndLive` (`NotchWindow.xaml.cs:874`, `:891`); `Features/Activity/` pentru prioritate.
+
+**Teste:** reguli pure (`Core/Ui/InterruptRules.cs`): pentru (tip alertă, intenție) → întrerupe / nu întrerupe;
+alertele interactive nu se închid la hover, dar se închid la drag și la scurtătură; o alertă întreruptă nu se
+re-afișează imediat (anti-buclă).
+
+**Verificare manuală:** pornește pauza pentru ochi, trage un fișier peste notch → notch-ul se deschide cu Raftul gata
+de drop. Repetă cu alerta de volum și cu cea de actualizare.
+
 ## P52 — Fereastra WinNotch, redesign
 
 **Comutator:** `window-v2`, `Experimental`, `DefaultOn = false`, până e gata. Cod nou în `Features/WindowV2/`.
@@ -263,7 +298,7 @@ Cine deschide fereastra recunoaște instant obiectul din marginea ecranului. Ast
 
 ## Ordinea și livrarea
 
-1. **P51** primul (reparație, se simte imediat, risc mic).
+1. **P51** + **P51b** primele (reparații, se simt imediat, risc mic).
 2. **P50** al doilea (vizual, comutator, ușor de comparat).
 3. **P52** ultimul (cel mai mare).
 
