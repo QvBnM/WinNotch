@@ -73,7 +73,7 @@ termină cu notch-ul deschis: prezentatorul nu desenează în `Expanded`), reven
 - **Pin-ul QA27** (starea de fum) actualizat pentru câmpurile `;b1=` / `;b1r=` adăugate după contoarele Quick Actions.
 - **Verificarea de la 300 ms** cădea înainte de sfârșitul fade-ului panoului (120 + 220 ms): pe o mașină lentă „doar
   transparent” ar fi declanșat o reparație falsă. Acum, la prima verificare, problemele care sunt doar `PanelTransparent` /
-  `PillTransparent` (stratul vizibil) primesc încă 300 ms înainte de orice reparație (`NotchContentRules.OnlyFading`, NG27);
+  `PillTransparent` (stratul vizibil) primesc încă 300 ms înainte de orice reparație (acum `NotchContentRules.MaybeFading`, NG27, vezi mai jos);
   restul (panou colapsat, fără tab-uri, fără pagină) se repară la 300 ms, ca în cerință. Reparațiile panoului au și ele un
   buget: cel mult 4 pe minut.
 - **O reparație nu mai pornește o altă verificare** (`NotchGuardLaidOut` ignoră apelurile din timpul reparației); rezultatul
@@ -87,3 +87,8 @@ termină cu notch-ul deschis: prezentatorul nu desenează în `Expanded`), reven
   la reîmprospătare și la schimbarea temei.
 - **Testul de fum B1 a fost scos la cererea autorului** (testează el pe Windows). Rămân comenzile `smoke-empty-panel` /
   `smoke-empty-pill` (doar cu `--smoke`) și câmpurile `;b1=` / `;b1r=`, pentru o verificare manuală.
+- **Fals pozitiv văzut în CI (run 46, ultimul cu fumul B1):** pe mașina lentă animațiile rămân în urma cronometrelor; la
+  300 ms după o deschidere panoul era la 0,21 și standby-ul încă se stingea (`WrongLayer`), iar plasa a refăcut pagina (și
+  a închis raftul). Acum tot ce poate fi o animație în curs (panou / pastilă transparente, un strat din alt mod care se
+  stinge, un strat vizibil, dar încă transparent) primește încă o privire (300 ms la deschidere, 450 ms la pastilă) înainte
+  de orice reparație (`NotchContentRules.MaybeFading`, NG27). Toate celelalte teste de fum au trecut pe ambele drumuri.

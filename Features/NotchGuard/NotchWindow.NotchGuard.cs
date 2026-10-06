@@ -29,7 +29,7 @@ namespace WinNotch
         /// <summary>Which step of the open notch's repair comes next (0: none tried since this opening).</summary>
         private int _ngAttempt;
         private RecoveryStep _ngLastStep;
-        private bool _ngRepairing, _ngBudgetLogged, _ngWaited;
+        private bool _ngRepairing, _ngBudgetLogged, _ngWaited, _ngSettleWaited;
         /// <summary>Repairs done since start (the smoke status: ";b1r=").</summary>
         private int _ngRecoveries;
         private readonly RecoveryBudget _ngPillBudget = new RecoveryBudget(NotchGuardInfo.PillBudget, NotchGuardInfo.BudgetWindow);
@@ -52,6 +52,7 @@ namespace WinNotch
         {
             if (_ngRepairing || !IsLoaded || (_mode == Mode.Expanded && !_cmdOpen)) return;    // a repair reads its own result; the open panel: checked after the opening
             if (!NotchGuardEnabled()) return;
+            _ngSettleWaited = false;
             _ngSettle = NotchGuardRestart(_ngSettle, NotchGuardInfo.SettleCheckMs, NotchGuardSettleCheck);
         }
 
@@ -86,7 +87,7 @@ namespace WinNotch
                 var p = NotchContentRules.Check(v);
                 if (_ngAttempt > 0) App.Log(NotchGuardLog.ResultLine(p, _ngLastStep));
                 if (p == NotchProblem.None) { _ngAttempt = 0; return; }
-                if (_ngAttempt == 0 && !_ngWaited && NotchContentRules.OnlyFading(p))
+                if (_ngAttempt == 0 && !_ngWaited && NotchContentRules.MaybeFading(v, p))
                 {
                     _ngWaited = true;                   // R1: a fade-in still running (slow machine): one more look before repairing
                     _ngOpen?.Start();
@@ -118,6 +119,12 @@ namespace WinNotch
                 var v = NotchViewNow();
                 var p = NotchContentRules.Check(v);
                 if (p == NotchProblem.None) return;
+                if (!_ngSettleWaited && NotchContentRules.MaybeFading(v, p))
+                {
+                    _ngSettleWaited = true;             // a fade still running (slow machine): one more look before repairing
+                    _ngSettle?.Start();
+                    return;
+                }
                 if (!_ngPillBudget.TryTake())
                 {
                     if (!_ngBudgetLogged) App.Log(NotchGuardLog.Prefix + NotchContentRules.Names(p) + " · prea multe reparații ale pastilei într-un minut; aștept.");

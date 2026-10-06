@@ -150,11 +150,20 @@ namespace WinNotch.Features.NotchGuard
         }
 
         /// <summary>
-        /// R1: only "transparent" (the panel or the whole pill), the layer visible: at the first check its fade-in (120 ms
-        /// delay + 220 ms) may still be running on a slow machine, so it gets one more check before anything is repaired.
+        /// R1 + CI: problems a fade still running can explain (on a slow machine the animations lag behind the timers: CI saw
+        /// the panel at 0.21 and the standby still fading out 300 ms after an opening). Transparent panel or pill, a layer of
+        /// another mode still fading out, a layer that is Visible but not yet opaque. These get one more look before any
+        /// repair; a collapsed layer, no tabs, no page, an alert without content or a small form without its date don't.
         /// </summary>
-        public static bool OnlyFading(NotchProblem p) =>
-            p != NotchProblem.None && (p & ~(NotchProblem.PanelTransparent | NotchProblem.PillTransparent)) == NotchProblem.None;
+        public static bool MaybeFading(NotchView v, NotchProblem p)
+        {
+            if (v == null || p == NotchProblem.None) return false;
+            var fading = NotchProblem.PanelTransparent | NotchProblem.PillTransparent | NotchProblem.WrongLayer;
+            if (v.Idle.Visible) fading |= NotchProblem.IdleEmpty;
+            if (v.Small.Visible) fading |= NotchProblem.MiniEmpty;
+            if (v.Live.Visible && v.LiveHasContent) fading |= NotchProblem.LiveEmpty;
+            return (p & ~fading) == NotchProblem.None;
+        }
 
         /// <summary>The problems by name, for the log ("PanelTransparent, NoTabs"; "—" for none).</summary>
         public static string Names(NotchProblem p)

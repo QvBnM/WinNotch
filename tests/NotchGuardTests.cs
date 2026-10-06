@@ -220,12 +220,19 @@ namespace WinNotch
                   NotchRecovery.Next(pill, NotchContentRules.Check(pill), 0) == RecoveryStep.RepairPill && NotchRecovery.Next(pill, NotchProblem.IdleEmpty, 1) == RecoveryStep.GiveUp &&
                   NotchRecovery.Next(Panel(), NotchProblem.None, 0) == RecoveryStep.None && NotchRecovery.Next(null, NotchProblem.NoTabs, 0) == RecoveryStep.None);
 
-            Check("NG27", "R1: la prima verificare, „doar transparent” (panoul sau pastila, încă în fade) primește încă o privire înainte de reparație; restul se repară imediat",
-                  NotchContentRules.OnlyFading(NotchProblem.PanelTransparent) && NotchContentRules.OnlyFading(NotchProblem.PanelTransparent | NotchProblem.PillTransparent) &&
-                  !NotchContentRules.OnlyFading(NotchProblem.None) && !NotchContentRules.OnlyFading(NotchProblem.PanelTransparent | NotchProblem.NoTabs) &&
-                  !NotchContentRules.OnlyFading(NotchProblem.PanelHidden) &&
-                  Norm(NoComments(Src("Features/NotchGuard/NotchWindow.NotchGuard.cs"))).Contains("if (_ngAttempt == 0 && !_ngWaited && NotchContentRules.OnlyFading(p)) { _ngWaited = true; _ngOpen?.Start(); return; }") &&
-                  Norm(NoComments(Src("Features/NotchGuard/NotchWindow.NotchGuard.cs"))).Contains("if (_ngRepairing || !IsLoaded ||"));
+            var openPanel = Panel();
+            var standby = new NotchView { Mode = NotchMode.Idle, Idle = new LayerState(true, 0.02), IdleItems = 2 };
+            string guard = Norm(NoComments(Src("Features/NotchGuard/NotchWindow.NotchGuard.cs")));
+            Check("NG27", "R1 + CI (fals pozitiv văzut în CI: panoul la 0,21 și standby-ul încă vizibil la 300 ms): ce poate fi o animație încă în curs primește încă o privire înainte de reparație; ce nu poate fi animație se repară imediat",
+                  NotchContentRules.MaybeFading(openPanel, NotchProblem.PanelTransparent) && NotchContentRules.MaybeFading(openPanel, NotchProblem.PanelTransparent | NotchProblem.WrongLayer | NotchProblem.PillTransparent) &&
+                  !NotchContentRules.MaybeFading(openPanel, NotchProblem.None) && !NotchContentRules.MaybeFading(openPanel, NotchProblem.PanelTransparent | NotchProblem.NoTabs) &&
+                  !NotchContentRules.MaybeFading(openPanel, NotchProblem.PanelHidden) && !NotchContentRules.MaybeFading(null, NotchProblem.PanelTransparent) &&
+                  NotchContentRules.MaybeFading(standby, NotchProblem.IdleEmpty) && !NotchContentRules.MaybeFading(With(standby, idle: LayerState.Hidden), NotchProblem.IdleEmpty) &&
+                  !NotchContentRules.MaybeFading(new NotchView { Mode = NotchMode.Idle, Mini = true, Small = LayerState.Full }, NotchProblem.MiniWithoutDate) &&
+                  !NotchContentRules.MaybeFading(new NotchView { Mode = NotchMode.Live, Live = LayerState.Full }, NotchProblem.LiveEmpty) &&
+                  guard.Contains("if (_ngAttempt == 0 && !_ngWaited && NotchContentRules.MaybeFading(v, p)) { _ngWaited = true; _ngOpen?.Start(); return; }") &&
+                  guard.Contains("if (!_ngSettleWaited && NotchContentRules.MaybeFading(v, p)) { _ngSettleWaited = true; _ngSettle?.Start(); return; }") &&
+                  guard.Contains("if (_ngRepairing || !IsLoaded ||"));
 
             var clock = new DateTime(2026, 10, 6, 12, 0, 0);
             var budget = new RecoveryBudget(3, TimeSpan.FromMinutes(1), () => clock);
