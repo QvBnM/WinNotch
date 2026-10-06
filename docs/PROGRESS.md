@@ -72,5 +72,5 @@
 - **Abateri:** id-ul `audio.output-<id>` în loc de `audio.output.<id>` (registrul acceptă un singur punct); lista se deschide dintr-un buton lângă volum (alerta de volum e click-through), nu prin ActivityManager.
 
 ### Publicare
-- 0.6.17 (P23 + P30), un singur push pe `main`.
+- 0.6.17 (P23 + P30), un singur push pe `main` (a1c11c8); release.yml run 17 verde (fum de două ori înainte de „Sign”); release v0.6.17 cu WinNotch.exe (SHA-256 3984d30e…f6a9) + WinNotch.exe.sig, semnătura ECDSA verificată cu cheia publică din `Services/Updater.cs`. Rândul acesta e doar pe ramura de lucru până la rularea 6.
 
