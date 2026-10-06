@@ -410,6 +410,40 @@ de cauză de mai jos rămân).
   10 s; „niciodată” = doar peste ferestre maximizate). Inactivitate = nicio atingere a notch-ului: hover, o alertă sau
   închiderea notch-ului readuc **standby-ul complet**. Data nu e niciodată goală; ora singură e tratată ca problemă.
 
+### Raportul închiderilor (din P51c)
+
+**Problema găsită:** aplicația s-a închis singură pe 6 octombrie 2026, fără nimic în `log.txt`. Event Viewer a arătat
+cauza: o `AccessViolationException` în biblioteca NVIDIA (NVML), ajunsă acolo din citirea temperaturilor
+(`TempService` → `NvidiaGpu.Update`), la câteva secunde după ce un monitor a fost scos și pus din nou. Handle-ul de placă
+video pe care LibreHardwareMonitor îl ținea de la pornire murise împreună cu reinițializarea driverului.
+
+O astfel de excepție **nu poate fi prinsă**: .NET închide procesul fără să ruleze nici un `catch`, nici
+`AppDomain.UnhandledException`. De aceea nu scria nimic în log — și de aceea reparația are două părți.
+
+Comutatorul „Raportul închiderilor” (`shutdown-report`, **Beta, pornit implicit**, oprit în `--safe-mode`).
+**Oprit:** log-ul scrie în continuare motivul fiecărei închideri, dar notch-ul nu te mai anunță.
+
+- **Jurnalul de închidere.** Orice ieșire scrie o ultimă linie cu un motiv fix: `Închidere: cerere utilizator (tray)`,
+  `actualizare`, `revenire automată`, `repornire în mod sigur`, `a doua instanță`, `mod ajutător`, `pornirea a eșuat`,
+  `Windows se închide`, `repornire ca administrator`, `eroare fatală`.
+- **Nicio închidere tăcută.** Motivul se scrie și în `startup.json`. La pornirea următoare, o rulare care nu a ajuns la
+  nicio ieșire a noastră e numită `Închidere anterioară: neexplicată (a N-a la rând)`. De la **a doua la rând**, notch-ul
+  arată o dată alerta „WinNotch s-a închis singur”, cu butonul **„Deschide log-ul”**. O ieșire curată șterge seria.
+- **Temperaturile nu mai pot omorî aplicația.** Când Windows anunță o schimbare de monitoare, biblioteca de senzori e
+  închisă și deschisă din nou **înainte** de orice citire, ca handle-ul mort să nu fie folosit. Și dacă aplicația s-a
+  închis totuși brusc de două ori la rând, citirea în proces se oprește definitiv: pagina Sistem arată „temp: oprite”
+  cu explicația, log-ul scrie motivul, iar aplicația rămâne pornită. Bifezi din nou „Temperaturi” în Setări și se reia.
+  Temperaturile venite din serviciul SYSTEM (alt proces) nu sunt afectate.
+- **Excepțiile de pe orice fir.** Sarcinile de fundal pe care nu le așteaptă nimeni ajung acum în log
+  (`TaskScheduler.UnobservedTaskException`), iar callback-urile care nu rulează pe firul de UI — NAudio (vizualizatorul
+  și volumul), timerul alertelor, firul care instalează serviciul de temperatură — sunt prinse: o excepție acolo închidea
+  procesul fără nimic pe ecran.
+- **Log-ul nu mai conține titluri de ferestre.** Rândul `Monitoare:` scria titlul ferestrei care decidea starea
+  monitorului — adrese, nume de fișiere, titluri de pagini. Acum scrie **clasa ferestrei, procesul și geometria**
+  (`Chrome_WidgetWin_1 (chrome) [-8,-8 2576x1408]`). În plus nu mai marchează monitorul pe care stă notch-ul, așa că
+  mutarea mouse-ului între ecrane nu mai scrie un rând: log-ul ține zile, nu ore, deci dovezile supraviețuiesc până la
+  următoarea problemă.
+
 ---
 
 ## 2. Instalare, build și dezvoltare
@@ -716,8 +750,8 @@ Dublu-click pe iconiță deschide fereastra WinNotch pe pagina Setări.
 | Unde | Ce |
 |---|---|
 | `%AppData%\WinNotch\settings.json` | Toate setările, inclusiv paginile tale de widget-uri (`Pages`), paginile ascunse și temele. **Calendarul (link secret), notița și clipurile fixate sunt criptate** pentru contul tău de Windows (DPAPI). Salvarea se face printr-un fișier temporar, ca o închidere bruscă să nu strice fișierul |
-| `%AppData%\WinNotch\log.txt` | Erori și evenimente tehnice (fără texte din clipboard sau link-uri secrete), plus la 6 ore rezumatul de sănătate (RAM, CPU mediu, erori pe funcții); se golește la 512 KB |
-| `%AppData%\WinNotch\startup.json` | Pornirile versiunii curente care nu s-au încheiat curat, dacă rularea e în modul sigur, dacă versiunea e sănătoasă și versiunile refuzate (protecția la o versiune stricată); salvat tot printr-un fișier temporar |
+| `%AppData%\WinNotch\log.txt` | Erori și evenimente tehnice (**fără texte din clipboard, link-uri secrete sau titluri de ferestre**), motivul fiecărei închideri, plus la 6 ore rezumatul de sănătate (RAM, CPU mediu, erori pe funcții); se golește la 512 KB |
+| `%AppData%\WinNotch\startup.json` | Pornirile versiunii curente care nu s-au încheiat curat, motivul ultimei închideri și câte închideri neexplicate au fost la rând, dacă rularea e în modul sigur, dacă versiunea e sănătoasă și versiunile refuzate (protecția la o versiune stricată); salvat tot printr-un fișier temporar |
 | `%AppData%\WinNotch\rollback.json` | Doar după o revenire automată: versiunea refuzată și motivul; citit și șters de versiunea restaurată |
 | `%AppData%\WinNotch\crash-test.flag`, `perf.flag` | Doar pentru teste, create de tine: primul provoacă o închidere bruscă la 5 s după pornire (test manual al protecției), al doilea scrie în log timpul de la începutul hover-ului până la primul cadru al deschiderii (include întârzierea la hover din Setări) |
 | `%AppData%\WinNotch\extension\` | Fișierele extensiei de browser |
@@ -781,6 +815,7 @@ Trei audituri (`AUDIT.md`, `AUDIT-2.md`, `AUDIT-3.md` — ultimul, de securitate
 - **Rularea ca administrator** (dacă totuși pornești manual așa): toate lansările trec prin Explorer cu drepturi normale; fișierele extensiei nu se mai scriu; capturile se salvează doar în profilul tău (verificat pe calea reală).
 - **Scurtături:** doar http/https/fișiere/ms-settings; căile de rețea (`\\server\share`) sunt refuzate și nu li se cere nici iconița (altfel Windows s-ar autentifica automat la acel server).
 - **Fișiere:** salvări atomice, fără urmarea junction-urilor din folderul WinNotch; log-ul nu conține link-uri, texte din clipboard sau titluri.
+- **Titlurile ferestrelor nu ajung în log (P51c):** rândul `Monitoare:` scria titlul ferestrei care decidea starea fiecărui monitor, deci adrese, nume de fișiere descărcate și titluri de pagini vizitate. Acum scrie clasa ferestrei, numele procesului și dreptunghiul ei. Aceeași regulă ca la motorul de context, care scrie în log doar procesul și categoria (`ToLogString`), niciodată `ForegroundTitle`.
 - **Revenirea automată** e singura excepție de la „doar versiuni mai noi”: pornește înapoi doar `WinNotch.old.exe` de lângă exe, numai dacă e un WinNotch mai vechi, cu cale completă. `startup.json` și `rollback.json` din `%AppData%\WinNotch` sunt de încredere doar cât contul tău: un program care rulează deja cu contul tău le poate modifica (de exemplu ca să blocheze o versiune), dar nu poate obține mai multe drepturi; versiunile refuzate sunt scrise în log la fiecare pornire.
 - **Clipboard:** conținutul marcat ca privat de managerele de parole e ignorat: nu intră în istoric și Smart Clipboard nu îl analizează (o singură verificare, `ClipboardPrivacy`, iar orice eroare la citire înseamnă „privat”). Smart Clipboard nu scrie nimic din conținut în log, decodează JWT-urile doar local (fără rețea, fără semnătură), deschide doar link-uri http/https și foldere locale (niciodată căi sau unități de rețea, niciodată fișierul însuși), prin `Shell.Open`, și nu analizează texte de peste 64 KB.
 - **Raftul (P23):** ține doar căi locale; orice cale de rețea (și o unitate mapată de rețea) e refuzată înainte de orice acces la disc, cu aceeași regulă ca la scurtături și Smart Clipboard; nu cere iconița Shell a niciunui fișier și nu rezolvă scurtăturile (un `.lnk` / `.url` e citit ca octeți și acceptat doar dacă tot ce e în el e local; `.scf`, `.library-ms`, `.searchconnector-ms` niciodată; nici legăturile simbolice / junction-urile din cale, citite fără să fie urmate). Nu suprascrie nimic: zip-ul și imaginile convertite sunt fișiere noi (`FileMode.CreateNew`, „x (2).zip”…), iar unul început și nereușit e șters; nu mută, nu copiază și nu șterge fișierele tale (golirea scoate doar referințele; „Copiază selecția” pune pe clipboard doar căile, cu „Preferred DropEffect” = copiere, niciodată mutare — copierea o face Windows la `Ctrl+V`); un drop întoarce „link” sau „copy”, niciodată „move”, iar orice tragere pe care notch-ul nu o primește e refuzată explicit (nu rămâne efectul implicit al sursei). Imaginile au limite verificate din antet înainte de decodare (100 MB, 50 MP), zip-ul 10.000 de fișiere și 4 GB, fără urmarea legăturilor. Nimic din căi sau nume în log; drop-ul nu activează fereastra (focusul rămâne în aplicația ta).

@@ -227,8 +227,8 @@ namespace WinNotch
         static void AlertCharacterizationTests()
         {
             var all = LegacyAlerts.All;
-            Check("AC1", "Tabelul alertelor existente: 27, id-uri unice, cu literă mică și cratime",
-                  all.Count == 27 && all.Select(a => a.Id).Distinct().Count() == 27 && all.All(a => Regex.IsMatch(a.Id, "^[a-z]+(-[a-z]+)*$")),
+            Check("AC1", "Tabelul alertelor: 28, id-uri unice, cu literă mică și cratime",
+                  all.Count == 28 && all.Select(a => a.Id).Distinct().Count() == 28 && all.All(a => Regex.IsMatch(a.Id, "^[a-z]+(-[a-z]+)*$")),
                   all.Count + " alerte");
 
             // ---- source pins: each call still passes the table's literal size, duration and "important"
@@ -270,8 +270,8 @@ namespace WinNotch
                   interBody.Contains("_liveInteractive = true; LiveLayer.IsHitTestVisible = true; SetClickThrough(false);") &&
                   Regex.IsMatch(Norm(notch), @"private void ToolAlert\([^)]*double width = 440\)"));
             var interactiveSet = all.Where(a => a.Interactive).Select(a => a.Id).OrderBy(x => x).ToList();
-            Check("AC6", "Alertele cu butoane (click-through oprit): RAM, captură, pauză ochi, ofertă, noutăți, serviciu temperatură, extensie",
-                  string.Join(",", interactiveSet) == "capture-result,eye-break,helper-update,old-extension,ram,update-offer,whats-new" &&
+            Check("AC6", "Alertele cu butoane (click-through oprit): RAM, captură, pauză ochi, ofertă, noutăți, serviciu temperatură, extensie, raportul închiderilor",
+                  string.Join(",", interactiveSet) == "capture-result,eye-break,helper-update,old-extension,ram,shutdown-unexplained,update-offer,whats-new" &&
                   Count(Norm(Src(LegacyAlerts.Notch)), "_liveInteractive = true;") == 3 && Count(Norm(Src(LegacyAlerts.Updates)), "_liveInteractive = true;") == 4);
 
             // ---- the legacy decisions, pinned to the source

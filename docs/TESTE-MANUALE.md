@@ -265,6 +265,33 @@ Plasa de siguranță („Plasa de siguranță a notch-ului”, Setări › Func�
 | B1.5 | Plasa în acțiune | (Pentru dezvoltare) pornește `WinNotch.exe --smoke`, deschide notch-ul și scrie `smoke-empty-panel` în `%AppData%\WinNotch\smoke\smoke-commands.txt`; apoi, cu notch-ul închis, `smoke-empty-pill`. | În cel mult o secundă panoul (apoi pastila) apare din nou; în `%AppData%\WinNotch\smoke\log.txt` câte un rând „B1 recover”, urmat de „conținutul se vede”. |
 | B1.6 | Ce scrii dacă se mai întâmplă | Notch gol sau pastila doar cu ora. | Copiază rândurile „B1 recover” și „Eroare neprevăzută” din jurul momentului (`log.txt`): ele spun ce strat lipsea, pagina, comutatoarele, activitatea și overlay-urile, fără titluri sau nume. |
 
+### P51c — De ce s-a închis aplicația singură (jurnalul de închidere)
+
+Comutatorul „Raportul închiderilor” (`shutdown-report`, Beta, pornit implicit). Cauza găsită pe 0.6.18 a fost o excepție
+din biblioteca NVIDIA la o schimbare de monitoare, pe care .NET nu o lasă să fie prinsă — de aceea verificările de mai jos
+se uită în `log.txt` după fapt, nu la un mesaj în momentul închiderii.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P51c.1 | Ieșirea din tray își scrie motivul | Meniul iconiței › Ieșire. Deschide `%AppData%\WinNotch\log.txt`. | Ultimul rând: `Închidere: cerere utilizator (tray)`. La pornirea următoare **nu** apare nimic despre închiderea anterioară. |
+| P51c.2 | Închiderea Windows-ului | Repornește Windows cu WinNotch pornit. După repornire, deschide log-ul. | Un rând `Închidere: Windows se închide` înainte de repornire; la pornirea următoare nicio alertă și nicio linie „neexplicată”. |
+| P51c.3 | Omorât din Task Manager, o dată | Task Manager › WinNotch › End task. Pornește WinNotch. Deschide log-ul. | `Închidere anterioară: neexplicată (a 1-a la rând)`. **Nicio alertă** în notch (prima dată nu deranjează). |
+| P51c.4 | Omorât a doua oară → alerta | Repetă P51c.3 imediat. Pornește WinNotch și lasă pastila în standby câteva secunde. | Log: `… (a 2-a la rând)`. În notch apare o dată, ~9 s, „WinNotch s-a închis singur · De 2 ori la rând, fără să ceri tu ieșirea. Detalii în log.” cu butonul **„Deschide log-ul”**. Click pe el → se deschide `log.txt`, alerta dispare. Nu mai reapare în această rulare. |
+| P51c.5 | Temperaturile se opresc singure, aplicația nu | Imediat după P51c.4, deschide notch-ul › Sistem. | Lângă CPU scrie **„temp: oprite”**; cu mouse-ul deasupra, explicația („WinNotch s-a închis brusc de două ori la rând…”). În log: `Temperaturi: citirea temperaturilor în proces s-a oprit după închideri bruște repetate.` **Restul aplicației merge normal.** |
+| P51c.6 | Se reia la cerere | Setări › debifează „Temperaturi”, Salvează; bifează din nou, Salvează. Pagina Sistem. | Temperaturile revin fără repornirea aplicației; „temp: oprite” dispare. |
+| P51c.7 | Seria se șterge | După P51c.4, ieși din tray și pornește din nou. Deschide log-ul. | `Închidere: cerere utilizator (tray)`, apoi la pornire **nimic** despre închiderea anterioară; pagina Sistem arată din nou temperaturi (dacă erau pornite). |
+| P51c.8 | Cauza reală: monitorul scos și pus | Cu temperaturile pornite și pagina Sistem deschisă, deconectează un monitor (sau schimbă rezoluția / rata de reîmprospătare) și conectează-l din nou. Repetă de 5 ori. Deschide log-ul. | WinNotch **nu se închide**. În log, la fiecare schimbare: `Temperaturi: monitoarele s-au schimbat, redeschid citirea senzorilor.` Temperaturile reapar în câteva secunde. (Pe 0.6.18 ăsta era drumul care omora procesul.) |
+| P51c.9 | Jocul pe tot ecranul | Pornește un joc pe tot ecranul (Elden Ring, CS2), joacă 20 de minute, ieși. Deschide log-ul. | WinNotch e tot pornit, fără rânduri „neexplicată”. Dacă totuși s-a închis, log-ul are acum numărătoarea, iar Event Viewer (Jurnale Windows › Aplicație) spune modulul — trimite-le amândouă. |
+| P51c.10 | Nicio închidere tăcută nu mai există | Caută în log toate rândurile care încep cu `Închidere:`. | Fiecare oprire a aplicației din sesiunea asta are rândul ei. O oprire fără rând înseamnă o moarte pe care .NET nu o poate anunța — și exact aceea e numărată la pornirea următoare. |
+
+### P51c — Log-ul nu mai conține titluri de ferestre
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P51c.11 | Fără titluri | Navighează 5 minute: mai multe tab-uri în Chrome, Explorer, un joc. Deschide `log.txt` și caută titluri de pagini, nume de fișiere descărcate sau adrese. | **Niciunul.** Rândurile `Monitoare:` arată doar clasa, procesul și dreptunghiul: `Chrome_WidgetWin_1 (chrome) [-8,-8 2576x1408]`. |
+| P51c.12 | Log-ul nu se mai umple | Numără rândurile `Monitoare:` după 10 minute de lucru obișnuit (mouse între monitoare, tab-uri schimbate). | Mult mai puține decât înainte: schimbarea tab-ului nu mai scrie nimic, nici mutarea mouse-ului între ecrane. Doar trecerea unui monitor între `liber` / `maximizat` / `ocupat` scrie un rând. |
+| P51c.13 | Informația utilă rămâne | Pornește un joc pe tot ecranul pe un monitor. | Rândul `Monitoare:` arată `M1 ocupat <- ...(eldenring) [0,0 2560x1440]` — suficient ca să înțelegem starea, fără nimic personal. |
+
 ### P02 — Teste de fum (CI)
 
 Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai jos sunt pentru rularea locală și pentru siguranța modului `--smoke`.

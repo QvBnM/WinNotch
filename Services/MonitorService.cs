@@ -79,14 +79,31 @@ namespace WinNotch.Services
 
                 mon.Busy = covers && !Native.IsZoomed(h);
                 mon.Maximized = zoomed;
-                string title = Native.Title(h);
-                if (title.Length > 40) title = title.Substring(0, 40) + "…";
-                mon.Decider = cls + " \"" + title + "\" [" + wr.Left + "," + wr.Top + " " + wr.Width + "x" + wr.Height + "]";
+                // The window's title never goes in the log: it is the user's business (section 14 of DOCUMENTATIE.md,
+                // and the same rule as ContextSnapshot.ToLogString). The class, the process and the geometry are enough
+                // to tell which window decided a monitor's state, and are what the fullscreen rules are judged on.
+                mon.Decider = Describe(h, cls, wr);
                 decided.Add(mh);
                 return true;
             }, IntPtr.Zero);
 
             return monitors;
+        }
+
+        /// <summary>
+        /// How a window is named in the log: its class, the process' file name and its rectangle. Deliberately without
+        /// the title — a title says what the user is reading or watching, and nothing of that goes in log.txt.
+        /// </summary>
+        private static string Describe(IntPtr h, string cls, Native.RECT wr)
+        {
+            string process = "?";
+            try
+            {
+                string path = Native.ProcessPath(h);
+                if (!string.IsNullOrEmpty(path)) process = System.IO.Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
+            }
+            catch { /* a window of a process we may not query: the class alone still tells enough */ }
+            return cls + " (" + process + ") [" + wr.Left + "," + wr.Top + " " + wr.Width + "x" + wr.Height + "]";
         }
 
         public static IntPtr MonitorUnderCursor()

@@ -49,17 +49,24 @@ namespace WinNotch
             // the CPU-temperature helper (SYSTEM task, no window), and its one-off install / removal (elevated)
             if (mode == Services.TempHelper.Arg)
             {
-                var t = new Thread(() => { Services.TempHelper.RunServer(); Dispatcher.Invoke(Shutdown); }) { IsBackground = true };
+                var t = new Thread(() =>
+                {
+                    // a helper that dies silently leaves the app without temperatures and no trace of why (P51c)
+                    try { Services.TempHelper.RunServer(); }
+                    catch (Exception ex) { Log("Serviciul de temperatură s-a oprit: " + ex); }
+                    try { Dispatcher.Invoke(() => { LogShutdown(Core.Diagnostics.ShutdownKind.HelperMode); Shutdown(); }); } catch { }
+                }) { IsBackground = true };
                 t.Start();
                 return;
             }
             if (mode == Services.TempHelper.InstallArg || mode == Services.TempHelper.UninstallArg)
             {
-                if (!IsAdmin) { Shutdown(5); return; }
+                if (!IsAdmin) { LogShutdown(Core.Diagnostics.ShutdownKind.HelperMode); Shutdown(5); return; }
                 LockOwnExe();
                 int rc = mode == Services.TempHelper.InstallArg
                     ? (OwnExe == null ? 2 : Services.TempHelper.Install(OwnExe))
                     : Services.TempHelper.Uninstall();
+                LogShutdown(Core.Diagnostics.ShutdownKind.HelperMode);
                 Shutdown(rc);
                 return;
             }
@@ -73,19 +80,37 @@ namespace WinNotch
             catch (AbandonedMutexException) { first = true; }
             if (!first)
             {
-                if (Features.Smoke.SmokeMode.On) { Log("Test de fum: WinNotch rulează deja."); Shutdown(3); return; }
+                if (Features.Smoke.SmokeMode.On) { Log("Test de fum: WinNotch rulează deja."); LogShutdown(Core.Diagnostics.ShutdownKind.SecondInstance); Shutdown(3); return; }
                 MessageBox.Show("WinNotch rulează deja. Îl găsești în zona de notificări, lângă ceas.", "WinNotch",
                     MessageBoxButton.OK, MessageBoxImage.Information);
+                LogShutdown(Core.Diagnostics.ShutdownKind.SecondInstance);
                 Shutdown();
                 return;
             }
 
-            AppDomain.CurrentDomain.UnhandledException += (s, ex) => Log("Eroare fatală: " + ex.ExceptionObject);
+            AppDomain.CurrentDomain.UnhandledException += (s, ex) =>
+            {
+                Log("Eroare fatală: " + ex.ExceptionObject);
+                // The process still goes down. Naming it now keeps the next start from calling it unexplained; a crash
+                // that corrupts the process state (a driver's AccessViolationException) never gets this far — see P51c.
+                if (ex.IsTerminating) LogShutdown(Core.Diagnostics.ShutdownKind.FatalError);
+            };
+            // Until now a Task nobody awaited could fail without a word in the log (P51c).
+            System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (s, ex) =>
+            {
+                ex.SetObserved();
+                Log("Eroare într-o sarcină de fundal: " + ex.Exception);
+                Guard?.NoteError();
+            };
 
             // before any service: record this start; after repeated crashes, safe mode, then the previous version
             bool safeMode = StartGuarded(Array.IndexOf(e.Args, Core.Flags.FeatureFlags.SafeModeArg) >= 0);
             if (_handedOver) return;
-            SessionEnding += (s, ev) => Guard?.MarkCleanExit(sessionEnding: true);       // Windows shutting down / signing out: not a crash
+            SessionEnding += (s, ev) =>                                                  // Windows shutting down / signing out: not a crash
+            {
+                Guard?.MarkCleanExit(sessionEnding: true);
+                LogShutdown(Core.Diagnostics.ShutdownKind.WindowsShutdown);
+            };
 
             // a start that fails halfway must not leave a process without notch or icon (holding the single-instance
             // lock and later declared healthy): it is logged and ends as a crash, so the guard counts it
@@ -93,8 +118,20 @@ namespace WinNotch
             catch (Exception ex)
             {
                 Log("Pornirea a eșuat: " + ex);
+                LogShutdown(Core.Diagnostics.ShutdownKind.StartupFailed);     // a reason, but still counted as a crash
                 Environment.Exit(1);
             }
+        }
+
+        /// <summary>
+        /// P51c, the shutdown journal: the last line of this run, with a fixed reason, and the same reason in
+        /// startup.json so the next start can name it. Every exit of ours goes through here; a run that ends without it
+        /// is reported as "Închidere anterioară: neexplicată" next time.
+        /// </summary>
+        internal static void LogShutdown(Core.Diagnostics.ShutdownKind kind)
+        {
+            Guard?.MarkReason(kind);
+            Log(Core.Diagnostics.ShutdownJournal.Line(kind));
         }
 
         private void StartApp(bool safeMode)
@@ -157,7 +194,7 @@ namespace WinNotch
             if (outcome == Core.Update.StartupOutcome.HandedOver || outcome == Core.Update.StartupOutcome.Quit)
             {
                 _handedOver = true;
-                Shutdown();
+                Shutdown();                 // the reason was written by StartupCoordinator, which knows which hand-over it was
                 return false;
             }
             return outcome == Core.Update.StartupOutcome.ContinueSafe;
@@ -308,17 +345,23 @@ namespace WinNotch
         /// </summary>
         public void InstallTempHelper(bool remove = false, Action done = null)
         {
+            // A raw thread: an exception here would end the process with nothing on screen, so the whole body is guarded
+            // and Dispatcher.Invoke can throw on its own if the app is already closing (P51c).
             var t = new Thread(() =>
             {
-                bool ok = Services.TempHelper.RunElevated(remove ? Services.TempHelper.UninstallArg : Services.TempHelper.InstallArg);
-                Dispatcher.Invoke(() =>
+                try
                 {
-                    if (!remove && ok) { Settings.Temperatures = true; Settings.Save(); _notch?.ApplySettings(); }
-                    done?.Invoke();
-                    MessageBox.Show(ok ? (remove ? "Serviciul de temperatură a fost dezinstalat." :
-                                                   "Gata. Temperatura procesorului apare în câteva secunde (dacă driverul PawnIO e instalat).")
-                                       : "Nu s-a putut face (ai refuzat confirmarea sau a apărut o eroare; detalii în log).", "WinNotch");
-                });
+                    bool ok = Services.TempHelper.RunElevated(remove ? Services.TempHelper.UninstallArg : Services.TempHelper.InstallArg);
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (!remove && ok) { Settings.Temperatures = true; Settings.Save(); _notch?.ApplySettings(); }
+                        done?.Invoke();
+                        MessageBox.Show(ok ? (remove ? "Serviciul de temperatură a fost dezinstalat." :
+                                                       "Gata. Temperatura procesorului apare în câteva secunde (dacă driverul PawnIO e instalat).")
+                                           : "Nu s-a putut face (ai refuzat confirmarea sau a apărut o eroare; detalii în log).", "WinNotch");
+                    });
+                }
+                catch (Exception ex) { Log("Serviciul de temperatură, instalarea: " + ex.GetType().Name); }
             }) { IsBackground = true };
             t.Start();
         }
@@ -331,7 +374,7 @@ namespace WinNotch
                 Guard?.MarkCleanExit();           // before the new process records its own start
                 ReleaseSingleInstance();
                 Process.Start(psi);
-                ExitApp();
+                ExitApp(Core.Diagnostics.ShutdownKind.RestartAsAdmin);
             }
             catch (Exception ex)
             {
@@ -347,8 +390,10 @@ namespace WinNotch
             try { _single?.ReleaseMutex(); _single?.Dispose(); _single = null; } catch { }
         }
 
-        public void ExitApp()
+        /// <param name="kind">Why we are leaving; it becomes the run's last line in the log (P51c).</param>
+        public void ExitApp(Core.Diagnostics.ShutdownKind kind = Core.Diagnostics.ShutdownKind.UserTray)
         {
+            LogShutdown(kind);                 // before MarkCleanExit: the reason is saved while the state is still ours
             Guard?.MarkCleanExit();
             _healthTimer?.Dispose();
             try { Core.Context.ContextEngine.Current?.Dispose(); } catch { }
@@ -362,6 +407,9 @@ namespace WinNotch
 
         private static readonly object LogLock = new object();
 
+        /// <summary>Where <see cref="Log"/> writes; the notch's "Deschide log-ul" button opens it (P51c).</summary>
+        internal static string LogPath => Path.Combine(AppSettings.Folder, "log.txt");
+
         public static void Log(string msg)
         {
             try
@@ -370,7 +418,7 @@ namespace WinNotch
                 {
                     Directory.CreateDirectory(AppSettings.Folder);
                     using var hold = AppSettings.HoldFolder();
-                    string path = Path.Combine(AppSettings.Folder, "log.txt");
+                    string path = LogPath;
                     if (!AppSettings.SafeToWrite(path)) return;
                     // Too big: empty it in place (never delete, which a junction could redirect to another file).
                     if (File.Exists(path) && new FileInfo(path).Length > 512 * 1024) using (new FileStream(path, FileMode.Truncate)) { }

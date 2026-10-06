@@ -27,6 +27,16 @@ namespace WinNotch.Core.Update
         public List<string> Refused { get; set; } = new List<string>();
         /// <summary>Last automatic rollback (UTC): at most one per <see cref="StartupGuard.RollbackCooldown"/>.</summary>
         public DateTime LastRollback { get; set; }
+        /// <summary>
+        /// Runs of this version that ended without reaching any exit of ours, counted back to back. A clean exit resets
+        /// it. Two in a row are shown to the user and stop the in-process temperature read (P51c).
+        /// </summary>
+        public int UnexplainedInARow { get; set; }
+        /// <summary>
+        /// The reason the last run wrote as it ended (a <see cref="Diagnostics.ShutdownKind"/> name), empty when it
+        /// wrote none. Empty together with <see cref="Running"/> means the run died without reaching any exit of ours.
+        /// </summary>
+        public string LastReason { get; set; } = "";
     }
 
     /// <summary>rollback.json: written by the version that gave up, read once by the one it restored.</summary>
@@ -132,6 +142,7 @@ namespace WinNotch.Core.Update
                 if (s.Refused.Count > 0) _log?.Invoke("Versiuni refuzate pe acest PC (nu mai sunt propuse): " + string.Join(", ", s.Refused) + ".");
 
                 bool previousUnclean = s.Running, previousSafe = s.SafeMode;
+                NameLastClosure(s, previousUnclean);
                 bool recentAutoSafe = previousSafe && s.AutoSafe && (now - s.SafeStartedAt).Duration() <= CrashWindow;
                 bool safeRestart = s.SafeRestartPending && safeModeArg;
                 s.SafeRestartPending = false;
@@ -258,12 +269,64 @@ namespace WinNotch.Core.Update
             {
                 if (_myStart != null || !_begun || _rollbackPending) return;
                 _sessionEndingAt = null;
+                State.LastReason = "";                 // the exit was called off: this run has to end for a reason of its own
                 var now = _now();
                 State.Starts.Add(now);
                 _myStart = now;
                 State.Running = true;
                 State.SafeMode = _safe;
                 _healthyFrom = _lastCheck = now;
+                Save(State);
+            }
+        }
+
+        /// <summary>
+        /// P51c, at startup: says in the log why the previous run ended, and counts the ones that never said.
+        /// A reason written by that run is repeated; its absence, with the run still marked as running, is
+        /// "neexplicată" — the signature of a death that ran no handler (a driver's AccessViolationException, a stack
+        /// overflow, a process killed from outside). Under <c>_lock</c>, before this run is recorded.
+        /// </summary>
+        private void NameLastClosure(StartupState s, bool previousUnclean)
+        {
+            string written = s.LastReason ?? "";
+            s.LastReason = "";                                  // belongs to the run that just ended, not to this one
+            if (!previousUnclean) { s.UnexplainedInARow = 0; return; }
+            if (written.Length > 0 && Enum.TryParse<Diagnostics.ShutdownKind>(written, out var kind)
+                && kind != Diagnostics.ShutdownKind.Unexplained)
+            {
+                s.UnexplainedInARow = 0;
+                _log?.Invoke(Diagnostics.ShutdownJournal.PreviousLine(kind));
+                return;
+            }
+            s.UnexplainedInARow++;
+            _log?.Invoke(Diagnostics.ShutdownJournal.PreviousLine(Diagnostics.ShutdownKind.Unexplained)
+                         + " (a " + s.UnexplainedInARow + "-a la rând)");
+        }
+
+        /// <summary>
+        /// P51c: the run is ending for a known reason. Written before the process goes, so the next start can name it
+        /// instead of calling it unexplained. The caller writes the <c>Închidere: …</c> line itself.
+        /// </summary>
+        public void MarkReason(Diagnostics.ShutdownKind kind)
+        {
+            lock (_lock)
+            {
+                if (!_begun) return;
+                State.LastReason = kind.ToString();
+                Save(State);
+            }
+        }
+
+        /// <summary>Runs of this version that ended without naming a reason, back to back (0 after a clean exit).</summary>
+        public int UnexplainedInARow { get { lock (_lock) return State.UnexplainedInARow; } }
+
+        /// <summary>The user asked for the temperatures again: the count that stopped them starts over.</summary>
+        public void ClearUnexplained()
+        {
+            lock (_lock)
+            {
+                if (State.UnexplainedInARow == 0) return;
+                State.UnexplainedInARow = 0;
                 Save(State);
             }
         }
@@ -335,6 +398,8 @@ namespace WinNotch.Core.Update
             try { s = _store.Load(); } catch (Exception ex) { _log?.Invoke("Pornire: starea nu a putut fi citită: " + ex.GetType().Name); }
             s ??= new StartupState();
             s.Version ??= "";
+            s.LastReason ??= "";
+            if (s.UnexplainedInARow < 0) s.UnexplainedInARow = 0;          // a hand-edited file can't make the count nonsense
             s.Starts ??= new List<DateTime>();
             s.Refused = (s.Refused ?? new List<string>()).Where(r => r != null && AppVersion.TryParse(r, out _)).Distinct().Take(MaxRefused).ToList();
             State = s;

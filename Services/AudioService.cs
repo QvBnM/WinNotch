@@ -42,9 +42,14 @@ namespace WinNotch.Services
             catch { /* no output device right now */ }
         }
 
+        /// <summary>
+        /// Windows calls this from its own audio thread, through COM: an exception escaping into unmanaged code ends the
+        /// process, so a subscriber that throws is logged and the rest goes on (P51c).
+        /// </summary>
         private void OnNotify(AudioVolumeNotificationData d)
         {
-            Changed?.Invoke((int)Math.Round(d.MasterVolume * 100), d.Muted);
+            try { Changed?.Invoke((int)Math.Round(d.MasterVolume * 100), d.Muted); }
+            catch (Exception ex) { App.Log("Volum, anunțul Windows: " + ex.GetType().Name); }
         }
 
         public int Volume

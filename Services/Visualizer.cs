@@ -21,6 +21,8 @@ namespace WinNotch.Services
         private readonly float[] _bands = new float[BandCount];
         private readonly object _lock = new object();
         private int _channels = 2;
+        /// <summary>A reading threw: stop looking at this capture (set on NAudio's thread, read there too).</summary>
+        private volatile bool _failed;
 
         public bool Running => _cap != null;
 
@@ -29,10 +31,12 @@ namespace WinNotch.Services
             if (_cap != null) return;
             try
             {
+                _failed = false;
                 _cap = new WasapiLoopbackCapture();
                 _channels = _cap.WaveFormat.Channels;
                 _cap.DataAvailable += OnData;
-                _cap.RecordingStopped += (s, e) => { };
+                // NAudio reports a capture that died (the output device was removed) here, and nowhere else
+                _cap.RecordingStopped += (s, e) => { if (e?.Exception != null) App.Log("Vizualizator oprit: " + e.Exception.GetType().Name); };
                 _cap.StartRecording();
             }
             catch (Exception ex)
@@ -51,17 +55,33 @@ namespace WinNotch.Services
             lock (_lock) Array.Clear(_bands, 0, _bands.Length);
         }
 
+        /// <summary>
+        /// NAudio raises this on its own capture thread: an exception escaping here ends the process with nothing on
+        /// screen, so the whole body is guarded and the capture is given up instead (P51c).
+        /// </summary>
         private void OnData(object sender, WaveInEventArgs e)
         {
-            // Loopback delivers 32-bit float samples, interleaved by channel.
-            int frames = e.BytesRecorded / 4 / _channels;
-            for (int f = 0; f < frames; f++)
+            try
             {
-                float sum = 0;
-                for (int ch = 0; ch < _channels; ch++) sum += BitConverter.ToSingle(e.Buffer, (f * _channels + ch) * 4);
-                _ring[_ringPos] = sum / _channels;
-                _ringPos = (_ringPos + 1) % FftSize;
-                if (_ringPos == 0) Analyze();
+                int channels = _channels;
+                if (_failed || channels <= 0) return;       // a device that reports no channels would divide by zero
+                // Loopback delivers 32-bit float samples, interleaved by channel.
+                int frames = Math.Min(e.BytesRecorded, e.Buffer.Length) / 4 / channels;
+                for (int f = 0; f < frames; f++)
+                {
+                    float sum = 0;
+                    for (int ch = 0; ch < channels; ch++) sum += BitConverter.ToSingle(e.Buffer, (f * channels + ch) * 4);
+                    _ring[_ringPos] = sum / channels;
+                    _ringPos = (_ringPos + 1) % FftSize;
+                    if (_ringPos == 0) Analyze();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Not Stop() from NAudio's own capture thread (StopRecording would wait on it): the next callbacks just
+                // return, and the bars stay where they are until the panel closes.
+                _failed = true;
+                App.Log("Vizualizator, citirea sunetului: " + ex.GetType().Name);
             }
         }
 

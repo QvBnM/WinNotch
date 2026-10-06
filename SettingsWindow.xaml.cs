@@ -367,6 +367,8 @@ namespace WinNotch
             _s.SlimOverMaximized = SlimBox.IsChecked == true;
             _s.UiScale = TryNum(TagOf(ScaleBox), out double sc) ? sc : 0;
             _s.CommandBarKey = TagOf(CmdKeyBox) ?? Features.CommandBar.CommandBarHotkeys.SpaceSetting;
+            // P51c: asking for temperatures again clears the abrupt-closure count that switched the in-process read off
+            if (TempsBox.IsChecked == true && !_s.Temperatures) App.Guard?.ClearUnexplained();
             _s.Temperatures = TempsBox.IsChecked == true;
             _s.Accent = _accent;
             _s.City = string.IsNullOrWhiteSpace(CityBox.Text) ? "Orașul meu" : CityBox.Text.Trim();

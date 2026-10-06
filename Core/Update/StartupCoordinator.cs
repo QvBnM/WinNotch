@@ -58,13 +58,22 @@ namespace WinNotch.Core.Update
                     host.ReleaseMutex();
                     if (!host.Start(host.ExePath, null))
                         host.Log("Revenire: versiunea anterioară nu a pornit; pornește WinNotch din nou.");
+                    Ending(guard, host, Diagnostics.ShutdownKind.Rollback);
                     return StartupOutcome.HandedOver;
 
                 case StartupAction.RestartInSafeMode:
                     host.ReleaseMutex();
-                    if (host.Start(host.ExePath, safeModeArgText)) return StartupOutcome.HandedOver;
+                    if (host.Start(host.ExePath, safeModeArgText))
+                    {
+                        Ending(guard, host, Diagnostics.ShutdownKind.SafeRestart);
+                        return StartupOutcome.HandedOver;
+                    }
                     host.Log("Repornirea în modul sigur nu a reușit; continui în modul sigur.");
-                    if (!host.TakeMutex()) return StartupOutcome.Quit;
+                    if (!host.TakeMutex())
+                    {
+                        Ending(guard, host, Diagnostics.ShutdownKind.SecondInstance);
+                        return StartupOutcome.Quit;
+                    }
                     guard.ContinueInSafeMode();
                     return StartupOutcome.ContinueSafe;
 
@@ -74,6 +83,17 @@ namespace WinNotch.Core.Update
                 default:
                     return StartupOutcome.Continue;
             }
+        }
+
+        /// <summary>
+        /// P51c: this process is handing over and will quit. The reason goes to the log for the user and into
+        /// startup.json, so the next start names it instead of counting an unexplained closure. Here and not in
+        /// App.xaml.cs because only this method knows which of the two hand-overs happened.
+        /// </summary>
+        private static void Ending(StartupGuard guard, IStartupHost host, Diagnostics.ShutdownKind kind)
+        {
+            guard.MarkReason(kind);
+            host.Log(Diagnostics.ShutdownJournal.Line(kind));
         }
     }
 }

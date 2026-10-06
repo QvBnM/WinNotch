@@ -363,17 +363,25 @@ namespace WinNotch.Core.Activity
             _timer = null;
         }
 
+        /// <summary>
+        /// Runs on a thread-pool timer thread: an exception escaping here ends the process, because a timer callback has
+        /// nobody above it to catch anything (P51c). The alert that was on screen is given up, the queue goes on.
+        /// </summary>
         private void Expire(long gen)
         {
-            lock (_lock)
+            try
             {
-                if (gen != _timerGen) return;                  // replaced or dismissed meanwhile
-                _timer?.Dispose();
-                _timer = null;
-                if (_current?.IsGroup == true) _burst.Clear();  // the summary is over: its alerts are not counted again
-                _current = null;
-                Advance(_clock.UtcNow);
+                lock (_lock)
+                {
+                    if (gen != _timerGen) return;                  // replaced or dismissed meanwhile
+                    _timer?.Dispose();
+                    _timer = null;
+                    if (_current?.IsGroup == true) _burst.Clear();  // the summary is over: its alerts are not counted again
+                    _current = null;
+                    Advance(_clock.UtcNow);
+                }
             }
+            catch (Exception ex) { Flags.FeatureFlags.Current?.ReportError(FeatureId, ex); }
             Notify();
         }
 
