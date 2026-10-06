@@ -16,6 +16,10 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.16
+
+- „Quick Actions” (butoane după ce faci, sub pastilă) și „Smart Clipboard” (butoane pentru ce ai copiat, în widget-ul Clipboard) în Setări › Funcții noi (experimentale, oprite implicit).
+
 ## Noutăți în 0.6.15
 
 - „Command Bar” (Win+Alt+Space) și „Pagina după context” în Setări › Funcții noi (experimentale, oprite implicit).

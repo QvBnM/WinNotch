@@ -41,3 +41,13 @@
 - **CI:** run 29 și run 30 verzi din prima; fumul Quick Actions pe ambele drumuri (oprit: fără sugestii; pornit: o sugestie, a doua amânată, „Nu mai arăta”).
 - **Teste:** 532 C# (42 noi, QA1–QA39) + 23 extensie + fum 17 / 17 (+1 SKIP).
 - **Abateri:** stick-ul are un singur buton (Scoate cere confirmare, deci exclus); economisirea bateriei deschide pagina din Windows (fără API documentat); ramura de lucru e `claude/mod-pilot-automat-rularea-4-lneluy` (cea a sesiunii), unită local în `main` cu `--no-ff`.
+
+### P21 Smart Clipboard
+- **Făcut:** `Features/SmartClipboard` (recunoaștere pură fără regex, max. 64 KB: JSON → JWT → URL → e-mail → culoare → IP → cale → telefon), chip-uri pentru ultimul text copiat în widget-ul Clipboard, 10 acțiuni `clipboard.*` Safe (formatează/compactează JSON, decodează JWT local fără semnătură, curăță link-ul doar de parametri de urmărire cunoscuți, restul octet cu octet), peek la copiere cu setare separată, oprită implicit, doar prin ActivityManager; verificarea parolelor mutată neschimbată în `ClipboardPrivacy.IsPrivate` (pură, testată); în log doar contoare; comutatorul „smart-clipboard” Experimental, oprit; ADR 0010.
+- **Revizia R1:** aprobat, 0 Critic/Major/Mediu, 6 Minore, toate reparate în 180d67b (liste JSON mici și „::” nu mai sunt recunoscute, link fără browser → mesaj fix, folderul deschis cu „\” la final, o singură memorie a recunoașterii, pagina de fum scoasă curat).
+- **CI:** run 32 și run 33 verzi din prima; fumul Smart Clipboard o singură dată (rularea cu activity-manager oprit; cealaltă scrie SKIP): JSON copiat → chip „Formatează” → JSON indentat în clipboard, marcajul de conținut absent din log.
+- **Teste:** 577 C# (45 noi, SC1–SC45) + 23 extensie + fum 18 / 17 (+2 SKIP).
+- **Abateri:** chip-uri doar pentru ultimul text copiat; parametrii de urmărire comparați exact cu litere mici (`UTM_SOURCE` rămâne); „#123” nu e culoare; JWT-ul decodat se copiază, nu se afișează.
+
+### Publicare
+- 0.6.16 (P20 + P21), un singur push pe `main`; release.yml și verificarea exe + .sig mai jos.
