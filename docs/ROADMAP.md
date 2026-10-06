@@ -32,7 +32,7 @@ au acum sensul din plan. Fiecare sarcină se face într-o rulare de pilot automa
 | ID | Sarcină | Comutator | Stare |
 |---|---|---|---|
 | P27 | Pagina după context: în Setări, categoria de context (Dev, Browser, Meeting, Game, Media, Office, Creator) → pagină sau „—”; la deschidere notch-ul citește doar snapshot-ul motorului de context; alegerea manuală respectată 10 minute; paginile ascunse / șterse sărite; test de fum o dată (cu activity-manager oprit), cu contextul pus în motor (ADR 0008) | `context-pages` (Experimental, oprit) | Gata |
-| P20 | Quick Actions: 2–4 acțiuni sub pastilă, la hover, după context; reguli într-un tabel; cel mult o sugestie la 10 minute | `quick-actions` | De făcut |
+| P20 | Quick Actions: 2–4 acțiuni sigure sub conținutul notch-ului, la deschidere, după snapshot-ul motorului de context (întâlnire + căști → microfon / volum 40%; media → pauză / următoarea; stick → deschide; baterie sub 20% → economisire); reguli într-un tabel de date; doar acțiuni Safe și disponibile din registru; cu Activity Manager pornit, cel mult o sugestie (peek Low) la 10 minute, cu „Nu mai arăta” per regulă; test de fum pe ambele căi (ADR 0009) | `quick-actions` (Experimental, oprit) | Gata |
 | P21 | Smart Clipboard: URL, JSON, culoare hex, email, IP, cale, JWT, telefon → chip-uri în widget-ul Clipboard | `smart-clipboard` | De făcut |
 | P23 | Raft drag & drop: spike click-through; referințe (max. 20); copiază calea, folder, zip, OCR, PNG/JPG | `shelf` | De făcut |
 | P30 | Căști/boxe: lista ieșirilor audio și acțiuni `audio.output.<dispozitiv>` (IPolicyConfig) | `audio-switch` | De făcut |
