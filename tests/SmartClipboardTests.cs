@@ -481,7 +481,7 @@ namespace WinNotch
                   Norm(NoComments(smoke0)).Contains("case SmokeCommandKind.ClipboardPage: SmokeClipboardPage(c.Argument == \"on\"); break;") &&
                   page.StartsWith("{ if (!SmokeMode.On) return;", StringComparison.Ordinal) && page.Contains("Widgets.Catalog.NewSlot(\"clipboard\", (3, 2))") &&
                   page.Contains("S.Pages.Add(page);") && page.Contains("S.Pages.Remove(page);") && page.Contains("ShowPane(UserPane(page));"));
-            string sp = Src("tests/WinNotch.Smoke/SmokeProgram.cs");
+            string sp = SmokeSrc("SmokeClipboard.cs");
             string body = MethodBody(sp, "private static void SmartClipboard()") ?? "";
             Check("SC44", "Testul de fum P21 rulează o singură dată (doar cu activity-manager oprit) și o spune; JSON copiat, oprit → niciun chip, pornit → „Formatează”, click, JSON formatat echivalent în clipboard, „Compactează” după, nimic în log; repune starea",
                   sp.Contains("if (!_activityOn) Run(step = \"Smart Clipboard") && sp.Contains("SKIP  Smart Clipboard") &&

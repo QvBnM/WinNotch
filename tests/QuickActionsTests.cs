@@ -423,7 +423,7 @@ namespace WinNotch
                   hover.Contains("if (!_qaOn || !QuickActionsEnabled() || Editing) return;") && hover.Contains("ContextEngine.Current?.Snapshot ?? ContextSnapshot.Empty") &&
                   hover.Contains("QuickActionRules.ForHover(true, snapshot, new RegistryQuickActionCatalog(reg, FeatureFlags.Current))") &&
                   partN.Contains("if (_activityOn && rule.Suggest && !(S.QuickActionsHidden?.Contains(rule.Id) ?? false))"));
-            string smokeProgram = Src("tests/WinNotch.Smoke/SmokeProgram.cs");
+            string smokeProgram = SmokeSrc("SmokeContext.cs");
             Check("QA36", "Testul de fum P20 rulează pe ambele căi (activity-manager oprit și pornit): oprit → niciun buton; pornit → butoanele, click prin registru (de două ori), sugestia doar cu Activity Manager; repune starea",
                   Regex.IsMatch(smokeProgram, @"\n\s*Run\(step = _activityOn\s*\?\s*""Quick Actions") && smokeProgram.Contains("QuickActions);") &&
                   smokeProgram.Contains("FakeMeeting(\"headphones\");") && smokeProgram.Contains("FakeMeeting(\"none\");") &&

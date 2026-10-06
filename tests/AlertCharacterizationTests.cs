@@ -26,6 +26,17 @@ namespace WinNotch
         static readonly Dictionary<string, string> SrcCache = new Dictionary<string, string>();
         static string Src(string rel) => SrcCache.TryGetValue(rel, out var s) ? s : SrcCache[rel] = File.ReadAllText(Path.Combine(RepoRoot(), rel.Replace('/', Path.DirectorySeparatorChar)));
 
+        /// <summary>
+        /// The smoke test's sources (tests/WinNotch.Smoke, split by area): SmokeProgram.cs (Main, the order of the checks, the
+        /// shared helpers) plus the given area files, e.g. "SmokeContext.cs". A file not compiled by WinNotch.Smoke.csproj counts as empty.
+        /// </summary>
+        static string SmokeSrc(params string[] areas)
+        {
+            string proj = Src("tests/WinNotch.Smoke/WinNotch.Smoke.csproj");
+            return string.Join("\n", new[] { "SmokeProgram.cs" }.Concat(areas)
+                .Select(f => proj.Contains("<Compile Include=\"" + f + "\" />") ? Src("tests/WinNotch.Smoke/" + f) : ""));
+        }
+
         /// <summary>Whitespace runs → one space (indentation and line breaks don't matter).</summary>
         static string Norm(string s) => Regex.Replace(s ?? "", @"\s+", " ").Trim();
 
