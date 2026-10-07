@@ -119,8 +119,9 @@
   (anti-buclă: altfel ar reapărea la următorul tick și ar întrerupe chiar acțiunea). Legătura e în
   `Features/AlertInterrupt/NotchWindow.AlertInterrupt.cs`: tragerea e recunoscută cu **detectorul raftului**
   (`ShelfDragHover`, P23 — niciun sistem nou), hrănit la fiecare tur al `PollTick`-ului existent, iar alerta se încheie
-  prin `EndLive()` (rutina existentă, fără animație de ieșire). Patru legături de un rând: `PollTick`, `ToggleByHotkey`,
-  `OnCommandBarShortcut`, `EndLive`, plus poarta anti-buclă din `Alert`.
+  prin `EndLive()` (rutina existentă, fără animație de ieșire). Trei legături de un rând: `PollTick`, `ToggleByHotkey`,
+  `OnCommandBarShortcut`, plus poarta anti-buclă din `Alert`; `EndLive` rămâne neatins (pinul AC4 îl ține literal), iar
+  „alerta s-a terminat” se vede din `PollTick` (`_mode != Mode.Live`).
 - **Comutator:** `alert-interrupt` (Beta, pornit implicit, oprit în `--safe-mode`); oprit = o alertă ține pastila până la
   capătul duratei ei, ca înainte.
 - **Teste:** 18 noi (IR1–IR18) în `tests/InterruptTests.cs`, inclusiv cazul raportat (tragere peste o alertă cu butoane),

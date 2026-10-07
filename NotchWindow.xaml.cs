@@ -893,7 +893,6 @@ namespace WinNotch
 
         private void EndLive()
         {
-            AlertInterruptEnded();          // P51b hook (Features/AlertInterrupt)
             _liveTimer.Stop();
             EndLiveInteractive();
             if (_mode != Mode.Live) return;

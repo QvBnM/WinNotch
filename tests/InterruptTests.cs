@@ -97,10 +97,11 @@ namespace WinNotch
                    cmd = Src("Features/CommandBar/NotchWindow.CommandBar.cs"),
                    part = Src("Features/AlertInterrupt/NotchWindow.AlertInterrupt.cs");
 
-            Check("IR15", "Legăturile: PollTick (tragerea), scurtătura, Command Bar-ul, Alert (anti-bucla), EndLive",
+            Check("IR15", "Legăturile sunt câte un rând: PollTick (tragerea), scurtătura, Command Bar-ul, poarta anti-buclă din Alert; EndLive rămâne neatins (pinul AC4)",
                   notch.Contains("AlertInterruptPoll(Inside(r, p, 4));") &&
                   notch.Contains("AlertInterrupt(Core.Ui.UserIntent.Shortcut);") &&
-                  notch.Contains("AlertInterruptEnded();") &&
+                  !notch.Contains("AlertInterruptEnded") &&
+                  part.Contains("if (_mode != Mode.Live) _aiCurrentId = null;") &&
                   act.Contains("if (!AlertInterruptAllows(id)) return false;") &&
                   cmd.Contains("AlertInterrupt(Core.Ui.UserIntent.CommandBar);"));
 

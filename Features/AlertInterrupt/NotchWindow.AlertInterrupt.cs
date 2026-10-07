@@ -34,9 +34,6 @@ namespace WinNotch
             return true;
         }
 
-        /// <summary>Hook in EndLive: nothing is on the pill any more.</summary>
-        private void AlertInterruptEnded() => _aiCurrentId = null;
-
         /// <summary>
         /// Hook in PollTick while an alert is on the pill: a drag carried onto the pill ends it immediately, so the
         /// notch can open as a drop target (the shelf). Hover is left to the usual dwell, which the rules allow only
@@ -44,6 +41,8 @@ namespace WinNotch
         /// </summary>
         private void AlertInterruptPoll(bool inside)
         {
+            // No alert on the pill any more: forget which one it was (EndLive itself stays untouched).
+            if (_mode != Mode.Live) _aiCurrentId = null;
             if (!AlertInterruptOn) { _aiDrag.Reset(); return; }
             // Fed on every tick, not only during an alert: a drag that started before the alert appeared is still
             // recognized as carried in from outside.
