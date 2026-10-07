@@ -75,7 +75,7 @@
         Unlike IconButton it has NO fixed size — it takes the width it is given and the height its content needs — and it
         is focusable, so Tab walks the sidebar and the focus is visible, as the 0.7 brief asks.
     -->
-    <Style x:Key="RowButton" TargetType="Button">
+    <Style x:Key="NavButton" TargetType="Button">
         <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Cursor" Value="Hand"/>

@@ -173,8 +173,8 @@ namespace WinNotch.Features.WindowV2
 
         private Button HeaderTab(string id, string title, string glyph)
         {
-            // RowButton, not IconButton: that one forces 30x30, which cut "Acasă" down to "Ac" and ate the other tabs.
-            var btn = new Button { Style = Ui.S("RowButton"), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand };
+            // NavButton, not IconButton: that one forces 30x30, which cut "Acasă" down to "Ac" and ate the other tabs.
+            var btn = new Button { Style = Ui.S("NavButton"), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand };
             var content = Ui.H(6, Ui.Icon(glyph, 12, Ui.B(_category == id ? "InkBrush" : "MutedBrush")),
                                Ui.T(title, 12.5, _category == id ? "InkBrush" : "MutedBrush", _category == id));
             content.VerticalAlignment = VerticalAlignment.Center;
@@ -216,8 +216,8 @@ namespace WinNotch.Features.WindowV2
             // A Button, not a Border: it takes the focus with Tab and answers Enter and Space, as the brief asks.
             var host = new Button
             {
-                // RowButton: IconButton's fixed 30x30 left every sidebar entry as an icon and "…"
-                Style = Ui.S("RowButton"), Content = row, Padding = new Thickness(4, 7, 8, 7),
+                // NavButton: IconButton's fixed 30x30 left every sidebar entry as an icon and "…"
+                Style = Ui.S("NavButton"), Content = row, Padding = new Thickness(4, 7, 8, 7),
                 Cursor = Cursors.Hand, Margin = new Thickness(0, 2, 0, 2),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
             };
