@@ -107,6 +107,30 @@ namespace WinNotch
                   win.Contains("_hint.Text = msg") && win.Contains("if (!IsVisible || WindowState == WindowState.Minimized) return;") &&
                   win.Contains("StateChanged +="));
 
+            // Reparație (0.6.20 testat de autor): filele arătau „Ac”, „Si”, iar bara laterală doar iconițe și „…”.
+            // IconButton impune Width=30 / Height=30 și Focusable=False, deci orice buton cu text era tăiat la 30 px.
+            string theme = Src("Theme.xaml");
+            Check("WV20", "Butoanele cu text (file, bara laterală) nu folosesc stilul de iconiță, care are 30×30 fix",
+                  !win.Contains("Ui.S(\"IconButton\")") && Count(Norm(win), "Ui.S(\"RowButton\")") == 2,
+                  Count(Norm(win), "Ui.S(\"RowButton\")") + " butoane-rând");
+
+            int rbStart = theme.IndexOf("x:Key=\"RowButton\"", StringComparison.Ordinal);
+            int rbEnd = rbStart < 0 ? -1 : theme.IndexOf("</Style>", rbStart, StringComparison.Ordinal);
+            string rowButton = rbStart < 0 || rbEnd < 0 ? "" : Norm(theme.Substring(rbStart, rbEnd - rbStart));
+            Check("WV21", "Stilul „RowButton” nu fixează mărimea, e focusabil și arată focusul cu contur în AccentBrush",
+                  rowButton.Length > 0 &&
+                  !rowButton.Contains("Property=\"Width\"", StringComparison.Ordinal) &&
+                  !rowButton.Contains("Property=\"Height\"", StringComparison.Ordinal) &&
+                  rowButton.Contains("<Setter Property=\"Focusable\" Value=\"True\"/>", StringComparison.Ordinal) &&
+                  rowButton.Contains("<Trigger Property=\"IsKeyboardFocused\" Value=\"True\">", StringComparison.Ordinal) &&
+                  rowButton.Contains("{DynamicResource AccentBrush}", StringComparison.Ordinal),
+                  rowButton.Length == 0 ? "stilul lipsește din Theme.xaml" : "");
+
+            Check("WV22", "Coloana din dreapta are spațiu la margini și cei 300 px includ marginile, ca lățimea centrului să rămână corectă",
+                  win.Contains("Width = LayoutRules.RightWidth,") &&
+                  win.Contains("Padding = new Thickness(LayoutRules.Gap, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad)") &&
+                  !win.Contains("new StackPanel { Width = LayoutRules.RightWidth }"));
+
             Check("WV15", "Nimic „în curând”: cardurile vin din acțiunile înregistrate, nu dintr-o listă scrisă de mână",
                   win.Contains("reg.All.Where(") && !win.Contains("în curând") && !win.Contains("Focus Mode") &&
                   !win.Contains("Window Wizard") && !win.Contains("Dev Tools"));
