@@ -105,3 +105,28 @@
 - **Publicare:** 0.6.19 (versiunea, `RELEASE_NOTES.md`, istoricul din `DOCUMENTATIE.md` și „Noutăți” din `README.md`);
   release-ul îl face GitHub Actions la push-ul pe `main`.
 
+
+
+## P50 — Notch ancorat de ramă (brief UI 0.7, 7 oct 2026)
+
+- **Cerut:** „WinNotch nu e o fereastră care plutește peste Windows, e o prelungire a ramei monitorului”.
+- **Făcut:** `Features/NotchAnchored/AnchoredGeometry.cs` (pur, fără WPF): conturul (ureche concavă → latura → colț de jos
+  convex → baza → colț de jos convex → latura → ureche concavă, închis pe marginea de sus), raza (`Clamp(setare, 12, 28)`),
+  urechea (`Clamp(R*0,75, 10, 22)`, redusă când pastila plus urechile n-ar încăpea în fereastra de 820), opacitatea minimă
+  0,92, lățimea în standby 240–520 și constantele umbrei. `Features/NotchAnchored/NotchWindow.Anchored.cs` desenează:
+  pastila primește `CornerRadius(0, 0, R, R)`, `Inner.Clip` e un `StreamGeometry` înghețat cu aceeași formă, iar
+  racordările sunt un `Path` în grila ferestrei, în spatele pastilei, care împarte cu ea deplasarea (`PillShift`) și
+  opacitatea, nu primește mouse-ul și se reconstruiește la schimbarea mărimii (nu per cadru).
+- **Legături în fișierele vechi (patru rânduri):** `ApplyMode` (marginea 0, raza, lățimea în standby), `ApplyRadius` și
+  `UpdateClip` (forma nouă), plus pornirea/oprirea; `Themes.cs` citește opacitatea prin regula pură.
+- **Comutator:** `notch-anchored` (Experimental, **oprit implicit**, până la versiunea care îl anunță); oprit = pastila
+  plutitoare de azi, bit cu bit.
+- **Teste:** 15 noi (NA1–NA15) în `tests/NotchAnchoredTests.cs`: punctele conturului pentru 300×34 și 720×360, figura
+  închisă, urechea redusă, limitele razei, opacitatea, lățimea, umbra, comutatorul, pinurile pe legături și faptul că
+  racordările nu intră în zona de hover. `dotnet` lipsește în container: rularea e în CI.
+- **Abateri:** pastila rămâne un `Border` (cu colțuri doar jos) plus un `Path` pentru racordări, în loc să devină un
+  singur `Path` ca în brief: aceeași siluetă, dar fără să rescriem `NotchWindow.xaml` și fără să atingem straturile
+  dinăuntru (regula „fișierele mari se ating minim”). Geometria pură e scrisă oricum punct cu punct și testată, ca să poată
+  fi folosită la P52 (antetul ferestrei).
+- **Stare:** ramura `p50-notch-anchored`, pornită din `main`, fără merge și fără versiune nouă până la testarea pe Windows
+  (verificările P50.1–P50.11).

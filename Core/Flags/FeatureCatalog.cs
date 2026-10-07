@@ -51,6 +51,8 @@ namespace WinNotch.Core.Flags
         public const string AudioSwitch = "audio-switch";
         /// <summary>Features/NotchGuard: same id as NotchGuardInfo.FeatureId (the tests check they match).</summary>
         public const string NotchGuard = "notch-guard";
+        /// <summary>Features/NotchAnchored: same id as AnchoredGeometry.FeatureId (the tests check they match).</summary>
+        public const string NotchAnchored = "notch-anchored";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -83,6 +85,9 @@ namespace WinNotch.Core.Flags
             // B1 (0.6.18): a repair, announced with it, so Stable and on (also in --safe-mode); off = no checks, nothing repaired
             new FeatureInfo(NotchGuard, "Plasa de siguranță a notch-ului", "Dacă notch-ul se deschide gol sau pastila rămâne fără conținut, îl reface singur (pagina curentă, apoi Acasă) și scrie în log un rând „B1 recover”.",
                             FeatureStage.Stable, true),
+            // P50: off by default until it is announced; off = the floating pill exactly as before (margin 8, full corners)
+            new FeatureInfo(NotchAnchored, "Notch lipit de ramă", "Notch-ul crește din marginea de sus: lipit de ea, rotunjit doar jos, cu racordări în stânga și dreapta, ca o prelungire a ramei monitorului.",
+                            FeatureStage.Experimental, false),
         };
 
         public static FeatureInfo Find(string id) => All.FirstOrDefault(f => string.Equals(f.Id, id, StringComparison.Ordinal));

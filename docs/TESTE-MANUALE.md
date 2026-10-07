@@ -276,3 +276,21 @@ Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai 
 | P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
 | P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
 | P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 17 PASS în ambele (din P20; 16 din P27; 15 / 16 din P14; 12 / 13 în 0.6.14). |
+
+### P50 — Notch ancorat de ramă
+
+Comutatorul „Notch lipit de ramă” (`notch-anchored`) e **oprit implicit**: pornește-l din Setări → funcții noi.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P50.1 | Atinge marginea | Pornește comutatorul și privește notch-ul în standby. | Pastila atinge marginea de sus a ecranului (fără spațiul de 8 px de azi), e dreaptă sus și rotunjită jos. |
+| P50.2 | Racordările | Privește colțurile de sus, stânga și dreapta. | Se văd două racordări concave care leagă pastila de marginea ecranului; aceeași culoare, fără linie între ele și pastilă. |
+| P50.3 | Deschidere | Treci cu mouse-ul peste pastilă și lasă notch-ul să se deschidă, apoi închide-l. | Crește și scade de sus în jos, lipit de margine; racordările se văd tot timpul, fără „scânteieri”. |
+| P50.4 | Alertă | Așteaptă o alertă (volum, piesă nouă). | Aceeași formă, lipită de margine. |
+| P50.5 | Fundal deschis | Pune un fundal alb (sau o pagină albă pe tot ecranul) sub notch. | Marginea de sus nu lasă o linie de 1 px; fundalul notch-ului e aproape opac, chiar dacă în Setări ai pus opacitate mică. |
+| P50.6 | Hover din colțuri | Plimbă mouse-ul exact peste racordări, fără să intri pe pastilă. | Notch-ul **nu** se deschide. |
+| P50.7 | Lățimea în standby | Schimbă ce apare în standby (Setări → ce apare în standby): pune un singur element, apoi multe. | Pastila rămâne între 240 și 520 de pixeli; nu devine nici minusculă, nici foarte lată. |
+| P50.8 | Forma mică | Lasă notch-ul să treacă în forma mică (după inactivitate) sau pune-l peste o fereastră maximizată. | Forma mică arată ca înainte (lățimea ei, „ora · data”). |
+| P50.9 | Scalare și monitoare | Repetă P50.1 și P50.2 pe fiecare monitor și la 100 %, 125 % și 150 % scalare Windows. | Lipit de margine și racordat corect la fiecare. |
+| P50.10 | Raza din Setări | Setări → mărimea/raza colțurilor: pune minimul și maximul. | Raza de jos se schimbă între 12 și 28; sus rămâne drept. |
+| P50.11 | Comutatorul oprit | Oprește comutatorul. | Pastila plutitoare de azi: margine de 8 px, colțuri complete, umbra de azi, lățimea de azi. |

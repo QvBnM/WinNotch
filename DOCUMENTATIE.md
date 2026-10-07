@@ -470,6 +470,12 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   - Dacă acel monitor e „ocupat” (joc sau video pe tot ecranul, inclusiv borderless), trece pe un monitor liber sau se ascunde. Setarea „Peste jocuri / fullscreen” alege între „se ascunde, apare doar pentru alerte” și „rămâne mereu vizibil”.
 - **Ferestre maximizate.** Peste o fereastră maximizată se face mic (opțional) și **se dă la o parte**: cât timp mouse-ul e peste el, dispare complet și click-ul ajunge la fereastra de dedesubt (de exemplu butonul „+” tab nou din browser). Se deschide doar dacă împingi mouse-ul de tot sus, în marginea ecranului.
 - **Click prin notch.** Dacă dai click cât mouse-ul stă pe pastilă, click-ul era pentru fereastra de sub ea: notch-ul nu se mai deschide până nu ieși cu mouse-ul de pe el.
+- **Notch lipit de ramă (P50, comutatorul „Notch lipit de ramă”, oprit implicit).** Cu el pornit, notch-ul nu mai plutește:
+  atinge marginea de sus a ecranului, e rotunjit doar jos (raza din Setări, între 12 și 28) și are câte o racordare concavă în
+  stânga și în dreapta sus, ca o prelungire a ramei monitorului. Fundalul devine aproape opac (minimum 92 %, oricât ai pus în
+  Setări), umbra cade doar în jos, iar la deschidere crește de sus în jos, fără saltul de câțiva pixeli de azi. În standby,
+  lățimea e ținută între 240 și 520 de pixeli („vizibil, dar nu încurcă”); forma mică rămâne neschimbată. Racordările nu
+  primesc mouse-ul: notch-ul se deschide doar de pe pastilă, ca până acum. Oprit, totul arată exact ca înainte.
 - **Poziție.** Stânga, centru sau dreapta, pe lățimea monitorului.
 - **Mărire pe ecrane mari.** Notch-ul deschis și alertele se măresc automat: 120% pe 1440p, 135% pe 4K, 110% pe ecrane intermediare, când Windows e la scalare 100%. Manual, se alege din Setări între 100% și 160%. Pastila mică nu se mărește.
 - **Text.** Randat clar, cu contrast îmbunătățit și minimum 11 px.

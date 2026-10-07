@@ -338,6 +338,7 @@ namespace WinNotch
             ShelfTests();
             AudioSwitchTests();
             NotchGuardTests();
+            NotchAnchoredTests();
 
             Console.WriteLine(string.Join("\n", lines));
             Console.WriteLine($"\nTOTAL {pass + fail}: {pass} PASS, {fail} FAIL");
