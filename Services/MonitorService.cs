@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using WinNotch.Core.Flags;
+using WinNotch.Features.Fullscreen;
 
 namespace WinNotch.Services
 {
@@ -24,15 +26,6 @@ namespace WinNotch.Services
     /// </summary>
     public static class MonitorService
     {
-        private static readonly HashSet<string> IgnoredClasses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "Progman", "WorkerW", "Shell_TrayWnd", "Shell_SecondaryTrayWnd", "NotifyIconOverflowWindow",
-            "XamlExplorerHostIslandWindow", "TopLevelWindowForOverflowXamlIsland", "Windows.UI.Core.CoreWindow",
-            "ForegroundStaging", "MultitaskingViewFrame", "TaskListThumbnailWnd", "CEF-OSC-WIDGET",
-            "Windows.UI.Composition.DesktopWindowContentBridge", "ThumbnailDeviceHelperWnd", "EdgeUiInputTopWndClass",
-            "ApplicationManager_ImmersiveShellWindow", "Internet Explorer_Hidden", "IME", "MSCTFIME UI"
-        };
-
         public static List<MonitorState> Scan(IntPtr self)
         {
             var monitors = new List<MonitorState>();
@@ -45,43 +38,37 @@ namespace WinNotch.Services
             }, IntPtr.Zero);
 
             var decided = new HashSet<IntPtr>();
+            // P53: the switch decides how "busy" is read; off = the old rule (covers the monitor and not IsZoomed).
+            bool strict = FeatureFlags.Current?.IsEnabled(FullscreenRules.FeatureId) ?? true;
             Native.EnumWindows((h, l) =>
             {
                 if (decided.Count >= monitors.Count) return false;
                 if (h == self || !Native.IsWindowVisible(h) || Native.IsIconic(h)) return true;
-
                 long ex = Native.GetExStyle(h);
                 if ((ex & Native.WS_EX_TOOLWINDOW) != 0 || (ex & Native.WS_EX_TRANSPARENT) != 0 || (ex & Native.WS_EX_NOACTIVATE) != 0) return true;
-                if (Native.GetWindowTextLength(h) == 0) return true;          // overlays and helper windows have no title
-                if (Native.IsCloaked(h)) return true;
+                if (!Native.GetWindowRect(h, out var wr)) return true;
+                var box = Rect(wr);
                 string cls = Native.ClassName(h);
-                if (IgnoredClasses.Contains(cls)) return true;
-                if (!Native.GetWindowRect(h, out var wr) || wr.Width <= 0 || wr.Height <= 0) return true;
+                if (FullscreenRules.Ignored(cls, h == self, Native.GetWindowTextLength(h) > 0, false, box)) return true;
+                if (Native.IsCloaked(h)) return true;              // after the cheap filters: this one asks DWM
 
                 IntPtr mh = Native.MonitorFromWindow(h, Native.MONITOR_DEFAULTTONEAREST);
                 var mon = monitors.FirstOrDefault(m => m.Handle == mh);
                 if (mon == null || decided.Contains(mh)) return true;
 
-                var b = mon.Bounds;
-                var w = mon.Work;
-                bool covers = wr.Left <= b.Left && wr.Top <= b.Top && wr.Right >= b.Right && wr.Bottom >= b.Bottom;
-                // Real maximize, or an app that sizes itself to fill the work area (custom title bars, "fake" maximize).
-                const int tol = 12;
-                bool fillsWork = Math.Abs(wr.Left - w.Left) <= tol && Math.Abs(wr.Top - w.Top) <= tol &&
-                                 Math.Abs(wr.Right - w.Right) <= tol && Math.Abs(wr.Bottom - w.Bottom) <= tol;
-                bool zoomed = Native.IsZoomed(h) || (fillsWork && !covers);
+                long st = Native.GetStyle(h);
+                bool zoomed = Native.IsZoomed(h);
+                var monBounds = Rect(mon.Bounds);
+                var monWork = Rect(mon.Work);
+                var use = FullscreenRules.Classify(box, monBounds, monWork, zoomed,
+                                                  (st & Native.WS_CAPTION) != 0, (st & Native.WS_THICKFRAME) != 0, strict);
+                if (use == null) return true;            // too small to decide: keep looking below it
 
-                // Small windows (sticky notes, widgets, a calculator) don't decide the monitor's state: keep looking below them.
-                double area = (double)Math.Max(0, Math.Min(wr.Right, b.Right) - Math.Max(wr.Left, b.Left)) *
-                              Math.Max(0, Math.Min(wr.Bottom, b.Bottom) - Math.Max(wr.Top, b.Top));
-                bool big = covers || zoomed || area >= 0.5 * b.Width * b.Height;
-                if (!big) return true;
-
-                mon.Busy = covers && !Native.IsZoomed(h);
-                mon.Maximized = zoomed;
-                // The window's title never goes in the log: it is the user's business (section 14 of DOCUMENTATIE.md,
-                // and the same rule as ContextSnapshot.ToLogString). The class, the process and the geometry are enough
-                // to tell which window decided a monitor's state, and are what the fullscreen rules are judged on.
+                mon.Busy = use == MonitorUse.Busy;
+                // A busy window is often maximized too (a browser in fullscreen keeps WS_MAXIMIZE): the small-pill rules
+                // need that for the "always visible" setting, where the notch stays on screen over it.
+                mon.Maximized = use == MonitorUse.Maximized || FullscreenRules.LooksMaximized(box, monBounds, monWork, zoomed);
+                // The window's title never goes in the log (P51c): the class, the process and the geometry are enough.
                 mon.Decider = Describe(h, cls, wr);
                 decided.Add(mh);
                 return true;
@@ -118,6 +105,8 @@ namespace WinNotch.Services
             ProcessNames[h] = name;
             return name;
         }
+
+        private static Box Rect(Native.RECT r) => new Box(r.Left, r.Top, r.Right, r.Bottom);
 
         public static IntPtr MonitorUnderCursor()
         {

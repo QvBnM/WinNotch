@@ -53,6 +53,8 @@ namespace WinNotch.Core.Flags
         public const string NotchGuard = "notch-guard";
         /// <summary>Features/Diagnostics: same id as ShutdownJournal.FeatureId (the tests check they match).</summary>
         public const string ShutdownReport = "shutdown-report";
+        /// <summary>Features/Fullscreen: same id as FullscreenRules.FeatureId (the tests check they match).</summary>
+        public const string FullscreenHide = "fullscreen-hide";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -88,6 +90,10 @@ namespace WinNotch.Core.Flags
             // P51c: a repair, so Beta and on; the switch is the net. Off = the log still names every closure, but the
             // notch says nothing about the ones it cannot explain.
             new FeatureInfo(ShutdownReport, "Raportul închiderilor", "Dacă WinNotch s-a închis singur de două ori la rând, notch-ul te anunță și îți deschide log-ul. Fiecare ieșire scrie în log motivul ei.",
+                            FeatureStage.Beta, true),
+            // P53: a repair of a behaviour, on by default (Beta, so --safe-mode turns it off); off = "busy" read the old way,
+            // so a browser in fullscreen only makes the pill small, and every alert gets through as before
+            new FeatureInfo(FullscreenHide, "Ascuns pe tot ecranul", "Peste un joc sau un film pe tot ecranul notch-ul dispare complet; coboară scurt doar pentru ceva important (baterie, temperatură, memorie, rezultatul unei unelte). Restul alertelor se amână sau se sar.",
                             FeatureStage.Beta, true),
         };
 

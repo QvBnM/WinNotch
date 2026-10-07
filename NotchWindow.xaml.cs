@@ -367,6 +367,8 @@ namespace WinNotch
                 return;
             }
 
+            // P53 hook (Features/Fullscreen): hidden over a fullscreen app, hover and drag don't open it; a no-op with the switch off
+            if (_hidden && !FullscreenOpens(Features.Fullscreen.HiddenTrigger.Hover)) { ClearDwell(); return; }
             if (_hidden && _mode != Mode.Live) { ClearDwell(); return; }
             if (_liveInteractive) return;
 
@@ -415,6 +417,7 @@ namespace WinNotch
         public void ToggleByHotkey()
         {
             if (_mode == Mode.Expanded) { Collapse(); return; }
+            FullscreenForget();             // P53 hook (Features/Fullscreen): opened by hand, nothing waits any more
             _pinned = true;
             _mouseWasInside = false;
             Expand();
@@ -624,6 +627,7 @@ namespace WinNotch
                 MoveToMonitor(t, _curMon != IntPtr.Zero && t.Handle != _curMon);
 
             if (hidden != _hidden) { _hidden = hidden; ApplyHidden(); ActivityFullscreenChanged(); }     // P13 hook: no-op with the switch off
+            FullscreenTick();               // P53 hook (Features/Fullscreen): the alerts kept while hidden; a no-op with the switch off
             if (slim != _slim) { _slim = slim; if (_mode == Mode.Idle) ApplyMode(); }
         }
 

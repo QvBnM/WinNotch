@@ -24,6 +24,7 @@
     <Compile Include="AudioSwitchTests.cs" />
     <Compile Include="NotchGuardTests.cs" />
     <Compile Include="ShutdownTests.cs" />
+    <Compile Include="FullscreenTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -82,5 +83,7 @@
     <Compile Include="..\Features\AudioSwitch\AudioSwitch.cs" />
     <!-- B1: only the pure part of the safety net (the notch's partial stays out) -->
     <Compile Include="..\Features\NotchGuard\NotchGuard.cs" />
+    <!-- P53: only the pure rules (the notch's partial, with the WPF hooks, stays out) -->
+    <Compile Include="..\Features\Fullscreen\FullscreenRules.cs" />
   </ItemGroup>
 </Project>

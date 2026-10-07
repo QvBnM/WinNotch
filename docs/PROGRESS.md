@@ -165,3 +165,50 @@
   mutarea citirii în alt proces o închide; scris în `docs/ROADMAP.md`, cu mențiunea explicită în DOCUMENTATIE.md.
 - **Publicare:** niciuna. Versiunea nu a fost crescută și nu s-a făcut merge în `main`: autorul testează pasul pe Windows
   și confirmă, conform cerinței lui.
+
+
+## P53 — Pe tot ecranul, notch-ul dispare (cerere a autorului, 7 oct 2026)
+
+- **Cerut:** video pe tot ecranul pe YouTube — notch-ul rămânea „cocoțat” acolo, micșorat dar vizibil; dorit: invizibil
+  complet, cu revenire scurtă doar pentru ceva important.
+- **Cauza (confirmată din log-ul autorului):** `Busy = covers && !Native.IsZoomed(h)`. Chrome maximizat normal apare
+  `[-2568,-8 2576x1408]` (nu acoperă banda barei de activități → `maximizat`, corect), dar în fullscreen apare
+  `[-2560,0 2560x1440]`, exact dreptunghiul monitorului, **și păstrează `WS_MAXIMIZE`**, deci `IsZoomed` rămâne `true`
+  și fereastra era clasificată `maximizat`, nu `ocupat`. Jocurile reale (Elden Ring, CS2) apăreau corect `ocupat`.
+  Testul FS1 folosește exact aceste dreptunghiuri și pică pe codul vechi.
+- **Făcut:** `Features/Fullscreen/FullscreenRules.cs` (pur, fără WPF și fără interop): `Classify` decide după geometrie
+  și stil (acoperă tot monitorul **și** e fără ramă — fără `WS_CAPTION` / `WS_THICKFRAME` — sau acoperă și banda barei de
+  activități), `Ignored` (desktop, shell, fereastra proprie, fără titlu, 0 px), `ForAlert` (trece / se amână / se sare),
+  `DurationWhileHidden` (2,5 s, dar alertele cu butoane își păstrează durata), `Opens` (hover și tragere nu, scurtătura /
+  Command Bar / tray da) și `DeferredAlerts` (cel mult una de fiecare fel, cea mai recentă, arătată o dată, la 2 s după
+  ieșirea din fullscreen). `Services/MonitorService.cs` doar apelează regulile; legăturile în fișierele vechi sunt trei
+  rânduri (`PollTick`, `MonitorTick`, `ToggleByHotkey`) plus unul în `Features/Activity/NotchWindow.Activity.cs` (`Alert`).
+  Fără cronometru nou: numărătoarea de 2 s merge pe `_mon` (500 ms), care exista.
+- **Securitate:** rândul „Monitoare:” din log nu mai conține titlul ferestrei (era personal), doar clasa și dreptunghiul.
+- **Comutator:** `fullscreen-hide` (Beta, pornit implicit, oprit în `--safe-mode`); oprit = regula veche, bit cu bit.
+- **Teste:** 27 noi (FS1–FS27) în `tests/FullscreenTests.cs`; FS8 codifică regula veche (`strict: false`) și arată
+  greșeala, FS1 regula nouă pe exact aceleași dreptunghiuri (regula nouă nu exista pe `main`, deci FS1 nu se putea
+  compila acolo). Pinurile FS25–FS27 țin legăturile și absența titlului din log; pinul AR-P13-2 a fost actualizat pentru
+  noul prim rând din `Alert`. `dotnet` nu există în container (politica de rețea blochează `builds.dotnet.microsoft.com`):
+  rularea testelor s-a făcut în CI, la push pe ramură.
+- **Revizia R1:** 2 Majore, 6 Medii, 8 Minore. Reparate: alertele cu butoane nu se mai amână prin reluarea lui `Alert`
+  (butoanele s-ar fi legat prea târziu) — se sar, iar porțile lor le oferă din nou (`!_hidden` adăugat și la „ce e nou”,
+  ca la ofertă și la extensia veche); `Maximized` nu se mai pierde pentru o fereastră ocupată (altfel, cu „rămâne mereu
+  vizibil”, pastila rămânea mare peste film); pașii unui flux (OCR, memorie, descărcare) nu se mai taie la 2,5 s;
+  comutatorul oprit golește coada; `Ignored` primește valorile reale și `IsCloaked` se cheamă după filtrele ieftine;
+  implicitul când nu există `FeatureFlags` e același în ambele locuri; `Passes(prioritate)` și `PeekFadeMs`, nefolosite,
+  scoase; documentația și verificările manuale corectate.
+- **Abateri:** Command Bar peste fullscreen rămâne refuzat (regula P14 existentă, `CommandBarRules.OnShortcut`), deși
+  brieful îl trece printre intenții explicite — schimbarea ține de P14 și de testele lui; `FullscreenRules.Opens` îl
+  acceptă deja, ca regulă. Alertele importante cu butoane (captură, memorie) nu sunt „fără butoane care cer click”, cum
+  cere brieful: sunt rezultatul unei unelte cerute de utilizator și butoanele îi sunt utile. „Rămâne cât timp cursorul e
+  pe el” (brief, pct. 3) nu e implementat: cât e ascuns, hover-ul nu mai ține și nu mai deschide nimic. Fără abonare la
+  `FeatureFlags.Changed` (comutatorul e citit la fiecare alertă și la fiecare tur de monitoare, ca la P27 și notch-guard).
+  Fără test de fum nou: starea „ocupat” cere o fereastră reală pe tot ecranul, pe care testul de fum nu o poate crea fără
+  să deschidă o aplicație străină; verificările P53.1–P53.14 rămân manuale.
+- **Limite cunoscute (scrise în comentariul din `Classify`):** pe un monitor fără bară de activități (sau cu bară cu
+  ascundere automată) `zona de lucru == monitorul`, deci rămâne doar criteriul „fără ramă”: o fereastră fără ramă doar
+  maximizată e citită ca „ocupat”, iar o aplicație care intră în fullscreen păstrându-și rama nu e. Windows nu dă un
+  semnal mai bun; cazul autorului (bară vizibilă) e acoperit de ambele criterii.
+- **Stare:** ramura `p53-fullscreen-hide`, fără merge în `main` și fără versiune nouă până la testarea pe Windows
+  (verificările P53.1–P53.14 din `docs/TESTE-MANUALE.md`).
