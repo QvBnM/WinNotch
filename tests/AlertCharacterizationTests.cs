@@ -520,7 +520,10 @@ namespace WinNotch
             int direct = Regex.Matches(Norm(NoComments(notch)) + Norm(NoComments(Src(LegacyAlerts.Updates))) + Norm(NoComments(Src(LegacyAlerts.Context))), @"\bShowLive\(").Count;
             string alertBody = Norm(NoComments(MethodBody(act, "private bool Alert(")));
             Check("AR-P13-2", "ShowLive e apelat doar de Alert (comutator oprit: primul rând, neschimbat) și de prezentator",
-                  direct == 1 /* its declaration */ && alertBody.StartsWith("{ if (!_activityOn || _activity == null) return ShowLive(content, w, h, ms, important);", StringComparison.Ordinal) &&
+                  direct == 1 /* its declaration */ &&
+                  // P53 put its gate (pure rules, no alert of its own) before the legacy row; the legacy row itself is unchanged
+                  alertBody.StartsWith("{ if (!FullscreenAllows(id, content, w, h, ref ms, important)) return false; " +
+                                       "if (!_activityOn || _activity == null) return ShowLive(content, w, h, ms, important);", StringComparison.Ordinal) &&
                   Regex.Matches(Norm(NoComments(act)), @"\bShowLive\(").Count == 3, direct + " / " + alertBody);
             string endLive = Norm(NoComments(MethodBody(notch, "private void EndLive()")));
             string collapse = Norm(NoComments(MethodBody(notch, "private void Collapse()")));
