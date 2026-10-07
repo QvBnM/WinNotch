@@ -159,8 +159,10 @@ namespace WinNotch
                   mons.Contains("FullscreenRules.Ignored(") && !mons.Contains("covers && !Native.IsZoomed(h)") &&
                   mons.Contains("mon.Maximized = use == MonitorUse.Maximized || FullscreenRules.LooksMaximized("));
 
-            Check("FS26", "Titlul ferestrei nu mai ajunge în log (doar clasa și dreptunghiul)",
-                  !mons.Contains("Native.Title(") && mons.Contains("mon.Decider = cls + \" \" + box;"));
+            // P51c scrie rândul prin Describe (clasa, procesul și dreptunghiul): oricare dintre ele, dar niciodată titlul
+            Check("FS26", "Titlul ferestrei nu mai ajunge în log (doar clasa, procesul și dreptunghiul)",
+                  !mons.Contains("Native.Title(") &&
+                  (mons.Contains("mon.Decider = cls + \" \" + box;") || mons.Contains("mon.Decider = Describe(h, cls, wr);")));
 
             Check("FS27", "Legăturile din fișierele vechi: alertele, ascunderea și uitarea la deschiderea manuală",
                   act.Contains("if (!FullscreenAllows(id, content, w, h, ref ms, important)) return false;") &&
