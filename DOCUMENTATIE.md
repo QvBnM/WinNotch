@@ -468,6 +468,11 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
 - **Monitoare.**
   - Urmează monitorul pe care e mouse-ul.
   - Dacă acel monitor e „ocupat” (joc sau video pe tot ecranul, inclusiv borderless), trece pe un monitor liber sau se ascunde. Setarea „Peste jocuri / fullscreen” alege între „se ascunde, apare doar pentru alerte” și „rămâne mereu vizibil”.
+  - **Ce înseamnă „ocupat” (P53, comutatorul „Ascuns pe tot ecranul”).** Fereastra acoperă tot dreptunghiul monitorului **și** nu are ramă proprie (fără bară de titlu, fără margini de redimensionare) sau acoperă și banda barei de activități. O fereastră maximizată normală lasă banda liberă, deci rămâne „maximizată”. Înainte se citea `IsZoomed`, iar un browser maximizat care intră în fullscreen îl păstrează: notch-ul rămânea vizibil, mic, peste film.
+  - **Cât e ascuns.** Pastila e scoasă din ecran: hover-ul și tragerea de fișiere nu o mai deschid; `Win + Alt + N` și meniul iconiței, da (e o cerere explicită). Trec doar alertele importante — baterie descărcată, temperatură ridicată, memorie plină și rezultatul unei unelte pornite de tine (captură, text din ecran, RAM) — cel mult 2,5 secunde, fără sunet; cele cu butoane (pe care tu le-ai cerut) își păstrează durata.
+  - **Amânate.** Pauza pentru ochi, actualizarea gata de instalat, noutățile versiunii și piesa nouă nu întrerup un film: se păstrează cel mult una de fiecare fel (cea mai recentă) și se arată o singură dată, 2 secunde după ce fullscreen-ul s-a încheiat, câte una. Dacă deschizi notch-ul singur, se uită.
+  - Volumul, alimentarea și extensia veche nu se arată deloc cât e ascuns.
+  - În `log.txt`, rândul „Monitoare:” are doar clasa ferestrei și dreptunghiul ei — titlul ferestrei nu se mai scrie (e personal).
 - **Ferestre maximizate.** Peste o fereastră maximizată se face mic (opțional) și **se dă la o parte**: cât timp mouse-ul e peste el, dispare complet și click-ul ajunge la fereastra de dedesubt (de exemplu butonul „+” tab nou din browser). Se deschide doar dacă împingi mouse-ul de tot sus, în marginea ecranului.
 - **Click prin notch.** Dacă dai click cât mouse-ul stă pe pastilă, click-ul era pentru fereastra de sub ea: notch-ul nu se mai deschide până nu ieși cu mouse-ul de pe el.
 - **Poziție.** Stânga, centru sau dreapta, pe lățimea monitorului.

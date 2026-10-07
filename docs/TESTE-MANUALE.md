@@ -276,3 +276,25 @@ Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai 
 | P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
 | P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
 | P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 17 PASS în ambele (din P20; 16 din P27; 15 / 16 din P14; 12 / 13 în 0.6.14). |
+
+### P53 — Pe tot ecranul, notch-ul dispare
+
+Comutatorul „Ascuns pe tot ecranul” (`fullscreen-hide`) e pornit implicit; Setări → „Peste jocuri / fullscreen” trebuie
+să fie pe „se ascunde”. Pentru P53.8 oprește comutatorul din Setări → funcții noi.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P53.1 | Video pe tot ecranul | Un singur monitor. Pornește un clip pe YouTube și apasă fullscreen. | În ~1 s notch-ul dispare complet (nu rămâne pastila mică). În `log.txt`, rândul „Monitoare:” arată `M1* ocupat`. |
+| P53.2 | Nu se mai deschide la hover | Cu clipul pe tot ecranul, plimbă mouse-ul în marginea de sus, unde era notch-ul, și ține-l acolo. | Nu apare nimic, nici pastila semi-transparentă. |
+| P53.3 | Tragerea nu-l scoate | Cu clipul pe tot ecranul, trage un fișier din Explorer peste marginea de sus. | Notch-ul nu se deschide, raftul nu apare. |
+| P53.4 | Scurtătura da | Cu clipul pe tot ecranul, apasă `Win + Alt + N`. | Notch-ul se deschide normal; la închidere dispare din nou. |
+| P53.5 | Alertă importantă | Cu clipul pe tot ecranul, scoate încărcătorul când bateria e sub 20 % (sau atinge pragul de temperatură). | Alerta coboară scurt (~2,5 s) și se retrage singură; notch-ul rămâne ascuns după ea. |
+| P53.6 | Rezultatul unei unelte | Cu clipul pe tot ecranul, apasă `Win + Alt + S` și alege o zonă. | Previzualizarea capturii apare (tu ai cerut-o) și apoi dispare. |
+| P53.7 | Amânate, o singură dată | Cu clipul pe tot ecranul, lasă să treacă timpul până la pauza pentru ochi (sau pune o piesă nouă). Ieși din fullscreen. | Cât e fullscreen nu apare nimic; la 2 s după ieșire apare o singură alertă, o singură dată. Dacă deschizi notch-ul cu `Win + Alt + N` înainte, nu mai apare deloc. |
+| P53.8 | Volumul nu trece | Cu clipul pe tot ecranul, apasă tastele de volum. | Nu apare nicio alertă de volum. |
+| P53.9 | Maximizat ≠ fullscreen | Ieși din fullscreen și lasă browserul maximizat. | Notch-ul e vizibil (mic, dacă ai bifat „mic peste ferestre maximizate”); în log, `maximizat`, nu `ocupat`. |
+| P53.10 | Joc pe tot ecranul | Pornește un joc pe tot ecranul (de exemplu Elden Ring, CS2). | Același comportament ca la P53.1; la Alt+Tab afară, notch-ul revine. |
+| P53.11 | Două monitoare | Clip pe tot ecranul pe un monitor, al doilea liber, mouse-ul pe cel ocupat. | Notch-ul se mută pe monitorul liber, nu dispare. |
+| P53.12 | „Mereu vizibil” | Setări → „Peste jocuri / fullscreen” → „rămâne mereu vizibil”. Repetă P53.1. | Notch-ul rămâne vizibil, ca înainte. |
+| P53.13 | Comutatorul oprit | Setări → funcții noi → oprește „Ascuns pe tot ecranul”. Repetă P53.1 și P53.8. | Comportamentul de dinainte: peste clipul pe tot ecranul notch-ul rămâne vizibil (mic) și alerta de volum apare. |
+| P53.14 | Log fără titluri | Deschide `%AppData%\WinNotch\log.txt` și caută rândurile „Monitoare:”. | Doar clasa ferestrei și dreptunghiul (`Chrome_WidgetWin_1 [-2560,0 2560x1440]`); niciun titlu de fereastră, de filă sau de film. |

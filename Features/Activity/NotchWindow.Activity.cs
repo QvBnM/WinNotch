@@ -77,6 +77,8 @@ namespace WinNotch
         /// </summary>
         private bool Alert(string id, UIElement content, double w, double h, int ms, bool important = false)
         {
+            // P53 hook (Features/Fullscreen): over a fullscreen app only important alerts come down, briefly; a no-op with the switch off
+            if (!FullscreenAllows(id, content, w, h, ref ms, important)) return false;
             if (!_activityOn || _activity == null) return ShowLive(content, w, h, ms, important);
             try
             {

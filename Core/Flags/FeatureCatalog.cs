@@ -51,6 +51,8 @@ namespace WinNotch.Core.Flags
         public const string AudioSwitch = "audio-switch";
         /// <summary>Features/NotchGuard: same id as NotchGuardInfo.FeatureId (the tests check they match).</summary>
         public const string NotchGuard = "notch-guard";
+        /// <summary>Features/Fullscreen: same id as FullscreenRules.FeatureId (the tests check they match).</summary>
+        public const string FullscreenHide = "fullscreen-hide";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -83,6 +85,10 @@ namespace WinNotch.Core.Flags
             // B1 (0.6.18): a repair, announced with it, so Stable and on (also in --safe-mode); off = no checks, nothing repaired
             new FeatureInfo(NotchGuard, "Plasa de siguranță a notch-ului", "Dacă notch-ul se deschide gol sau pastila rămâne fără conținut, îl reface singur (pagina curentă, apoi Acasă) și scrie în log un rând „B1 recover”.",
                             FeatureStage.Stable, true),
+            // P53: a repair of a behaviour, on by default (Beta, so --safe-mode turns it off); off = "busy" read the old way,
+            // so a browser in fullscreen only makes the pill small, and every alert gets through as before
+            new FeatureInfo(FullscreenHide, "Ascuns pe tot ecranul", "Peste un joc sau un film pe tot ecranul notch-ul dispare complet; coboară scurt doar pentru ceva important (baterie, temperatură, memorie, rezultatul unei unelte). Restul alertelor se amână sau se sar.",
+                            FeatureStage.Beta, true),
         };
 
         public static FeatureInfo Find(string id) => All.FirstOrDefault(f => string.Equals(f.Id, id, StringComparison.Ordinal));

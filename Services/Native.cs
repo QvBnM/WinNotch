@@ -54,6 +54,9 @@ namespace WinNotch.Services
         }
 
         public const int GWL_EXSTYLE = -20;
+        public const int GWL_STYLE = -16;
+        public const long WS_CAPTION = 0x00C00000;
+        public const long WS_THICKFRAME = 0x00040000;
         public const long WS_EX_TRANSPARENT = 0x00000020;
         public const long WS_EX_TOOLWINDOW = 0x00000080;
         public const long WS_EX_LAYERED = 0x00080000;
@@ -214,6 +217,9 @@ namespace WinNotch.Services
         [DllImport("kernel32.dll")] public static extern bool GetSystemTimes(out long idle, out long kernel, out long user);
         [DllImport("kernel32.dll", CharSet = CharSet.Auto)] public static extern bool GlobalMemoryStatusEx(ref MEMORYSTATUSEX status);
         [DllImport("kernel32.dll")] public static extern bool GetSystemPowerStatus(out SYSTEM_POWER_STATUS status);
+
+        public static long GetStyle(IntPtr h) =>
+            IntPtr.Size == 8 ? GetWindowLongPtr64(h, GWL_STYLE).ToInt64() : GetWindowLong32(h, GWL_STYLE);
 
         public static long GetExStyle(IntPtr h) =>
             IntPtr.Size == 8 ? GetWindowLongPtr64(h, GWL_EXSTYLE).ToInt64() : GetWindowLong32(h, GWL_EXSTYLE);
