@@ -53,6 +53,8 @@ namespace WinNotch.Core.Flags
         public const string NotchGuard = "notch-guard";
         /// <summary>Features/NotchAnchored: same id as AnchoredGeometry.FeatureId (the tests check they match).</summary>
         public const string NotchAnchored = "notch-anchored";
+        /// <summary>Features/WindowV2: same id as LayoutRules.FeatureId (the tests check they match).</summary>
+        public const string WindowV2 = "window-v2";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -87,6 +89,9 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Stable, true),
             // P50: off by default until it is announced; off = the floating pill exactly as before (margin 8, full corners)
             new FeatureInfo(NotchAnchored, "Notch lipit de ramă", "Notch-ul crește din marginea de sus: lipit de ea, rotunjit doar jos, cu racordări în stânga și dreapta, ca o prelungire a ramei monitorului.",
+                            FeatureStage.Experimental, false),
+            // P52: off by default until it is finished; off = the window you know opens, untouched
+            new FeatureInfo(WindowV2, "Fereastra WinNotch v2", "Fereastra nouă: antetul e notch-ul desfăcut, o coloană cu categorii, carduri pentru acțiunile care există și o coloană cu clipboard și confidențialitate.",
                             FeatureStage.Experimental, false),
         };
 

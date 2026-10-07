@@ -130,3 +130,29 @@
   fi folosită la P52 (antetul ferestrei).
 - **Stare:** ramura `p50-notch-anchored`, pornită din `main`, fără merge și fără versiune nouă până la testarea pe Windows
   (verificările P50.1–P50.11).
+
+
+## P52 — Fereastra WinNotch v2 (brief UI 0.7, 7 oct 2026)
+
+- **Cerut:** fereastra nouă, cu antetul ca notch desfăcut, trei coloane, **doar cu funcțiile care există azi**.
+- **Făcut:** `Features/WindowV2/LayoutRules.cs` (pur): coloanele de carduri după lățime (4 / 3 / 2 / 1), ascunderea
+  coloanei din dreapta sub 1100 px, o coloană sub 900 px, lista categoriilor (doar grupuri care există), traducerea
+  intrărilor vechi („themes”, „settings”, „news”, un id de pagină) în categorii, categoria unei acțiuni din registru,
+  razele și spațierile din brief, sugestia din bara de jos. `Features/WindowV2/WindowV2.cs` desenează fereastra:
+  antetul folosește **geometria P50** (`AnchoredGeometry`, nu una nouă), cardurile se construiesc din
+  `ActionRegistry.Current.All` (deci nu există card fără acțiune reală) și pornesc doar prin `InvokeAsync`, cu
+  confirmare pentru ce nu e `Safe`; coloana din dreapta arată clipboard-ul fixat și `PrivacyService`.
+- **Ramura:** pornită din `p50-notch-anchored`, fiindcă antetul refolosește geometria de acolo (altfel ar fi fost
+  duplicată). La merge, P50 intră primul.
+- **Legături în cod vechi:** un rând în `App.OpenEditor` (`if (OpenWindowV2(pageId)) return;`) plus metoda nouă de
+  deschidere din `App.xaml.cs`; `EditorWindow.cs` nu e atins deloc.
+- **Comutator:** `window-v2` (Experimental, oprit implicit); oprit sau la orice eroare → se deschide fereastra clasică.
+- **Teste:** 15 noi (WV1–WV15) în `tests/WindowV2Tests.cs`: coloanele, ascunderile, categoriile, non-regresia, absența
+  culorilor scrise în cod, antetul care refolosește geometria P50, acțiunile doar prin registru, „nimic în curând”.
+- **Gata parțial, spus pe față:** conținutul paginilor, temelor, setărilor și noutăților **nu** e mutat încă în v2 — acele
+  categorii deschid fereastra clasică la secțiunea lor (`OpenClassicEditor`), ca să nu dublăm logica înainte de a muta-o.
+  De asemenea, din coloana din dreapta lipsesc ultima captură și lista de ieșiri audio (nu există o stare citibilă pentru
+  ele în afara notch-ului), iar bara de căutare pornește acțiunea potrivită direct, fără să deschidă Command Bar-ul.
+  Toate trei rămân de făcut înainte de anunțarea comutatorului.
+- **Stare:** ramura `p52-window-v2`, fără merge și fără versiune nouă până la testarea pe Windows (verificările
+  P52.1–P52.10).

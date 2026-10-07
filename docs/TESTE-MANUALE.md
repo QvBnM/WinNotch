@@ -294,3 +294,21 @@ Comutatorul „Notch lipit de ramă” (`notch-anchored`) e **oprit implicit**: 
 | P50.9 | Scalare și monitoare | Repetă P50.1 și P50.2 pe fiecare monitor și la 100 %, 125 % și 150 % scalare Windows. | Lipit de margine și racordat corect la fiecare. |
 | P50.10 | Raza din Setări | Setări → mărimea/raza colțurilor: pune minimul și maximul. | Raza de jos se schimbă între 12 și 28; sus rămâne drept. |
 | P50.11 | Comutatorul oprit | Oprește comutatorul. | Pastila plutitoare de azi: margine de 8 px, colțuri complete, umbra de azi, lățimea de azi. |
+
+### P52 — Fereastra WinNotch v2
+
+Comutatorul „Fereastra WinNotch v2” (`window-v2`) e **oprit implicit**: pornește-l din Setări → funcții noi (în fereastra
+clasică), apoi deschide fereastra din notch (Setări sau tray).
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P52.1 | Antetul e notch-ul | Deschide fereastra v2 și compară antetul cu notch-ul din marginea ecranului (cu P50 pornit). | Aceeași siluetă: lipit de marginea de sus, rotunjit doar jos, cu aceleași racordări; aceeași rază. |
+| P52.2 | Categoriile | Dă click pe fiecare rând din coloana din stânga. | Se selectează (bară de 3 px în culoarea accent, fundal diferit) și centrul se schimbă; nicio categorie goală fără explicație. |
+| P52.3 | Cardurile sunt reale | Pornește câteva funcții (raft, căști/boxe, clipboard) din Setări → funcții noi și revino. | Apar carduri pentru acțiunile lor; butonul pornește acțiunea (verifică efectul: de ex. „Copiază calea”). Nicio acțiune „în curând”. |
+| P52.4 | Confirmare | Caută un card al unei acțiuni care nu se poate anula (dacă există). | Apare o întrebare înainte; la „Anulare” nu se întâmplă nimic. |
+| P52.5 | Căutarea | Apasă `Ctrl + K`, scrie o parte din numele unei acțiuni și apasă Enter. | Focusul intră în câmp și acțiunea potrivită pornește. |
+| P52.6 | Coloana dreapta | Fixează 1–2 elemente în Clipboard (din notch) și deschide v2 lat (peste 1100 px). | Apar elementele fixate și starea microfonului/camerei. Îngustează sub 1100 px: coloana dispare, nimic nu se taie. |
+| P52.7 | O coloană | Trage fereastra la 900 px lățime, apoi mai jos (cât permite minimul). | La 900 px: 3 carduri pe rând, bara laterală vizibilă; sub 900: bara laterală se strânge, fără bară de derulare orizontală. |
+| P52.8 | Tema | Apasă butonul de temă din antet, de două ori. | Fereastra trece pe luminos și revine; textele rămân lizibile în ambele (fără gri pe gri), iar notch-ul se schimbă la fel. |
+| P52.9 | Setările vechi | Deschide „Setări”, „Teme”, „Pagini”, „Noutăți” din coloana din stânga și apasă „Deschide”. | Se deschide fereastra clasică, la secțiunea aleasă; toate setările de dinainte sunt acolo și funcționează. |
+| P52.10 | Comutatorul oprit | Oprește „Fereastra WinNotch v2” și deschide fereastra din notch. | Se deschide fereastra clasică, neschimbată (test de non-regresie). |
