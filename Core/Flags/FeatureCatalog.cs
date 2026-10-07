@@ -59,6 +59,10 @@ namespace WinNotch.Core.Flags
         public const string OverlayDismiss = "overlay-dismiss";
         /// <summary>Core/Ui + Features/AlertInterrupt: same id as InterruptRules.FeatureId (the tests check they match).</summary>
         public const string AlertInterrupt = "alert-interrupt";
+        /// <summary>Features/NotchAnchored: same id as AnchoredGeometry.FeatureId (the tests check they match).</summary>
+        public const string NotchAnchored = "notch-anchored";
+        /// <summary>Features/WindowV2: same id as LayoutRules.FeatureId (the tests check they match).</summary>
+        public const string WindowV2 = "window-v2";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -105,6 +109,12 @@ namespace WinNotch.Core.Flags
             // pill until it ends by itself, as before
             new FeatureInfo(AlertInterrupt, "Alertele nu stau în cale", "O alertă se dă la o parte imediat ce faci ceva: tragi fișiere peste notch, apeși scurtătura sau deschizi Command Bar-ul.",
                             FeatureStage.Beta, true),
+            // P50: off by default until it is announced; off = the floating pill exactly as before (margin 8, full corners)
+            new FeatureInfo(NotchAnchored, "Notch lipit de ramă", "Notch-ul crește din marginea de sus: lipit de ea, rotunjit doar jos, cu racordări în stânga și dreapta, ca o prelungire a ramei monitorului.",
+                            FeatureStage.Experimental, false),
+            // P52: off by default until it is finished; off = the window you know opens, untouched
+            new FeatureInfo(WindowV2, "Fereastra WinNotch v2", "Fereastra nouă: antetul e notch-ul desfăcut, o coloană cu categorii, carduri pentru acțiunile care există și o coloană cu clipboard și confidențialitate.",
+                            FeatureStage.Experimental, false),
         };
 
         public static FeatureInfo Find(string id) => All.FirstOrDefault(f => string.Equals(f.Id, id, StringComparison.Ordinal));

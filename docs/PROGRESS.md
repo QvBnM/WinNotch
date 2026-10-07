@@ -290,3 +290,78 @@
   separată; pauza pentru ochi întreruptă își oprește numărătoarea când `EndLive` golește stratul (400 ms), nu pe loc.
 - **Stare:** ramura `p51b-alert-interrupt`, pornită din `main`, fără merge și fără versiune nouă până la testarea pe
   Windows (verificările P51b.1–P51b.10).
+
+
+## P50 — Notch ancorat de ramă (brief UI 0.7, 7 oct 2026)
+
+- **Cerut:** „WinNotch nu e o fereastră care plutește peste Windows, e o prelungire a ramei monitorului”.
+- **Făcut:** `Features/NotchAnchored/AnchoredGeometry.cs` (pur, fără WPF): conturul (ureche concavă → latura → colț de jos
+  convex → baza → colț de jos convex → latura → ureche concavă, închis pe marginea de sus), raza (`Clamp(setare, 12, 28)`),
+  urechea (`Clamp(R*0,75, 10, 22)`, redusă când pastila plus urechile n-ar încăpea în fereastra de 820), opacitatea minimă
+  0,92, lățimea în standby 240–520 și constantele umbrei. `Features/NotchAnchored/NotchWindow.Anchored.cs` desenează:
+  pastila primește `CornerRadius(0, 0, R, R)`, `Inner.Clip` e un `StreamGeometry` înghețat cu aceeași formă, iar
+  racordările sunt un `Path` în grila ferestrei, în spatele pastilei, care împarte cu ea deplasarea (`PillShift`) și
+  opacitatea, nu primește mouse-ul și se reconstruiește la schimbarea mărimii (nu per cadru).
+- **Legături în fișierele vechi (patru rânduri):** `ApplyMode` (marginea 0, raza, lățimea în standby), `ApplyRadius` și
+  `UpdateClip` (forma nouă), plus pornirea/oprirea; `Themes.cs` citește opacitatea prin regula pură.
+- **Comutator:** `notch-anchored` (Experimental, **oprit implicit**, până la versiunea care îl anunță); oprit = pastila
+  plutitoare de azi, bit cu bit.
+- **Teste:** 15 noi (NA1–NA15) în `tests/NotchAnchoredTests.cs`: punctele conturului pentru 300×34 și 720×360, figura
+  închisă, urechea redusă, limitele razei, opacitatea, lățimea, umbra, comutatorul, pinurile pe legături și faptul că
+  racordările nu intră în zona de hover. `dotnet` lipsește în container: rularea e în CI.
+- **Abateri:** pastila rămâne un `Border` (cu colțuri doar jos) plus un `Path` pentru racordări, în loc să devină un
+  singur `Path` ca în brief: aceeași siluetă, dar fără să rescriem `NotchWindow.xaml` și fără să atingem straturile
+  dinăuntru (regula „fișierele mari se ating minim”). Geometria pură e scrisă oricum punct cu punct și testată, ca să poată
+  fi folosită la P52 (antetul ferestrei).
+- **Revizia R1:** 1 Major (geometria pură era cod mort — fereastra își scria singură formele, deci testele NA1–NA5
+  validau altceva decât ce se desena) și 5 Medii/Minore. Reparate: un singur traducător (`Build`) care transformă
+  conturul pur în `StreamGeometry`, folosit și pentru tăierea conținutului (`PillOnly`) și pentru racordări; forma se
+  reconstruiește doar când (w, h, rază, ureche) s-au schimbat, nu la fiecare cadru al animației; raza citită e cea
+  **animată** (`Radius`), nu setarea, deci forma urmează animația; forma mică și alertele își păstrează raza lor;
+  la pornirea/oprirea comutatorului se reconstruiesc pensulele (`ThemeManager.Apply`), altfel opacitatea minimă nu se
+  aplica până la următoarea salvare de setări; scalarea urechii se face o singură dată.
+- **Rămas minor:** racordările n-au umbră proprie (ar dubla umbra de sub pastilă, fiindcă forma desenată o conține);
+  la pornirea comutatorului în timpul rulării marginea pastilei se animă 300 ms, deci racordările „plutesc” atât.
+- **Stare:** ramura `p50-notch-anchored`, pornită din `main`, fără versiune nouă până la testarea pe Windows
+  (verificările P50.1–P50.11).
+
+
+## P52 — Fereastra WinNotch v2 (brief UI 0.7, 7 oct 2026)
+
+- **Cerut:** fereastra nouă, cu antetul ca notch desfăcut, trei coloane, **doar cu funcțiile care există azi**.
+- **Făcut:** `Features/WindowV2/LayoutRules.cs` (pur): coloanele de carduri după lățime (4 / 3 / 2 / 1), ascunderea
+  coloanei din dreapta sub 1100 px, o coloană sub 900 px, lista categoriilor (doar grupuri care există), traducerea
+  intrărilor vechi („themes”, „settings”, „news”, un id de pagină) în categorii, categoria unei acțiuni din registru,
+  razele și spațierile din brief, sugestia din bara de jos. `Features/WindowV2/WindowV2.cs` desenează fereastra:
+  antetul folosește **geometria P50** (`AnchoredGeometry`, nu una nouă), cardurile se construiesc din
+  `ActionRegistry.Current.All` (deci nu există card fără acțiune reală) și pornesc doar prin `InvokeAsync`, cu
+  confirmare pentru ce nu e `Safe`; coloana din dreapta arată clipboard-ul fixat și `PrivacyService`.
+- **Ramura:** pornită din `p50-notch-anchored`, fiindcă antetul refolosește geometria de acolo (altfel ar fi fost
+  duplicată). La merge, P50 intră primul.
+- **Legături în cod vechi:** un rând în `App.OpenEditor` (`if (OpenWindowV2(pageId)) return;`) plus metoda nouă de
+  deschidere din `App.xaml.cs`; `EditorWindow.cs` nu e atins deloc.
+- **Comutator:** `window-v2` (Experimental, oprit implicit); oprit sau la orice eroare → se deschide fereastra clasică.
+- **Teste:** 15 noi (WV1–WV15) în `tests/WindowV2Tests.cs`: coloanele, ascunderile, categoriile, non-regresia, absența
+  culorilor scrise în cod, antetul care refolosește geometria P50, acțiunile doar prin registru, „nimic în curând”.
+- **Gata parțial, spus pe față:** conținutul paginilor, temelor, setărilor și noutăților **nu** e mutat încă în v2 — acele
+  categorii deschid fereastra clasică la secțiunea lor (`OpenClassicEditor`), ca să nu dublăm logica înainte de a muta-o.
+  De asemenea, din coloana din dreapta lipsesc ultima captură și lista de ieșiri audio (nu există o stare citibilă pentru
+  ele în afara notch-ului), iar bara de căutare pornește acțiunea potrivită direct, fără să deschidă Command Bar-ul.
+  Toate trei rămân de făcut înainte de anunțarea comutatorului.
+- **Revizia R1:** 1 Critic (fereastra nu se deschidea deloc: cardul de căutare era mutat într-un `Grid` nou la fiecare
+  reconstruire, iar un element WPF are un singur părinte → excepție, prinsă de `OpenWindowV2`, deci se vedea doar ca
+  „v2 nu pornește”), 3 Majore (cardurile se reconstruiau la fiecare cadru de redimensionare; fereastra nu respecta
+  protocolul comutatorului și nu raporta erorile; tastatura și focusul cerute de brief lipseau) și 7 Medii/Minore.
+  Reparate toate: shell-ul (antet, căutare, bară) se construiește o dată și doar cardurile se refac, numai când se
+  schimbă numărul de coloane; abonare/dezabonare la `FeatureFlags.Changed` (fereastra se închide dacă comutatorul se
+  oprește) și `try/catch` → `ReportError` în fiecare intrare; rândurile din bara laterală sunt butoane (Tab, Enter,
+  Space, nume pentru accesibilitate), `Esc` închide fereastra; fundalul ferestrei e un jeton opac (`SegBrush`), ca
+  antetul desenat cu `NotchBrush` să se vadă; lățimile se citesc o singură dată, din lățimea ferestrei; rezultatul unei
+  acțiuni (inclusiv „lipsește un parametru”) apare în bara de jos; ceasul nu mai bate cu fereastra minimizată și
+  reîmprospătează coloana din dreapta; filele din antet sunt cele din brief (Acasă · Sistem · Dispozitive · Unelte),
+  cu o categorie „Sistem” proprie; la deschiderea v2 fereastra clasică se ascunde (și invers), ca să nu se salveze una
+  peste alta.
+- **Rămas de făcut înainte de anunț (pe lângă conținutul setărilor):** sub 900 px bara laterală se strânge la zero în loc
+  să devină un rând de jetoane; scurtătura din bara de jos e scrisă fix, nu citită din setări; dialogul de confirmare e
+  `MessageBox`, fără tema aplicației.
+- **Stare:** ramura `p52-window-v2`, fără versiune nouă până la testarea pe Windows (verificările P52.1–P52.10).

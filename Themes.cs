@@ -106,7 +106,9 @@ namespace WinNotch
             foreach (var (key, _) in Keys)
             {
                 var c = Parse(p.Colors.TryGetValue(key, out var hex) ? hex : null, Presets[0].Colors[key]);
-                if (key == "Notch") c.A = (byte)Math.Round(Math.Clamp(s.BgOpacity, 0.6, 1) * 255);
+                // P50: while anchored the background is never see-through enough to break the illusion (at least 0.92)
+                if (key == "Notch") c.A = (byte)Math.Round(Features.NotchAnchored.AnchoredGeometry.BgOpacity(
+                    s.BgOpacity, Core.Flags.FeatureFlags.Current?.IsEnabled(Features.NotchAnchored.AnchoredGeometry.FeatureId) ?? false) * 255);
                 var b = new SolidColorBrush(c);
                 b.Freeze();
                 res[key + "Brush"] = b;

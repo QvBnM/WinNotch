@@ -166,6 +166,7 @@ namespace WinNotch
             _poll.Start(); _sec.Start(); _mon.Start();
             StartOverlays();                // P51 hook (Features/Overlays): closing panels the same way; a no-op with the switch off
             StartAlertInterrupt();          // P51b hook (Features/AlertInterrupt): the switch's copy and the primary mouse button
+            StartAnchored();                // P50 hook (Features/NotchAnchored): the look; a no-op with the switch off
             // Per-frame work and the 400 ms per-app audio scan only run while the notch is open (see Expand/Collapse).
 
             ApplySettings();
@@ -197,6 +198,7 @@ namespace WinNotch
             StopSmoke();
             StopOverlays();                 // P51 hook (Features/Overlays)
             StopAlertInterrupt();           // P51b hook (Features/AlertInterrupt)
+            StopAnchored();                 // P50 hook (Features/NotchAnchored)
             StopActivities();
             StopCommandBar();
             StopQuickActions();
@@ -504,7 +506,7 @@ namespace WinNotch
                 case Mode.Live: w = _liveW * UiScale; h = _liveH * UiScale; r = _liveH > 64 ? 26 * UiScale : h / 2; top = 8; break;
                 default:
                     if (mini) { w = MiniWidth(); h = 22; r = 11; top = 0; }
-                    else { w = IdleWidth(); h = 34; r = 17; top = 8; }
+                    else { w = AnchoredIdleWidth(IdleWidth()); h = 34; r = 17; top = 8; }     // P50 hook (Features/NotchAnchored): 240–520 while anchored
                     break;
             }
             if (_mode == Mode.Idle && !mini) _lastIdleW = w;
@@ -514,6 +516,9 @@ namespace WinNotch
                 _shrink.Stop();
                 _shrink.Start();
             }
+            // P50 hook (Features/NotchAnchored): stuck to the top edge, bottom radius from the setting; unchanged with the switch off
+            top = AnchoredTop(top);
+            r = AnchoredRadius(r, mini || _mode == Mode.Live);     // the small form and the alerts keep their own radius
             _slimApplied = mini;
             _miniApplied = mini;
 
@@ -558,6 +563,7 @@ namespace WinNotch
 
         private void ApplyRadius()
         {
+            if (AnchoredShape()) return;        // P50 hook (Features/NotchAnchored): bottom corners only, plus the fillets
             double r = Radius;
             Pill.CornerRadius = _slimApplied ? new CornerRadius(0, 0, r, r) : new CornerRadius(r);
             UpdateClip();
@@ -565,6 +571,7 @@ namespace WinNotch
 
         private void UpdateClip()
         {
+            if (AnchoredShape()) return;        // P50 hook (Features/NotchAnchored)
             double w = Pill.ActualWidth, h = Pill.ActualHeight;
             if (w <= 0 || h <= 0) return;
             double r = Math.Min(Radius, Math.Min(w, h) / 2);

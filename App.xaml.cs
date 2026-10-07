@@ -319,6 +319,7 @@ namespace WinNotch
         public void OpenEditor(string pageId = null, string slotId = null)
         {
             if (_notch == null) return;
+            if (OpenWindowV2(pageId)) return;        // P52 hook (Features/WindowV2): the new window; false with the switch off
             if (_editor == null)
             {
                 _editor = new EditorWindow(Settings, _notch);
@@ -334,6 +335,50 @@ namespace WinNotch
             Services.Native.ForceForeground(hwnd);
             _editor.Activate();
             _editor.Topmost = false;
+        }
+
+        private Features.WindowV2.WindowV2 _windowV2;
+
+        /// <summary>
+        /// P52: the WinNotch window, version 2, behind its switch. Returns false with the switch off, and then the old
+        /// window opens exactly as before. The classic window is still used from inside v2 for pages, themes and settings.
+        /// </summary>
+        private bool OpenWindowV2(string pageId)
+        {
+            if (!(Core.Flags.FeatureFlags.Current?.IsEnabled(Features.WindowV2.LayoutRules.FeatureId) ?? false)) return false;
+            if (_v2Opening) return false;           // v2 asked for the classic window: let it through
+            try
+            {
+                if (_editor != null && _editor.IsVisible) _editor.Hide();      // one window at a time: they share the same settings
+                if (_windowV2 == null)
+                {
+                    _windowV2 = new Features.WindowV2.WindowV2(Settings, _notch);
+                    _windowV2.Closed += (s, e) => _windowV2 = null;
+                    _windowV2.Open(pageId);
+                    _windowV2.Show();
+                }
+                else _windowV2.Open(pageId);
+                if (!_windowV2.IsVisible) _windowV2.Show();
+                if (_windowV2.WindowState == WindowState.Minimized) _windowV2.WindowState = WindowState.Normal;
+                Services.Native.ForceForeground(new System.Windows.Interop.WindowInteropHelper(_windowV2).Handle);
+                _windowV2.Activate();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Core.Flags.FeatureFlags.Current?.ReportError(Features.WindowV2.LayoutRules.FeatureId, ex);
+                return false;                        // the old window opens instead
+            }
+        }
+
+        private bool _v2Opening;
+
+        /// <summary>Called by v2 when it wants a section that still lives in the classic window (pages, themes, settings, news).</summary>
+        internal void OpenClassicEditor(string pageId)
+        {
+            _v2Opening = true;
+            try { _windowV2?.Hide(); OpenEditor(pageId); }
+            finally { _v2Opening = false; }
         }
 
         /// <summary>A page was edited in the notch: the WinNotch window, if open on it, shows the new layout.</summary>
