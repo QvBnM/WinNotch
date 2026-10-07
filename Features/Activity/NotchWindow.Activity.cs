@@ -79,6 +79,8 @@ namespace WinNotch
         {
             // P53 hook (Features/Fullscreen): over a fullscreen app only important alerts come down, briefly; a no-op with the switch off
             if (!FullscreenAllows(id, content, w, h, ref ms, important)) return false;
+            // P51b hook (Features/AlertInterrupt): an alert pushed aside a moment ago waits; a no-op with the switch off
+            if (!AlertInterruptAllows(id)) return false;
             if (!_activityOn || _activity == null) return ShowLive(content, w, h, ms, important);
             try
             {
@@ -109,6 +111,20 @@ namespace WinNotch
             _activityRendered = -1;
             if (shown.IsPersistent) RenderActivity();
             else _activity.Dismiss(shown.Primary?.Key);
+        }
+
+        /// <summary>
+        /// P51b hook: the alert on the pill was pushed aside by the user. The manager forgets it (even a persistent one),
+        /// so EndLive's own hook does not draw it again on the next tick. No-op with the switch off.
+        /// </summary>
+        private void ActivityDismissShown()
+        {
+            if (!_activityOn || _activity == null || _activityShown == null) return;
+            var shown = _activityShown;
+            _activityShown = null;
+            _activityRendered = -1;
+            try { _activity.Dismiss(shown.Primary?.Key); }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(ActivityManager.FeatureId, ex); }
         }
 
         /// <summary>P13 hook in MonitorTick: the fullscreen app is gone, persistent activities kept meanwhile are drawn.</summary>

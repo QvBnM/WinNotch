@@ -165,6 +165,7 @@ namespace WinNotch
             _audioTick.Tick += (o, a) => Sessions.Scan();
             _poll.Start(); _sec.Start(); _mon.Start();
             StartOverlays();                // P51 hook (Features/Overlays): closing panels the same way; a no-op with the switch off
+            StartAlertInterrupt();          // P51b hook (Features/AlertInterrupt): the switch's copy and the primary mouse button
             // Per-frame work and the 400 ms per-app audio scan only run while the notch is open (see Expand/Collapse).
 
             ApplySettings();
@@ -195,6 +196,7 @@ namespace WinNotch
         {
             StopSmoke();
             StopOverlays();                 // P51 hook (Features/Overlays)
+            StopAlertInterrupt();           // P51b hook (Features/AlertInterrupt)
             StopActivities();
             StopCommandBar();
             StopQuickActions();
@@ -357,6 +359,8 @@ namespace WinNotch
             Native.GetCursorPos(out var p);
             var r = PillScreenRect();
             OverlayPollTick(p, r);          // P51 hook (Features/Overlays): Esc and a click outside the window, only while something is open
+            // P51b hook (Features/AlertInterrupt): a drag carried onto the pill pushes an alert aside; no-op with the switch off
+            AlertInterruptPoll(Inside(r, p, _miniApplied && _mode == Mode.Idle ? 10 : 4));
 
             if (_mode == Mode.Expanded)
             {
@@ -373,7 +377,8 @@ namespace WinNotch
             // P53 hook (Features/Fullscreen): hidden over a fullscreen app, hover and drag don't open it; a no-op with the switch off
             if (_hidden && !FullscreenOpens(Features.Fullscreen.HiddenTrigger.Hover)) { ClearDwell(); return; }
             if (_hidden && _mode != Mode.Live) { ClearDwell(); return; }
-            if (_liveInteractive) return;
+            // P51b hook (Features/AlertInterrupt): an alert with buttons keeps the hover, but a drag still gets through
+            if (_liveInteractive && AlertInterruptHoverBlocked() && !AlertInterruptDragging) return;
 
             bool ins = Inside(r, p, _miniApplied && _mode == Mode.Idle ? 10 : 4);
 
@@ -381,7 +386,7 @@ namespace WinNotch
             // There it gets out of the way: it vanishes while the mouse is over it and the click goes to the window below.
             // It opens only when the mouse is pushed all the way up, against the top edge of the screen.
             bool atEdge = _target != null && p.Y <= _target.Bounds.Top + 1;
-            if (ins && _overMax && _mode == Mode.Idle && !atEdge)
+            if (ins && _overMax && _mode == Mode.Idle && !atEdge && !AlertInterruptDragging)        // P51b: a drag still opens it
             {
                 if (!_dodging) { _dodging = true; _dwellStart = null; Fade(Pill, 0, 90); }
                 return;
@@ -389,7 +394,7 @@ namespace WinNotch
             if (_dodging) { _dodging = false; if (!ins) Fade(Pill, 1, 220); }
 
             // A click while the mouse rests on the notch was meant for the window below: don't open on top of it.
-            bool shelfDrag = ShelfDragHover(ins);     // P23 hook (Features/Shelf): a drag carried onto the pill may open it; false with the switch off
+            bool shelfDrag = ShelfDragHover(ins) || AlertInterruptDragging;     // P23 hook (Features/Shelf) + P51b: a drag carried onto the pill may open it; false with both switches off
             if (ins && !shelfDrag && (Native.GetAsyncKeyState(0x01) < 0 || Native.GetAsyncKeyState(0x02) < 0)) _clickedThrough = true;   // left / right button
             if (!ins) _clickedThrough = false;
             if (_clickedThrough) { ClearDwell(); return; }
@@ -421,6 +426,7 @@ namespace WinNotch
         {
             if (_mode == Mode.Expanded) { Collapse(); return; }
             FullscreenForget();             // P53 hook (Features/Fullscreen): opened by hand, nothing waits any more
+            AlertInterrupt(Core.Ui.UserIntent.Shortcut);     // P51b hook (Features/AlertInterrupt)
             _pinned = true;
             _mouseWasInside = false;
             Expand();

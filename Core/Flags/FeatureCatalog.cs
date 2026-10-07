@@ -57,6 +57,8 @@ namespace WinNotch.Core.Flags
         public const string FullscreenHide = "fullscreen-hide";
         /// <summary>Core/Ui + Features/Overlays: same id as OverlayStack.FeatureId (the tests check they match).</summary>
         public const string OverlayDismiss = "overlay-dismiss";
+        /// <summary>Core/Ui + Features/AlertInterrupt: same id as InterruptRules.FeatureId (the tests check they match).</summary>
+        public const string AlertInterrupt = "alert-interrupt";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -99,6 +101,9 @@ namespace WinNotch.Core.Flags
             // P51: a repair of a behaviour, on by default (Beta, so --safe-mode turns it off); off = the panels close only
             // through their own buttons, as before, and no key or click outside is read
             new FeatureInfo(OverlayDismiss, "Închiderea panourilor", "Un panou deschis (ieșire audio, raft, galerie, mărimi) se închide și la click în afara lui și la Esc, nu doar cu butonul lui.",
+            // P51b: a repair of a behaviour, on by default (Beta, so --safe-mode turns it off); off = an alert holds the
+            // pill until it ends by itself, as before
+            new FeatureInfo(AlertInterrupt, "Alertele nu stau în cale", "O alertă se dă la o parte imediat ce faci ceva: tragi fișiere peste notch, apeși scurtătura sau deschizi Command Bar-ul.",
                             FeatureStage.Beta, true),
         };
 

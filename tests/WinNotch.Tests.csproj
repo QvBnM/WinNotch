@@ -26,6 +26,7 @@
     <Compile Include="ShutdownTests.cs" />
     <Compile Include="FullscreenTests.cs" />
     <Compile Include="OverlayStackTests.cs" />
+    <Compile Include="InterruptTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -36,6 +37,8 @@
     <Compile Include="..\Core\Flags\FeatureCatalog.cs" />
     <!-- P51: the pure overlay rules (the notch's partial, with the WPF hooks, stays out) -->
     <Compile Include="..\Core\Ui\OverlayStack.cs" />
+    <!-- P51b: the pure interrupt rules (the notch's partial, with the WPF hooks, stays out) -->
+    <Compile Include="..\Core\Ui\InterruptRules.cs" />
     <Compile Include="..\Core\Flags\FeatureFlags.cs" />
     <Compile Include="..\Core\Flags\FeatureSettings.cs" />
     <Compile Include="..\Core\Diagnostics\HealthLog.cs" />

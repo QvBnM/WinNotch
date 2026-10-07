@@ -512,6 +512,15 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   și la `Esc`. În fereastra WinNotch, `Esc` închide pop-up-ul de mărimi (acolo fereastra are focus, nu se citește nicio tastă
   în fundal). În log apare un rând scurt cu id-ul panoului și motivul, de exemplu „Panou închis: raft (Esc).” — doar când a fost
   închis altfel decât cu butonul lui. Vezi `docs/adr/0014-inchiderea-panourilor.md`.
+- **O alertă nu stă în cale (P51b, comutatorul „Alertele nu stau în cale”).** O alertă e informație, nu o stare: dacă începi
+  să tragi fișiere peste notch, apeși `Win + Alt + N`, deschizi Command Bar-ul, alegi „Deschide notch-ul” din meniul
+  iconiței sau deschizi un panou (ieșire audio, raft), alerta se dă la o parte pe loc și acțiunea se execută. Hover-ul deschide notch-ul peste o alertă de informare (volum,
+  piesă nouă), dar **nu** peste una la care trebuie să apeși ceva (actualizare, memorie plină, pauză pentru ochi, confirmări) —
+  acolo butonul trebuie să rămână apăsabil. Mișcarea obișnuită a mouse-ului, tastatul în altă aplicație și o altă alertă de
+  prioritate mai mică nu întrerup nimic. O alertă dată la o parte nu revine în următoarele 2 secunde (altfel ar întrerupe
+  chiar acțiunea pentru care s-a retras); dacă avea o acțiune nefăcută (actualizarea), se oferă din nou mai târziu, prin
+  mecanismul ei obișnuit, iar pauza pentru ochi se consideră sărită. În log: „Alertă întreruptă: eye-break (tragere de fișiere).”
+  Vezi `docs/adr/0015-alerta-nu-sta-in-cale.md`.
 - **Monitoare.**
   - Urmează monitorul pe care e mouse-ul.
   - Dacă acel monitor e „ocupat” (joc sau video pe tot ecranul, inclusiv borderless), trece pe un monitor liber sau se ascunde. Setarea „Peste jocuri / fullscreen” alege între „se ascunde, apare doar pentru alerte” și „rămâne mereu vizibil”.

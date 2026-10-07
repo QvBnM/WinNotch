@@ -193,6 +193,7 @@ namespace WinNotch
             _asPanel.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
             _asPanel.SetResourceReference(Border.BorderBrushProperty, "TrackBrush");
             AutomationProperties.SetAutomationId(_asPanel, SmokeMode.AudioOutputsPanelAutomationId);
+            AlertInterrupt(Core.Ui.UserIntent.OpenPanel);      // P51b hook (Features/AlertInterrupt)
             OverlayHost.Children.Add(_asPanel);
             OverlayRegister(OvAudio, Core.Ui.OverlayLevel.Panel, _asPanel, () => AudioSwitchHidePanel());   // P51 hook (Features/Overlays)
             AudioSwitchRedraw();
