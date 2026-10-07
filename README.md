@@ -16,6 +16,14 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.20
+
+- Peste un joc sau un film pe tot ecranul notch-ul dispare complet și nu mai reapare la mișcarea mouse-ului; doar alertele importante coboară scurt.
+- Panourile (ieșire audio, raft, galerie, mărimi) se închid și la click în afara lor și la `Esc`.
+- O alertă nu mai stă în calea unei acțiuni: tragerea de fișiere, `Win + Alt + N` și Command Bar-ul o dau la o parte imediat.
+- Dacă aplicația se închide singură, motivul ajunge în log și notch-ul te anunță după a doua închidere neexplicată.
+- Experimentale noi (Setări › Funcții noi, oprite implicit): „Notch lipit de ramă” și „Fereastra WinNotch v2”.
+
 ## Noutăți în 0.6.19
 
 - Raft: bifezi rândurile și le copiezi pe toate deodată — „Copiază selecția”, apoi `Ctrl+V` unde ai nevoie (experimental, din Setări › Funcții noi).
