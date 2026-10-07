@@ -103,7 +103,8 @@ namespace WinNotch.Features.NotchAnchored
         public static (Pt Start, IReadOnlyList<Seg> Segments) PillOnly(double w, double h, double radius)
         {
             var (_, segs) = Outline(w, h, radius, 0);
-            return (new Pt(0, 0), segs.Where(x => x.IsArc || x.To.X != 0 || x.To.Y != 0).ToList());
+            // the first and the last segment are the ears: without them the figure closes along the top edge
+            return (new Pt(0, 0), segs.Skip(1).Take(segs.Count - 2).ToList());
         }
 
         /// <summary>The shadow falls downwards only; upwards it would draw a line over the bezel.</summary>
