@@ -452,6 +452,7 @@ namespace WinNotch
             _shPanel = new Border { Margin = new Thickness(-6, 36, -6, -4), Padding = new Thickness(14, 12, 14, 10), CornerRadius = new CornerRadius(16), Child = body };
             _shPanel.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
             AutomationProperties.SetAutomationId(_shPanel, SmokeMode.ShelfPanelAutomationId);
+            AlertInterrupt(Core.Ui.UserIntent.OpenPanel);      // P51b hook (Features/AlertInterrupt)
             OverlayHost.Children.Add(_shPanel);
             _shDrawn = -1;
             ShelfRedraw();

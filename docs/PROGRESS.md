@@ -124,10 +124,22 @@
   „alerta s-a terminat” se vede din `PollTick` (`_mode != Mode.Live`).
 - **Comutator:** `alert-interrupt` (Beta, pornit implicit, oprit în `--safe-mode`); oprit = o alertă ține pastila până la
   capătul duratei ei, ca înainte.
-- **Teste:** 18 noi (IR1–IR18) în `tests/InterruptTests.cs`, inclusiv cazul raportat (tragere peste o alertă cu butoane),
+- **Teste:** 22 noi (IR1–IR20, cu IR10b/IR10c) în `tests/InterruptTests.cs`, inclusiv cazul raportat (tragere peste o alertă cu butoane),
   anti-bucla și pinurile pe legături; `dotnet` lipsește în container, rularea e în CI.
-- **Abateri:** meniul iconiței întrerupe prin `ToggleByHotkey` (aceeași cale ca scurtătura); celelalte comenzi din tray nu
-  au nevoie, fiindcă nu se suprapun cu o alertă. Deschiderea unui panou e în reguli, dar panourile se pot deschide doar cu
-  notch-ul deschis, unde nu există alertă — regula rămâne pentru viitor.
+- **Revizia R1:** 2 Critice (pinul AC4 — `EndLive` rămâne neatins, „alerta s-a terminat” se citește din `PollTick`; și
+  cazul raportat **care nu era reparat**: după `EndLive`, detectorul raftului nu avea istoricul tragerii, deci
+  `_clickedThrough` ținea notch-ul închis până la sfârșitul tragerii), 3 Majore (Activity Manager redesena alerta
+  întreruptă și umplea log-ul; răgazul de 30 s înghițea volumul, piesa nouă și oferta one-shot a serviciului de
+  temperatură; trei intenții din brief nu erau legate nicăieri), 5 Medii (`_aiCurrentId` pus înainte să se știe dacă
+  alerta se vede; Command Bar-ul întrerupea și când nu se deschidea; `_shPrimaryButton` necitit cu raftul oprit;
+  comutatorul citit la fiecare tick fără copie, fără abonare, fără `try/catch`; ADR-ul lipsă) și Minorele ieftine
+  (același prag `Inside`, ceas dat înapoi, rândul dublat din Command Bar).
+  Reparate toate: un singur detector de tragere (`AlertInterruptDragging` folosit și ca `shelfDrag` și ca excepție la
+  „dă-te la o parte peste o fereastră maximizată”), `ActivityDismissShown()` înainte de `EndLive`, răgaz de 2 s pe cheia
+  fluxului + 1,5 s între întreruperi, `OpenPanel` legat la ieșirea audio și la raft, Command Bar-ul doar pe
+  `ShortcutDecision.Open`, `StartAlertInterrupt` / `StopAlertInterrupt` (copie, abonare, dezabonare, butonul principal
+  al mouse-ului citit și cu raftul oprit), `try/catch` → `ReportError`, ADR `docs/adr/0015-alerta-nu-sta-in-cale.md`.
+- **Abateri:** meniul iconiței întrerupe prin `ToggleByHotkey` (aceeași cale ca scurtătura), deci nu are intenție
+  separată; pauza pentru ochi întreruptă își oprește numărătoarea când `EndLive` golește stratul (400 ms), nu pe loc.
 - **Stare:** ramura `p51b-alert-interrupt`, pornită din `main`, fără merge și fără versiune nouă până la testarea pe
   Windows (verificările P51b.1–P51b.10).

@@ -285,7 +285,9 @@ comutatorul „Raft”.
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
 | P51b.1 | Cazul raportat | Lasă să apară „Pauză pentru ochi” (sau pornește-o din Setări cu un prag mic). Cât e pe ecran, trage un fișier din Explorer peste notch. | Alerta dispare imediat, notch-ul se deschide cu Raftul gata de drop; fișierul se lasă normal. |
-| P51b.2 | Nu revine imediat | După P51b.1, lasă mouse-ul în pace 10 secunde. | Pauza pentru ochi nu reapare imediat (răgaz de 30 s). După un minut poate reapărea. |
+| P51b.2 | Nu revine imediat | După P51b.1, lasă mouse-ul în pace câteva secunde. | Pauza pentru ochi nu reapare peste tragere (răgaz de 2 s); mai târziu poate reapărea. Repetă cu „Manager de activități” pornit din Setări: alerta nu reapare și log-ul nu se umple. |
+| P51b.11 | Volumul nu e înghițit | Cu o alertă pe pastilă, apasă `Win + Alt + N` (alerta dispare). Apoi, imediat, învârte rotița de volum. | OSD-ul de volum apare normal (răgazul e scurt și pe alerta întreruptă, nu pe toate). |
+| P51b.12 | Panou deschis | Cu notch-ul deschis și o alertă pe pastilă (greu de prins: pune volumul în timp ce e deschis) — altfel: deschide ieșirea audio imediat după o alertă. | Nicio alertă nu rămâne peste panou. |
 | P51b.3 | Alerta de actualizare | Când apare „Actualizare disponibilă”, trage un fișier peste notch. | Alerta dispare, notch-ul se deschide pentru Raft; oferta de actualizare se oferă din nou mai târziu. |
 | P51b.4 | Scurtătura | Cât e o alertă pe pastilă (de exemplu piesă nouă sau pauza pentru ochi), apasă `Win + Alt + N`. | Notch-ul se deschide imediat, fără să aștepte sfârșitul alertei. |
 | P51b.5 | Command Bar | Cu Command Bar pornit: cât e o alertă pe pastilă, apasă scurtătura lui. | Bara se deschide, alerta dispare. |

@@ -193,6 +193,7 @@ namespace WinNotch
             _asPanel.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
             _asPanel.SetResourceReference(Border.BorderBrushProperty, "TrackBrush");
             AutomationProperties.SetAutomationId(_asPanel, SmokeMode.AudioOutputsPanelAutomationId);
+            AlertInterrupt(Core.Ui.UserIntent.OpenPanel);      // P51b hook (Features/AlertInterrupt)
             OverlayHost.Children.Add(_asPanel);
             AudioSwitchRedraw();
             Task.Run(() => _asService.RefreshNow());           // fresh, off the UI thread; Changed redraws it

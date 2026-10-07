@@ -28,9 +28,9 @@ namespace WinNotch
             Check("IR1", "Tragerea de fișiere întrerupe orice alertă, inclusiv una cu butoane (cazul raportat: pauza pentru ochi)",
                   Inter(UserIntent.FileDrag, true) && Inter(UserIntent.FileDrag, false));
 
-            Check("IR2", "Scurtătura, Command Bar-ul și meniul iconiței întrerup orice alertă",
-                  Inter(UserIntent.Shortcut, true) && Inter(UserIntent.CommandBar, true) && Inter(UserIntent.Tray, true) &&
-                  Inter(UserIntent.Shortcut, false) && Inter(UserIntent.CommandBar, false) && Inter(UserIntent.Tray, false));
+            Check("IR2", "Scurtătura (și „Deschide notch-ul” din tray, aceeași cale) și Command Bar-ul întrerup orice alertă",
+                  Inter(UserIntent.Shortcut, true) && Inter(UserIntent.CommandBar, true) &&
+                  Inter(UserIntent.Shortcut, false) && Inter(UserIntent.CommandBar, false));
 
             Check("IR3", "Deschiderea unui panou întrerupe alerta",
                   Inter(UserIntent.OpenPanel, true) && Inter(UserIntent.OpenPanel, false));
@@ -63,13 +63,24 @@ namespace WinNotch
                   !m.Suppressed(LegacyAlerts.EyeBreak, now) && !m.Suppressed(null, now) && !m.Suppressed("", now));
 
             m.Note(LegacyAlerts.EyeBreak, now);
-            Check("IR9", "O alertă întreruptă nu se re-afișează imediat (anti-buclă)",
-                  m.Suppressed(LegacyAlerts.EyeBreak, now) && m.Suppressed(LegacyAlerts.EyeBreak, now.AddSeconds(29)) &&
-                  InterruptRules.Cooldown == TimeSpan.FromSeconds(30));
+            Check("IR9", "O alertă întreruptă nu se re-afișează imediat, dar răgazul e scurt (2 s): o alertă cerută de utilizator nu se pierde",
+                  m.Suppressed(LegacyAlerts.EyeBreak, now) && m.Suppressed(LegacyAlerts.EyeBreak, now.AddSeconds(1)) &&
+                  InterruptRules.Cooldown == TimeSpan.FromSeconds(2) && InterruptRules.Quiet == TimeSpan.FromMilliseconds(1500));
 
-            Check("IR10", "După răgaz se poate afișa din nou și memoria se curăță",
-                  !m.Suppressed(LegacyAlerts.EyeBreak, now.AddSeconds(30)) && m.Count == 0 &&
-                  !m.Suppressed(LegacyAlerts.EyeBreak, now.AddSeconds(31)));
+            Check("IR10", "După răgaz se poate afișa din nou și memoria se curăță; un ceas dat înapoi doar uită mai repede",
+                  !m.Suppressed(LegacyAlerts.EyeBreak, now.AddSeconds(2)) && m.Count == 0 &&
+                  !m.Suppressed(LegacyAlerts.EyeBreak, now.AddSeconds(3)));
+
+            var mk = new InterruptMemory();
+            mk.Note(LegacyAlerts.OcrKey, now);
+            Check("IR10b", "Memoria lucrează pe cheia fluxului: pașii aceluiași flux împart răgazul, alt flux nu e atins",
+                  mk.Suppressed(LegacyAlerts.OcrKey, now) && !mk.Suppressed(LegacyAlerts.Volume, now) &&
+                  LegacyAlerts.Find(LegacyAlerts.OcrDone).Key == LegacyAlerts.OcrKey);
+
+            var mb = new InterruptMemory();
+            mb.Note(LegacyAlerts.EyeBreak, now);
+            Check("IR10c", "Ceasul dat înapoi (ora de iarnă) nu blochează alerta o oră",
+                  !mb.Suppressed(LegacyAlerts.EyeBreak, now.AddHours(-1)));
 
             m.Note(LegacyAlerts.EyeBreak, now);
             Check("IR11", "O altă alertă nu e afectată", !m.Suppressed(LegacyAlerts.Track, now));
@@ -97,17 +108,32 @@ namespace WinNotch
                    cmd = Src("Features/CommandBar/NotchWindow.CommandBar.cs"),
                    part = Src("Features/AlertInterrupt/NotchWindow.AlertInterrupt.cs");
 
-            Check("IR15", "Legăturile sunt câte un rând: PollTick (tragerea), scurtătura, Command Bar-ul, poarta anti-buclă din Alert; EndLive rămâne neatins (pinul AC4)",
-                  notch.Contains("AlertInterruptPoll(Inside(r, p, 4));") &&
-                  notch.Contains("AlertInterrupt(Core.Ui.UserIntent.Shortcut);") &&
-                  !notch.Contains("AlertInterruptEnded") &&
-                  part.Contains("if (_mode != Mode.Live) _aiCurrentId = null;") &&
+            Check("IR15", "Legăturile sunt câte un rând: PollTick, scurtătura, Command Bar (doar când se deschide), panourile, poarta din Alert; EndLive rămâne neatins (pinul AC4)",
+                  notch.Contains("AlertInterruptPoll(Inside(r, p, _miniApplied && _mode == Mode.Idle ? 10 : 4));") &&
+                  notch.Contains("AlertInterrupt(Core.Ui.UserIntent.Shortcut);") && !notch.Contains("AlertInterruptEnded") &&
+                  notch.Contains("StartAlertInterrupt();") && notch.Contains("StopAlertInterrupt();") &&
                   act.Contains("if (!AlertInterruptAllows(id)) return false;") &&
-                  cmd.Contains("AlertInterrupt(Core.Ui.UserIntent.CommandBar);"));
+                  Norm(NoComments(Src("Features/CommandBar/NotchWindow.CommandBar.cs")))
+                      .Contains("case ShortcutDecision.Open: AlertInterrupt(Core.Ui.UserIntent.CommandBar); OpenCommandBar(); break;") &&
+                  Src("Features/AudioSwitch/NotchWindow.AudioSwitch.cs").Contains("AlertInterrupt(Core.Ui.UserIntent.OpenPanel);") &&
+                  Src("Features/Shelf/NotchWindow.Shelf.cs").Contains("AlertInterrupt(Core.Ui.UserIntent.OpenPanel);"));
+
+            Check("IR19", "Cazul raportat, în cod: o alertă cu butoane nu mai blochează tragerea, iar tragerea e singurul detector (nu se mai setează click-through)",
+                  notch.Contains("if (_liveInteractive && AlertInterruptHoverBlocked() && !AlertInterruptDragging) return;") &&
+                  notch.Contains("bool shelfDrag = ShelfDragHover(ins) || AlertInterruptDragging;") &&
+                  notch.Contains("!atEdge && !AlertInterruptDragging"));
+
+            Check("IR20", "Protocolul comutatorului: copie pe firul UI, Changed += / -=, Dispatcher, erorile prin ReportError; alerta întreruptă e uitată de Activity Manager (nu se re-desenează)",
+                  part.Contains("FeatureFlags.Current.Changed += _aiFlagHandler;") &&
+                  part.Contains("FeatureFlags.Current.Changed -= _aiFlagHandler;") &&
+                  part.Contains("Dispatcher.InvokeAsync(") && part.Contains("ReportError(InterruptRules.FeatureId, ex)") &&
+                  part.Contains("ShelfReadPrimaryButton();") &&
+                  act.Contains("private void ActivityDismissShown()") && part.Contains("ActivityDismissShown();"));
 
             Check("IR16", "Alerta se încheie prin EndLive (rutina existentă), nu prin ascunderea straturilor, și doar cât e o alertă pe pastilă",
                   part.Contains("EndLive();") && !part.Contains("LiveLayer") && !part.Contains("Fade(") &&
-                  part.Contains("if (!AlertInterruptOn || _mode != Mode.Live) return false;"));
+                  part.Contains("if (!_aiOn || _mode != Mode.Live) return false;") &&
+                  part.Contains("if (_mode == Mode.Live) { if (_aiPendingId != null) { _aiCurrentId = _aiPendingId; _aiPendingId = null; } }"));
 
             Check("IR17", "Nu se face un detector de tragere nou: se folosește ShelfDragHover (P23)",
                   part.Contains("new ShelfDragHover()") && !part.Contains("DispatcherTimer") &&

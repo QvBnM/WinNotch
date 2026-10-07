@@ -12,12 +12,10 @@ namespace WinNotch.Core.Ui
         Hover,
         /// <summary>Files are being dragged over the pill (a drag carried in from outside).</summary>
         FileDrag,
-        /// <summary>Win+Alt+N.</summary>
+        /// <summary>Win+Alt+N, or „Deschide notch-ul” in the tray (the same path).</summary>
         Shortcut,
         /// <summary>The Command Bar shortcut.</summary>
         CommandBar,
-        /// <summary>A menu item in the tray.</summary>
-        Tray,
         /// <summary>A panel was opened (audio outputs, the shelf).</summary>
         OpenPanel,
         /// <summary>Typing in another application.</summary>
@@ -29,15 +27,21 @@ namespace WinNotch.Core.Ui
     /// <summary>
     /// P51b: an alert is information, not a state. Any clear intention of the user wins and the alert steps aside at
     /// once. Pure rules (no WPF): which intention interrupts which alert, and the short memory that keeps an
-    /// interrupted alert from coming straight back.
+    /// interrupted alert from coming straight back and interrupting the very action it stepped aside for.
     /// </summary>
     public static class InterruptRules
     {
         /// <summary>Same id as the entry in FeatureCatalog (the tests check they match).</summary>
         public const string FeatureId = "alert-interrupt";
 
-        /// <summary>An interrupted alert is not offered again for this long (anti-loop).</summary>
-        public static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(30);
+        /// <summary>
+        /// An interrupted alert is not offered again for this long: just over the gesture it stepped aside for, never so
+        /// long that an alert the user asks for (the volume OSD, a new track) is swallowed.
+        /// </summary>
+        public static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(2);
+
+        /// <summary>After one interruption, the next one waits this long: a persistent activity redrawn by the manager cannot make a loop.</summary>
+        public static readonly TimeSpan Quiet = TimeSpan.FromMilliseconds(1500);
 
         /// <summary>
         /// Does this intention push the alert aside? Dragging files, the shortcuts and opening a panel always do.
@@ -47,15 +51,16 @@ namespace WinNotch.Core.Ui
         /// </summary>
         public static bool Interrupts(UserIntent intent, bool interactive) => intent switch
         {
-            UserIntent.FileDrag or UserIntent.Shortcut or UserIntent.CommandBar or UserIntent.Tray or UserIntent.OpenPanel => true,
+            UserIntent.FileDrag or UserIntent.Shortcut or UserIntent.CommandBar or UserIntent.OpenPanel => true,
             UserIntent.Hover => !interactive,
             _ => false,
         };
     }
 
     /// <summary>
-    /// The alerts pushed aside lately: the same one is not shown again right away (an alert interrupted by a drag must
-    /// not come back on the next tick and interrupt the drag). Pure; the caller gives the clock.
+    /// The alerts pushed aside a moment ago: the same one is not shown again right away (an alert interrupted by a drag
+    /// must not come back on the next tick and interrupt the drag). Pure; the caller gives the clock, and a clock that
+    /// jumps backwards (summer time) only forgets sooner, it never blocks an alert for an hour.
     /// </summary>
     public sealed class InterruptMemory
     {
@@ -67,22 +72,23 @@ namespace WinNotch.Core.Ui
 
         public int Count => _order.Count;
 
-        /// <summary>This alert was pushed aside now.</summary>
-        public void Note(string id, DateTime now)
+        /// <summary>This alert (its flow key) was pushed aside now.</summary>
+        public void Note(string key, DateTime now)
         {
-            if (string.IsNullOrEmpty(id)) return;
-            if (!_at.ContainsKey(id)) _order.Add(id);
-            _at[id] = now;
+            if (string.IsNullOrEmpty(key)) return;
+            if (!_at.ContainsKey(key)) _order.Add(key);
+            _at[key] = now;
             if (_order.Count > MaxKinds) { _at.Remove(_order[0]); _order.RemoveAt(0); }
         }
 
         /// <summary>True while the alert must not be shown again (within <see cref="InterruptRules.Cooldown"/>).</summary>
-        public bool Suppressed(string id, DateTime now)
+        public bool Suppressed(string key, DateTime now)
         {
-            if (string.IsNullOrEmpty(id) || !_at.TryGetValue(id, out var at)) return false;
-            if (now - at < InterruptRules.Cooldown) return true;
-            _at.Remove(id);
-            _order.Remove(id);
+            if (string.IsNullOrEmpty(key) || !_at.TryGetValue(key, out var at)) return false;
+            var since = now - at;
+            if (since >= TimeSpan.Zero && since < InterruptRules.Cooldown) return true;
+            _at.Remove(key);
+            _order.Remove(key);
             return false;
         }
 

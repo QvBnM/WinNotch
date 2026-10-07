@@ -148,7 +148,6 @@ namespace WinNotch
             try
             {
                 bool full = false;
-                if (_cmdOn && !_cmdOpen) AlertInterrupt(Core.Ui.UserIntent.CommandBar);   // P51b hook (Features/AlertInterrupt)
                 if (_cmdOn && !_cmdOpen)
                 {
                     _cmdForeground ??= new Features.Context.ForegroundSource(work => work());
@@ -157,7 +156,10 @@ namespace WinNotch
                 }
                 switch (CommandBarRules.OnShortcut(_cmdOn, _cmdOpen, full, _hidden, _toolBusy || Editing))
                 {
-                    case ShortcutDecision.Open: OpenCommandBar(); break;
+                    case ShortcutDecision.Open:
+                        AlertInterrupt(Core.Ui.UserIntent.CommandBar);       // P51b hook (Features/AlertInterrupt)
+                        OpenCommandBar();
+                        break;
                     case ShortcutDecision.Close: CloseCommandBar(); break;
                     default:
                         App.Log(!_cmdOn ? "Command Bar: comutatorul e oprit; nu se deschide."

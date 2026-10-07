@@ -111,6 +111,20 @@ namespace WinNotch
             else _activity.Dismiss(shown.Primary?.Key);
         }
 
+        /// <summary>
+        /// P51b hook: the alert on the pill was pushed aside by the user. The manager forgets it (even a persistent one),
+        /// so EndLive's own hook does not draw it again on the next tick. No-op with the switch off.
+        /// </summary>
+        private void ActivityDismissShown()
+        {
+            if (!_activityOn || _activity == null || _activityShown == null) return;
+            var shown = _activityShown;
+            _activityShown = null;
+            _activityRendered = -1;
+            try { _activity.Dismiss(shown.Primary?.Key); }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(ActivityManager.FeatureId, ex); }
+        }
+
         /// <summary>P13 hook in MonitorTick: the fullscreen app is gone, persistent activities kept meanwhile are drawn.</summary>
         private void ActivityFullscreenChanged()
         {
