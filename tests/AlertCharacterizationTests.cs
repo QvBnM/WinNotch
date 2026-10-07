@@ -530,7 +530,7 @@ namespace WinNotch
             string volume = Norm(NoComments(MethodBody(notch, "private void LiveVolume(int v, bool muted)")));
             Check("AR-P13-3", "Legăturile P13 din notch sunt câte un rând: la finalul EndLive și Collapse, în LiveVolume înainte de cronometrul vechi, după schimbarea ecranului complet; fără ele, corpurile vechi rămân",
                   Count(endLive, EndLiveHook) == 1 && endLive.EndsWith(EndLiveHook + " }", StringComparison.Ordinal) &&
-                  Count(collapse, "ActivityNotchClosed();") == 1 && collapse.EndsWith("UpdateVisualizer(); ActivityNotchClosed(); }", StringComparison.Ordinal) &&
+                  Count(collapse, "ActivityNotchClosed();") == 1 && collapse.EndsWith("UpdateVisualizer(); ActivityNotchClosed(); OverlayCloseAll(Core.Ui.OverlayClose.NotchClosed); }", StringComparison.Ordinal) /* P51: its hook after it */ &&
                   volume.Contains("if (ActivityTouch(LegacyAlerts.Volume)) return; _liveTimer.Stop(); _liveTimer.Start(); return; }") &&
                   Norm(NoComments(notch)).Contains("if (hidden != _hidden) { _hidden = hidden; ApplyHidden(); ActivityFullscreenChanged(); }") &&
                   Count(Norm(NoComments(notch)), "Activity") == 5 /* the using line and the four hooks */);

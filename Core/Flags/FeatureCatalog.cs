@@ -55,6 +55,8 @@ namespace WinNotch.Core.Flags
         public const string ShutdownReport = "shutdown-report";
         /// <summary>Features/Fullscreen: same id as FullscreenRules.FeatureId (the tests check they match).</summary>
         public const string FullscreenHide = "fullscreen-hide";
+        /// <summary>Core/Ui + Features/Overlays: same id as OverlayStack.FeatureId (the tests check they match).</summary>
+        public const string OverlayDismiss = "overlay-dismiss";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -94,6 +96,9 @@ namespace WinNotch.Core.Flags
             // P53: a repair of a behaviour, on by default (Beta, so --safe-mode turns it off); off = "busy" read the old way,
             // so a browser in fullscreen only makes the pill small, and every alert gets through as before
             new FeatureInfo(FullscreenHide, "Ascuns pe tot ecranul", "Peste un joc sau un film pe tot ecranul notch-ul dispare complet; coboară scurt doar pentru ceva important (baterie, temperatură, memorie, rezultatul unei unelte). Restul alertelor se amână sau se sar.",
+            // P51: a repair of a behaviour, on by default (Beta, so --safe-mode turns it off); off = the panels close only
+            // through their own buttons, as before, and no key or click outside is read
+            new FeatureInfo(OverlayDismiss, "Închiderea panourilor", "Un panou deschis (ieșire audio, raft, galerie, mărimi) se închide și la click în afara lui și la Esc, nu doar cu butonul lui.",
                             FeatureStage.Beta, true),
         };
 

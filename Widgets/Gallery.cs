@@ -153,7 +153,8 @@ namespace WinNotch.Widgets
         }
 
         /// <summary>A pop-up card on a dimmed backdrop (click outside closes it), for hosts that have an overlay layer.</summary>
-        internal static (Action Hide, Action Close) ShowPopupIn(Panel layer, FrameworkElement content, Thickness margin, double maxWidth = 640)
+        internal static (Action Hide, Action Close) ShowPopupIn(Panel layer, FrameworkElement content, Thickness margin, double maxWidth = 640,
+                                                               Action onClosed = null)
         {
             var card = new Border { Child = content, CornerRadius = new CornerRadius(22), Padding = new Thickness(18, 16, 18, 10), MaxWidth = maxWidth,
                                     HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, BorderThickness = new Thickness(1),
@@ -161,11 +162,14 @@ namespace WinNotch.Widgets
             card.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
             card.SetResourceReference(Border.BorderBrushProperty, "HoverBrush");
             var dim = new Border { Background = new SolidColorBrush(Color.FromArgb(0x88, 0, 0, 0)), CornerRadius = new CornerRadius(18), Margin = margin, Child = card, Padding = new Thickness(24, 16, 24, 16) };
-            dim.MouseLeftButtonUp += (o, e) => { if (e.OriginalSource == dim) layer.Children.Remove(dim); };
+            bool closed = false;
+            // P51: closing it once, and the caller is told — otherwise its own fields (the sizes pop-up) stay as dead references
+            Action close = () => { if (closed) return; closed = true; layer.Children.Remove(dim); onClosed?.Invoke(); };
+            dim.MouseLeftButtonUp += (o, e) => { if (e.OriginalSource == dim) close(); };
             layer.Children.Add(dim);
             dim.Opacity = 0;
             dim.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(1, TimeSpan.FromMilliseconds(140)));
-            return (() => dim.Visibility = Visibility.Hidden, () => layer.Children.Remove(dim));
+            return (() => dim.Visibility = Visibility.Hidden, close);
         }
 
         /// <summary>

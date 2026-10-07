@@ -188,6 +188,7 @@ namespace WinNotch
             row.Children.Add(_qaMessage);
             _qaRow = row;
             OverlayHost.Children.Add(row);
+            OverlayRegister(OvQuickActions, Core.Ui.OverlayLevel.Hint, row, () => { RemoveQuickActionsRow(); RelayoutPanel(); });   // P51 hook (Features/Overlays)
             PaneHost.Margin = new Thickness(0, 0, 0, QuickActionsRowHeight);      // the page keeps its own height above the row
             ExpLayer.Height = PanelH();
             UpdateSmokeStatusIfOn();
@@ -197,6 +198,7 @@ namespace WinNotch
         {
             _qaMessageTimer?.Stop();
             _qaMessage = null;
+            OverlayUnregister(OvQuickActions);   // P51 hook (Features/Overlays)
             if (_qaRow == null) return;
             OverlayHost.Children.Remove(_qaRow);
             _qaRow = null;

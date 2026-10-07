@@ -152,6 +152,7 @@ namespace WinNotch
         internal void EnterEdit()
         {
             if (_mode != Mode.Expanded) { _pinned = true; Expand(); }
+            OverlayCloseAll(Core.Ui.OverlayClose.EditMode);      // P51 hook (Features/Overlays)
             Editing = true;
             _pinned = true;
             RebuildTabs();
@@ -198,14 +199,25 @@ namespace WinNotch
             row.Margin = new Thickness(2, 0, 0, -2);
             _banner = row;
             OverlayHost.Children.Add(row);
+            OverlayRegister(OvNote, Core.Ui.OverlayLevel.Hint, row, RemoveBanner);       // P51 hook (Features/Overlays)
         }
 
         private void RemoveBanner()
         {
+            OverlayUnregister(OvNote);      // P51 hook (Features/Overlays)
             if (_banner != null) { OverlayHost.Children.Remove(_banner); _banner = null; }
         }
 
         private void CloseOverlays()
+        {
+            OverlayUnregister(OvGallery);   // P51 hook (Features/Overlays): first out of the stack, then off the screen
+            OverlayUnregister(OvSizes);
+            CloseOverlaysCore();
+        }
+
+        /// <summary>Takes the gallery / the sizes off the screen. P51: the stack's own closing routine calls this one,
+        /// so closing through the stack does not come back into <see cref="CloseOverlays"/>.</summary>
+        private void CloseOverlaysCore()
         {
             if (_gallery != null) { OverlayHost.Children.Remove(_gallery); _gallery = null; _galleryView = null; }
             if (_sizes != null) { OverlayHost.Children.Remove(_sizes); _sizes = null; }
@@ -230,12 +242,14 @@ namespace WinNotch
             var host = new Border { Margin = new Thickness(-6, 36, -6, -4), Padding = new Thickness(12), CornerRadius = new CornerRadius(16), Child = _galleryView };
             host.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
             // a widget's sizes open in a pop-up over the gallery, which stays as it is
-            _galleryView.Popup = fe => _popup = Gallery.ShowPopupIn(OverlayHost, fe, new Thickness(-6, 36, -6, -4));
+            _galleryView.Popup = fe => _popup = Gallery.ShowPopupIn(OverlayHost, fe, new Thickness(-6, 36, -6, -4),
+                                                                    onClosed: () => _popup = (null, null));
             // while a widget is dragged out of the gallery, the gallery steps aside so the page is visible to drop on
             _galleryView.DragStarted += () => host.Visibility = Visibility.Hidden;
             _galleryView.DragEnded += () => { if (_gallery == host) { host.Visibility = Visibility.Visible; RelayoutPanel(); } };
             _gallery = host;
             OverlayHost.Children.Add(host);
+            OverlayRegister(OvGallery, Core.Ui.OverlayLevel.Panel, host, () => { CloseOverlaysCore(); RelayoutPanel(); });    // P51 hook (Features/Overlays)
             RelayoutPanel();
         }
 
@@ -271,8 +285,12 @@ namespace WinNotch
             body.Put(head); body.Put(msg, 0, 1);
             previews.HorizontalAlignment = HorizontalAlignment.Center;
             body.Put(new ScrollViewer { Style = Ui.S("SlimScroll"), Content = previews, Margin = new Thickness(0, 10, 0, 0) }, 0, 2);
-            _popup = Gallery.ShowPopupIn(OverlayHost, body, new Thickness(-6, 36, -6, -4));
+            _popup = Gallery.ShowPopupIn(OverlayHost, body, new Thickness(-6, 36, -6, -4),
+                                         onClosed: () => { _sizes = null; _popup = (null, null); OverlayUnregister(OvSizes); RelayoutPanel(); });
             _sizes = OverlayHost.Children[OverlayHost.Children.Count - 1] as FrameworkElement;
+            // P51: the card is what a click must land in — the dimmed backdrop around it counts as "outside"
+            OverlayRegister(OvSizes, Core.Ui.OverlayLevel.Panel, (_sizes as Border)?.Child as FrameworkElement ?? _sizes,
+                            () => { CloseOverlaysCore(); RelayoutPanel(); });    // P51 hook (Features/Overlays)
             RelayoutPanel();
         }
 

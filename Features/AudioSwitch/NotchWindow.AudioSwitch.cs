@@ -194,6 +194,7 @@ namespace WinNotch
             _asPanel.SetResourceReference(Border.BorderBrushProperty, "TrackBrush");
             AutomationProperties.SetAutomationId(_asPanel, SmokeMode.AudioOutputsPanelAutomationId);
             OverlayHost.Children.Add(_asPanel);
+            OverlayRegister(OvAudio, Core.Ui.OverlayLevel.Panel, _asPanel, () => AudioSwitchHidePanel());   // P51 hook (Features/Overlays)
             AudioSwitchRedraw();
             Task.Run(() => _asService.RefreshNow());           // fresh, off the UI thread; Changed redraws it
             App.Log("Ieșire audio: lista deschisă (" + _asService.Outputs.Count + ").");
@@ -202,6 +203,7 @@ namespace WinNotch
         private void AudioSwitchHidePanel()
         {
             _asMessageTimer?.Stop();
+            OverlayUnregister(OvAudio);     // P51 hook (Features/Overlays)
             if (_asPanel == null) return;
             OverlayHost.Children.Remove(_asPanel);
             _asPanel = null;

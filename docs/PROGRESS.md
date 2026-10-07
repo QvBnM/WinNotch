@@ -212,3 +212,43 @@
   semnal mai bun; cazul autorului (bară vizibilă) e acoperit de ambele criterii.
 - **Stare:** ramura `p53-fullscreen-hide`, fără merge în `main` și fără versiune nouă până la testarea pe Windows
   (verificările P53.1–P53.14 din `docs/TESTE-MANUALE.md`).
+
+
+## P51 — Închidere uniformă a panourilor (cerere a autorului, 7 oct 2026)
+
+- **Cerut:** „Ieșire audio” rămânea deschis la click în altă parte; la fel raftul, quick actions, galeria, nota paginii
+  standard. `Esc` nu închidea nimic (în afară de Command Bar și selecția de regiune).
+- **Făcut:** `Core/Ui/OverlayStack.cs` (pur, fără WPF, fără timere): `Register` / `Close` / `CloseAll(nivel)` /
+  `Topmost` / `OnOutsideClick(insideId)` / `OnEscape` / `NeedsKeyboard`, cu nivelurile `Panel`, `Hint`, `Modal`
+  (un panou nou închide celelalte panouri, nu indiciile; un modal rămâne deasupra) și motivul închiderii
+  (`OverlayClose`), care ajunge în log ca rând scurt: „Panou închis: raft (Esc).”
+  `Features/Overlays/NotchWindow.Overlays.cs` leagă: un singur `PreviewMouseDown` pe fereastră (pus doar cât comutatorul
+  e pornit, scos la `Cleanup`) spune în ce panou a căzut click-ul; click-ul din afara ferestrei (fereastra e
+  `NOACTIVATE | TRANSPARENT`, deci nu primește evenimente WPF) și `Esc` se citesc din `PollTick`-ul existent de 30 ms,
+  **numai cât teancul nu e gol** — fără cronometru nou, fără `RegisterHotKey` pe `Esc`, fără focus luat de la aplicația
+  utilizatorului. Închiderea trece mereu prin rutina existentă a panoului (`ShelfHidePanel`, `AudioSwitchHidePanel`,
+  `RemoveQuickActionsRow`, `CloseOverlays`), deci marginile și înălțimea panoului se refac ca înainte.
+- **Reparația cerută explicit în brief:** `Gallery.ShowPopupIn` primește `onClosed` și se închide o singură dată; la
+  click pe fundal apelantul își curăță starea, deci `_sizes` și `_popup` din `NotchWindow.Pages.cs` nu mai rămân
+  referințe moarte (OS12, OS13 — testele care pică pe codul vechi).
+- **Id-urile panourilor** sunt exact numele folosite de plasa de siguranță (`NotchGuardOverlays`): „galerie”, „mărimi”,
+  „notă”, „raft”, „ieșire-audio”, „quick-actions” — nimic nu e raportat ca „alte-N”.
+- **Fereastra WinNotch:** `Esc` prin `PreviewKeyDown` (acolo e focus real), nu prin citirea tastelor în fundal.
+- **Comutator:** `overlay-dismiss` (Beta, pornit implicit, oprit în `--safe-mode`), cu abonare la
+  `FeatureFlags.Changed` și dezabonare la `Cleanup`; oprit = panourile se închid doar cu butonul lor, ca înainte, și
+  nu se citește nicio tastă și niciun click.
+- **Teste:** 21 noi (OS1–OS17, cu OS1a/OS1b și OS2b–OS2d) în `tests/OverlayStackTests.cs`, inclusiv reintrarea (rutina
+  de închidere a apelantului apelează `Close` din nou) și pinurile pe legături; OS12 și OS13 pică pe codul vechi.
+  `dotnet` lipsește în container: rularea e în CI, la push pe ramură.
+- **Decizie de arhitectură:** `docs/adr/0014-inchiderea-panourilor.md` (de ce `GetAsyncKeyState` în `PollTick`-ul
+  existent și nu `RegisterHotKey` pe `Esc`, nu un hook de tastatură, nu luarea focusului).
+- **Revizia R1:** 2 Critice (fișierul de teste lipsea din commit — o comandă scurtcircuitată; raportul din PROGRESS
+  care se sprijinea pe el), 1 Major pin spart (SH27: legătura din `Collapse` mutată la final, după `ApplyMode`, ca
+  ordinea veche să rămână și ca panourile să nu refacă aspectul în timpul animației), 2 Majore reparate (oprirea
+  comutatorului nu închidea nimic și lăsa înregistrări moarte; prima apăsare după golirea teancului era înghițită),
+  5 Medii (click într-un panou de dedesubt închidea panoul de deasupra; reacția la orice buton de mouse; `Esc` dublu
+  cu Command Bar-ul deschis; `Esc`-ul din fereastra WinNotch ocolea comutatorul; „mărimi” se înregistra cu fundalul,
+  nu cu cardul) și Minorele ieftine (`CloseOverlaysCore`, ordinea în `OverlayRegister`, cursorul primit din `PollTick`,
+  `Esc` doar cât e deschis un panou — nu un indiciu).
+- **Stare:** ramura `p51-overlay-dismiss`, pornită din `main` (fără P53), fără merge și fără versiune nouă până la
+  testarea pe Windows (verificările P51.1–P51.15 din `docs/TESTE-MANUALE.md`).

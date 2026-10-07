@@ -326,3 +326,25 @@ să fie pe „se ascunde”. Pentru P53.8 oprește comutatorul din Setări → f
 | P53.12 | „Mereu vizibil” | Setări → „Peste jocuri / fullscreen” → „rămâne mereu vizibil”. Repetă P53.1. | Notch-ul rămâne vizibil, ca înainte. |
 | P53.13 | Comutatorul oprit | Setări → funcții noi → oprește „Ascuns pe tot ecranul”. Repetă P53.1 și P53.8. | Comportamentul de dinainte: peste clipul pe tot ecranul notch-ul rămâne vizibil (mic) și alerta de volum apare. |
 | P53.14 | Log fără titluri | Deschide `%AppData%\WinNotch\log.txt` și caută rândurile „Monitoare:”. | Doar clasa ferestrei și dreptunghiul (`Chrome_WidgetWin_1 [-2560,0 2560x1440]`); niciun titlu de fereastră, de filă sau de film. |
+### P51 — Închiderea panourilor
+
+Comutatorul „Închiderea panourilor” (`overlay-dismiss`) e pornit implicit. Pentru raft, quick actions și ieșirea audio
+pornește întâi comutatoarele lor din Setări → funcții noi.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P51.1 | Ieșire audio, click pe pagină | Deschide notch-ul, Acasă → butonul de lângă volum. Dă click pe pagina din notch, în afara listei. | Lista se închide. În `log.txt`: „Panou închis: ieșire-audio (click în afară).” |
+| P51.2 | Click pe ecran, în afara notch-ului | Deschide din nou lista și dă click pe desktop. | Lista se închide (notch-ul se închide și el, ca până acum, când ieși cu mouse-ul). |
+| P51.3 | Esc | Deschide lista de ieșiri audio și apasă `Esc`. | Lista se închide, notch-ul rămâne deschis. |
+| P51.4 | Esc, de sus în jos | Cu Quick Actions pornit: deschide notch-ul (apar butoanele), apoi lista de ieșiri audio. Apasă `Esc` de două ori. | Prima apăsare închide lista, a doua butoanele; notch-ul rămâne deschis. |
+| P51.5 | Un panou închide celălalt | Deschide raftul, apoi lista de ieșiri audio. | Raftul se închide singur când se deschide lista („alt panou” în log). |
+| P51.6 | Indiciile nu se închid la un panou | Cu Quick Actions pornit, deschide lista de ieșiri audio. | Butoanele de sub conținut rămân; dispar la un click pe pagină sau la `Esc`. |
+| P51.7 | Galeria și mărimile | Editare → „Adaugă widget”: click în afara galeriei. Apoi atinge un widget (mărimile) și dă click pe fundalul întunecat. | Ambele se închid; panoul notch-ului revine la înălțimea lui (fără spațiu gol rămas). |
+| P51.8 | Mărimile, a doua oară | După P51.7, atinge din nou același widget. | Pop-up-ul se deschide normal (înainte rămâneau referințe moarte și a doua deschidere se purta ciudat). |
+| P51.9 | Esc nu fură tasta | Închide toate panourile. Deschide Notepad, scrie ceva și apasă `Esc` de câteva ori. | `Esc` ajunge în Notepad, ca întotdeauna; WinNotch nu reacționează. |
+| P51.10 | Editarea închide tot | Deschide lista de ieșiri audio, apoi intră în modul editare (butonul „Editează”). | Lista se închide la intrarea în editare. |
+| P51.11 | Nota paginii standard | Editare pe o pagină standard (apare nota de jos), apasă `Esc`. | Nota dispare, editarea rămâne. |
+| P51.12 | Fereastra WinNotch | Deschide fereastra WinNotch → o pagină → „Adaugă”, click pe un widget (apare pop-up-ul cu mărimi) și apasă `Esc`. | Pop-up-ul se închide; fereastra rămâne deschisă. |
+| P51.14 | Esc cu notch-ul deschis prin scurtătură | Deschide notch-ul cu `Win + Alt + N` (rămâne deschis), cu Quick Actions pornit. Fără niciun panou deschis, apasă `Esc` într-o altă aplicație. | Butoanele Quick Actions rămân: `Esc` nu e citit cât e deschis doar un „indiciu”. Deschide apoi lista de ieșiri audio și apasă `Esc`: se închide doar lista. |
+| P51.15 | Command Bar | Cu Command Bar pornit: deschide lista de ieșiri audio, apoi Command Bar-ul (`Win + Alt + Space`). Apasă `Esc` o dată. | Se închide doar Command Bar-ul; lista rămâne. A doua apăsare închide lista. |
+| P51.13 | Comutatorul oprit | Setări → funcții noi → oprește „Închiderea panourilor”. Repetă P51.1 și P51.3. | Comportamentul de dinainte: lista rămâne deschisă la click pe pagină și la `Esc`; se închide doar cu butonul ei. |
