@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using WinNotch.Core.Flags;
+using System.Collections.Generic;
 using WinNotch.Features.NotchAnchored;
 
 namespace WinNotch
@@ -67,6 +68,8 @@ namespace WinNotch
                         _anchoredEars.SetResourceReference(Shape.FillProperty, "NotchBrush");
                         // the fillets follow the pill: same shift (hidden over a fullscreen app) and same opacity (hover, dodge)
                         _anchoredEars.RenderTransform = PillShift;
+                        // No shadow of its own: the shape it draws contains the pill, so a second shadow would double
+                        // the one under the pill's bottom edge. The fillets sit against the bezel, where no shadow shows.
                         _anchoredEars.SetBinding(OpacityProperty, new System.Windows.Data.Binding("Opacity") { Source = Pill });
                         root.Children.Insert(Math.Max(0, root.Children.IndexOf(Pill)), _anchoredEars);
                     }
@@ -76,6 +79,8 @@ namespace WinNotch
                     Pill.Effect = _anchoredOldShadow;
                     if (_anchoredEars != null && Pill.Parent is Panel root) { root.Children.Remove(_anchoredEars); _anchoredEars = null; }
                 }
+                _shapeW = _shapeH = _shapeR = _shapeE = -1;      // the shape is rebuilt whatever its size
+                ThemeManager.Apply(S);                            // the minimum opacity lives in the brushes
                 ApplyRadius();
                 ApplyMode();
             }
@@ -85,61 +90,73 @@ namespace WinNotch
         /// <summary>The top margin of the pill: 0 while anchored (it touches the bezel), the old value otherwise.</summary>
         private double AnchoredTop(double top) => _anchoredOn ? AnchoredGeometry.TopMargin : top;
 
-        /// <summary>The bottom radius while anchored (the user's setting, within 12–28).</summary>
-        private double AnchoredRadius(double r) => _anchoredOn ? AnchoredGeometry.Radius(S.CornerRadius) * UiScale : r;
+        /// <summary>
+        /// The bottom radius while anchored (the user's setting, within 12–28). The small form and the alerts keep their
+        /// own radius: the brief's shape is the standby pill and the open panel.
+        /// </summary>
+        private double AnchoredRadius(double r, bool ownRadius) =>
+            _anchoredOn && !ownRadius ? AnchoredGeometry.Radius(S.CornerRadius) * UiScale : r;
 
         /// <summary>Standby width while anchored: 240–520. The small form keeps its own width.</summary>
         private double AnchoredIdleWidth(double w) => AnchoredGeometry.IdleWidth(w, _anchoredOn);
 
+        private double _shapeW = -1, _shapeH = -1, _shapeR = -1, _shapeE = -1;
+
         /// <summary>
-        /// Hook in ApplyRadius / UpdateClip: the pill is rounded only at the bottom and the content is clipped with the
-        /// same shape, so a coloured cover inside it is cut correctly. The ears are redrawn here too (not per frame).
+        /// Hook in ApplyRadius / UpdateClip: the pill is rounded only at the bottom and its content is clipped with the
+        /// same shape, so a coloured cover inside it is cut correctly. Both the clip and the fillets are built from the
+        /// pure outline (<see cref="AnchoredGeometry"/>), and only when something actually changed — not per frame.
         /// </summary>
         private bool AnchoredShape()
         {
             if (!_anchoredOn) return false;
             double w = Pill.ActualWidth, h = Pill.ActualHeight;
-            double r = Math.Min(AnchoredGeometry.Radius(S.CornerRadius) * UiScale, Math.Max(0, Math.Min(w / 2, h)));
-            Pill.CornerRadius = new CornerRadius(0, 0, r, r);
             if (w <= 0 || h <= 0) return true;
-            var clip = new StreamGeometry();
-            using (var c = clip.Open())
-            {
-                c.BeginFigure(new Point(0, 0), true, true);
-                c.LineTo(new Point(0, h - r), false, false);
-                if (r > 0) c.ArcTo(new Point(r, h), new Size(r, r), 0, false, SweepDirection.Counterclockwise, false, false);
-                c.LineTo(new Point(w - r, h), false, false);
-                if (r > 0) c.ArcTo(new Point(w, h - r), new Size(r, r), 0, false, SweepDirection.Counterclockwise, false, false);
-                c.LineTo(new Point(w, 0), false, false);
-            }
-            clip.Freeze();
-            Inner.Clip = clip;
-            AnchoredDrawEars(w, h, r);
+            // Radius is the animated value (already scaled), so the shape follows the animation instead of jumping.
+            double scale = Math.Max(0.01, UiScale);
+            double r = Math.Min(Radius, Math.Min(w / 2, h / 2));
+            double e = AnchoredGeometry.Ear(Radius / scale, w / scale, Width / scale) * scale;
+            if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE)) return true;
+            _shapeW = w; _shapeH = h; _shapeR = r; _shapeE = e;
+
+            Pill.CornerRadius = new CornerRadius(0, 0, r, r);
+            var pill = AnchoredGeometry.PillOnly(w, h, r);
+            Inner.Clip = Build(pill.Start, pill.Segments, 0);
+            AnchoredDrawEars(w, h, r, e);
             return true;
         }
 
-        private void AnchoredDrawEars(double w, double h, double r)
+        private static bool Near(double a, double b) => Math.Abs(a - b) < 0.25;
+
+        /// <summary>Turns the pure outline into a frozen <see cref="StreamGeometry"/> (one translator, one shape).</summary>
+        private static StreamGeometry Build(Pt start, IReadOnlyList<Seg> segments, double shiftX)
         {
-            if (_anchoredEars == null) return;
-            double e = AnchoredGeometry.Ear(S.CornerRadius, w, Width) * UiScale;
-            if (e <= 0) { _anchoredEars.Data = null; return; }
             var g = new StreamGeometry();
             using (var c = g.Open())
             {
-                // left fillet: from the frame down to the pill's side, curving inwards
-                c.BeginFigure(new Point(0, 0), true, true);
-                c.ArcTo(new Point(e, e), new Size(e, e), 0, false, SweepDirection.Clockwise, false, false);
-                c.LineTo(new Point(e, 0), false, false);
-                // right fillet, mirrored
-                c.BeginFigure(new Point(w + 2 * e, 0), true, true);
-                c.ArcTo(new Point(w + e, e), new Size(e, e), 0, false, SweepDirection.Counterclockwise, false, false);
-                c.LineTo(new Point(w + e, 0), false, false);
+                c.BeginFigure(new Point(start.X + shiftX, start.Y), true, true);
+                foreach (var seg in segments)
+                {
+                    var to = new Point(seg.To.X + shiftX, seg.To.Y);
+                    if (seg.IsArc && seg.Radius > 0)
+                        c.ArcTo(to, new Size(seg.Radius, seg.Radius), 0, false,
+                                seg.Clockwise ? SweepDirection.Clockwise : SweepDirection.Counterclockwise, false, false);
+                    else c.LineTo(to, false, false);
+                }
             }
             g.Freeze();
+            return g;
+        }
+
+        /// <summary>The whole silhouette (pill plus both fillets) behind the pill: the fillets show beside it, seamlessly.</summary>
+        private void AnchoredDrawEars(double w, double h, double r, double e)
+        {
+            if (_anchoredEars == null) return;
+            if (e <= 0) { _anchoredEars.Data = null; return; }
+            var (start, segs) = AnchoredGeometry.Outline(w, h, r, e);
             _anchoredEars.Width = w + 2 * e;
-            _anchoredEars.Height = e;
-            _anchoredEars.Margin = new Thickness(0);
-            _anchoredEars.Data = g;
+            _anchoredEars.Height = h;
+            _anchoredEars.Data = Build(start, segs, e);          // shifted so the left ear starts at x = 0
             _anchoredEars.Visibility = Pill.Visibility;
         }
     }
