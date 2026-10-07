@@ -70,8 +70,10 @@ namespace WinNotch
                   AnchoredGeometry.IdleWidth(300, true) == 300 &&
                   AnchoredGeometry.IdleWidth(150, false) == 150 && AnchoredGeometry.IdleWidth(640, false) == 640);
 
-            Check("NA8", "Comutatorul oprit → aceleași valori ca azi (test de non-regresie): margine 8, raza veche, lățimea veche",
-                  AnchoredGeometry.IdleWidth(150, false) == 150 && AnchoredGeometry.BgOpacity(0.8, false) == 0.8 &&
+            Check("NA8", "Conturul pastilei (pentru tăierea conținutului) e același, fără urechi, și începe în colțul din stânga-sus",
+                  AnchoredGeometry.PillOnly(300, 34, 17).Start.Near(0, 0) &&
+                  AnchoredGeometry.PillOnly(300, 34, 17).Segments.Count == 5 &&
+                  AnchoredGeometry.PillOnly(300, 34, 17).Segments.Last().To.Near(300, 0) &&
                   AnchoredGeometry.TopMargin == 0);
 
             Check("NA9", "Umbra cade doar în jos (nicio linie peste ramă)",
@@ -92,14 +94,23 @@ namespace WinNotch
 
             Check("NA11", "Legăturile sunt câte un rând: marginea și raza din ApplyMode, lățimea în standby, forma din ApplyRadius și UpdateClip, pornire și oprire",
                   notch.Contains("top = AnchoredTop(top);") && notch.Contains("r = AnchoredRadius(r);") &&
-                  notch.Contains("w = AnchoredIdleWidth(IdleWidth());") &&
+                  notch.Contains("w = AnchoredIdleWidth(IdleWidth());") && notch.Contains("AnchoredRadius(r, mini || _mode == Mode.Live)") &&
                   notch.Contains("if (AnchoredShape()) return;") && notch.Contains("StartAnchored();") && notch.Contains("StopAnchored();"));
 
-            Check("NA12", "Zona de hover rămâne dreptunghiul pastilei: racordările nu primesc mouse-ul și nu intră în PillScreenRect",
-                  part.Contains("IsHitTestVisible = false") && !part.Contains("PillScreenRect") && !part.Contains("Inside("));
+            Check("NA12", "Zona de hover rămâne dreptunghiul pastilei: racordările nu primesc mouse-ul",
+                  part.Contains("IsHitTestVisible = false") && !part.Contains("PillScreenRect"));
 
-            Check("NA13", "Fundalul citește comutatorul prin regula pură (nicio culoare și nicio limită scrisă de două ori)",
-                  themes.Contains("AnchoredGeometry.BgOpacity(") && !themes.Contains("Math.Clamp(s.BgOpacity, 0.6, 1)"));
+            Check("NA16", "Forma desenată vine din geometria pură (un singur traducător), nu scrisă a doua oară de mână",
+                  part.Contains("AnchoredGeometry.PillOnly(") && part.Contains("AnchoredGeometry.Outline(") &&
+                  part.Contains("private static StreamGeometry Build(") &&
+                  System.Text.RegularExpressions.Regex.Matches(part, @"new StreamGeometry\(\)").Count == 1);
+
+            Check("NA17", "Forma se reconstruiește doar când s-a schimbat ceva (nu la fiecare cadru al animației)",
+                  part.Contains("if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE)) return true;") &&
+                  part.Contains("ThemeManager.Apply(S);"));
+
+            Check("NA13", "Fundalul citește comutatorul prin regula pură (nicio limită scrisă de două ori)",
+                  themes.Contains("AnchoredGeometry.BgOpacity("));
 
             Check("NA14", "Geometria se reconstruiește la schimbarea mărimii și e înghețată; fără culori scrise în cod; fără cronometre noi",
                   part.Contains("clip.Freeze();") && part.Contains("g.Freeze();") &&

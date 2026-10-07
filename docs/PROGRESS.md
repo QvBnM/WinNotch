@@ -128,5 +128,14 @@
   singur `Path` ca în brief: aceeași siluetă, dar fără să rescriem `NotchWindow.xaml` și fără să atingem straturile
   dinăuntru (regula „fișierele mari se ating minim”). Geometria pură e scrisă oricum punct cu punct și testată, ca să poată
   fi folosită la P52 (antetul ferestrei).
-- **Stare:** ramura `p50-notch-anchored`, pornită din `main`, fără merge și fără versiune nouă până la testarea pe Windows
+- **Revizia R1:** 1 Major (geometria pură era cod mort — fereastra își scria singură formele, deci testele NA1–NA5
+  validau altceva decât ce se desena) și 5 Medii/Minore. Reparate: un singur traducător (`Build`) care transformă
+  conturul pur în `StreamGeometry`, folosit și pentru tăierea conținutului (`PillOnly`) și pentru racordări; forma se
+  reconstruiește doar când (w, h, rază, ureche) s-au schimbat, nu la fiecare cadru al animației; raza citită e cea
+  **animată** (`Radius`), nu setarea, deci forma urmează animația; forma mică și alertele își păstrează raza lor;
+  la pornirea/oprirea comutatorului se reconstruiesc pensulele (`ThemeManager.Apply`), altfel opacitatea minimă nu se
+  aplica până la următoarea salvare de setări; scalarea urechii se face o singură dată.
+- **Rămas minor:** racordările n-au umbră proprie (ar dubla umbra de sub pastilă, fiindcă forma desenată o conține);
+  la pornirea comutatorului în timpul rulării marginea pastilei se animă 300 ms, deci racordările „plutesc” atât.
+- **Stare:** ramura `p50-notch-anchored`, pornită din `main`, fără versiune nouă până la testarea pe Windows
   (verificările P50.1–P50.11).

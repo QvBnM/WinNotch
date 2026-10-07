@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace WinNotch.Features.NotchAnchored
 {
@@ -58,7 +59,8 @@ namespace WinNotch.Features.NotchAnchored
         /// </summary>
         public static (Pt Start, IReadOnlyList<Seg> Segments) Outline(double w, double h, double radius, double ear)
         {
-            double r = Math.Max(0, Math.Min(Radius(radius), Math.Min(w / 2, h)));
+            // The radius comes in already clamped by <see cref="Radius"/> and scaled: here only the geometry limits it.
+            double r = Math.Max(0, Math.Min(radius, Math.Min(w / 2, h / 2)));
             double e = Math.Max(0, ear);
             var segs = new List<Seg>
             {
@@ -93,6 +95,16 @@ namespace WinNotch.Features.NotchAnchored
 
         /// <summary>Standby width while anchored: visible enough, never in the way (240–520). The small form is untouched.</summary>
         public static double IdleWidth(double width, bool anchored) => anchored ? Math.Clamp(width, 240, 520) : width;
+
+        /// <summary>
+        /// The same outline without the ears (the pill's own shape, used to clip its content): starts at the top-left
+        /// corner and closes along the top edge. Same rules, so the shape and its clip can never drift apart.
+        /// </summary>
+        public static (Pt Start, IReadOnlyList<Seg> Segments) PillOnly(double w, double h, double radius)
+        {
+            var (_, segs) = Outline(w, h, radius, 0);
+            return (new Pt(0, 0), segs.Where(x => x.IsArc || x.To.X != 0 || x.To.Y != 0).ToList());
+        }
 
         /// <summary>The shadow falls downwards only; upwards it would draw a line over the bezel.</summary>
         public const double ShadowDirection = 270, ShadowDepth = 6, ShadowBlur = 24, ShadowOpacity = 0.5;
