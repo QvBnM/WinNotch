@@ -38,8 +38,12 @@ namespace WinNotch.Features.WindowV2
         private readonly TextBlock _clock = Ui.T("--:--", 12, "MutedBrush", false, true);
         private readonly System.Windows.Threading.DispatcherTimer _tick =
             new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        private readonly StackPanel _cards = new StackPanel();
+        private UIElement _searchCard;
         private string _category = LayoutRules.DefaultCategory;
         private Grid _body;
+        private int _cols = -1;
+        private Action<string> _flagHandler;
 
         public WindowV2(AppSettings s, NotchWindow notch)
         {
@@ -55,25 +59,54 @@ namespace WinNotch.Features.WindowV2
             SnapsToDevicePixels = true;
             FontFamily = (FontFamily)Application.Current.FindResource("UiFont");
             SetResourceReference(ForegroundProperty, "InkBrush");
-            SetResourceReference(BackgroundProperty, "NotchBrush");
+            SetResourceReference(BackgroundProperty, "SegBrush");       // opaque: NotchBrush carries the pill's own transparency
 
             _rightHost = new Border { Child = _right, Padding = new Thickness(LayoutRules.Gap, 0, 0, 0) };
             Content = BuildShell();
             SizeChanged += (o, e) => Relayout();
             PreviewKeyDown += OnKey;
-            _tick.Tick += (o, e) => _clock.Text = DateTime.Now.ToString("HH:mm");
-            Loaded += (o, e) => { _clock.Text = DateTime.Now.ToString("HH:mm"); _tick.Start(); Relayout(); };
-            Closed += (o, e) => _tick.Stop();
+            _tick.Tick += (o, e) => OnTick();
+            Loaded += (o, e) => { OnTick(); _tick.Start(); Relayout(); };
+            StateChanged += (o, e) => { if (WindowState == WindowState.Minimized) _tick.Stop(); else { OnTick(); _tick.Start(); } };
+            Closed += (o, e) =>
+            {
+                _tick.Stop();
+                if (_flagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _flagHandler;
+                _flagHandler = null;
+            };
+            // The switch can be turned off from Settings while the window is open: then it closes, like any feature stopping.
+            _flagHandler = id =>
+            {
+                if (!string.Equals(id, LayoutRules.FeatureId, StringComparison.Ordinal)) return;
+                Dispatcher.InvokeAsync(() => { if (!(FeatureFlags.Current?.IsEnabled(LayoutRules.FeatureId) ?? false)) Close(); });
+            };
+            if (FeatureFlags.Current != null) FeatureFlags.Current.Changed += _flagHandler;
         }
 
         /// <summary>Opens the window on a category; the old window's ids ("themes", "settings", "news") and page ids still work.</summary>
         public void Open(string pageId = null)
         {
-            _category = LayoutRules.CategoryFor(pageId);
-            BuildSidebar();
-            BuildCenter();
-            BuildRight();
-            Relayout();
+            try
+            {
+                _category = LayoutRules.CategoryFor(pageId);
+                BuildSidebar();
+                BuildCenter();
+                BuildRight();
+                Relayout();
+            }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
+        }
+
+        /// <summary>The clock and the right column, every 10 s and only while the window is really on screen.</summary>
+        private void OnTick()
+        {
+            try
+            {
+                if (!IsVisible || WindowState == WindowState.Minimized) return;
+                _clock.Text = DateTime.Now.ToString("HH:mm");
+                BuildRight();
+            }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
         }
 
         // ------------------------------------------------------------------ the shell
@@ -118,8 +151,8 @@ namespace WinNotch.Features.WindowV2
             var tabs = Ui.H(4);
             foreach (var (id, title, glyph) in new[]
                      {
-                         ("actiuni", "Acasă", ""), ("sunet", "Sunet", ""),
-                         ("clipboard", "Clipboard", ""), ("captura", "Unelte", ""),
+                         ("actiuni", "Acasă", ""), ("sistem", "Sistem", "\uE713"),
+                         ("sunet", "Dispozitive", "\uE767"), ("captura", "Unelte", "\uE722"),
                      })
                 tabs.Children.Add(HeaderTab(id, title, glyph));
             row.Put(tabs);
@@ -173,37 +206,52 @@ namespace WinNotch.Features.WindowV2
             label.Margin = new Thickness(8, 0, 0, 0);
             label.VerticalAlignment = VerticalAlignment.Center;
             row.Put(label, 2);
-            var host = new Border { Child = row, Padding = new Thickness(4, 7, 8, 7), CornerRadius = new CornerRadius(LayoutRules.ChipRadius), Cursor = Cursors.Hand, Margin = new Thickness(0, 2, 0, 2) };
-            if (on) host.SetResourceReference(Border.BackgroundProperty, "ChipHoverBrush");
-            host.MouseLeftButtonUp += (o, e) => Select(c.Id);
+            // A Button, not a Border: it takes the focus with Tab and answers Enter and Space, as the brief asks.
+            var host = new Button
+            {
+                Style = Ui.S("IconButton"), Content = row, Padding = new Thickness(4, 7, 8, 7),
+                Cursor = Cursors.Hand, Margin = new Thickness(0, 2, 0, 2),
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            };
+            System.Windows.Automation.AutomationProperties.SetName(host, c.Title);
+            if (on) host.SetResourceReference(Control.BackgroundProperty, "ChipHoverBrush");
+            host.Click += (o, e) => Select(c.Id);
             return host;
         }
 
         private void Select(string categoryId)
         {
-            if (LayoutRules.Find(categoryId) == null || string.Equals(categoryId, _category, StringComparison.Ordinal)) return;
-            _category = categoryId;
-            BuildSidebar();
-            BuildCenter();
-            Relayout();
+            try
+            {
+                if (LayoutRules.Find(categoryId) == null || string.Equals(categoryId, _category, StringComparison.Ordinal)) return;
+                _category = categoryId;
+                BuildSidebar();
+                BuildCenter();
+                Relayout();
+            }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
         }
 
         // ------------------------------------------------------------------ centre
 
+        /// <summary>
+        /// Only the cards are rebuilt; the search card is built once and stays in the tree (a WPF element has exactly one
+        /// parent, so putting it into a new row would throw — that is what kept v2 from opening at all).
+        /// </summary>
         private void BuildCenter()
         {
-            _center.Children.Clear();
-            _center.Children.Add(BuildSearch());
-
-            if (LayoutRules.IsClassicContent(_category))
+            if (_searchCard == null)
             {
-                _center.Children.Add(ClassicCard());
-                return;
+                _searchCard = BuildSearch();
+                _center.Children.Add(_searchCard);
+                _center.Children.Add(_cards);
             }
-
+            _cards.Children.Clear();
+            _cols = LayoutRules.Columns(CenterWidth());
+            if (LayoutRules.IsClassicContent(_category)) { _cards.Children.Add(ClassicCard()); return; }
             var cat = LayoutRules.Find(_category);
             var actions = VisibleActions().Where(a => string.Equals(LayoutRules.CategoryForAction(a.Category), _category, StringComparison.Ordinal)).ToList();
-            _center.Children.Add(Group(cat?.Title ?? "Acțiuni", actions));
+            _cards.Children.Add(Group(cat?.Title ?? "Acțiuni", actions));
         }
 
         private UIElement BuildSearch()
@@ -296,7 +344,14 @@ namespace WinNotch.Features.WindowV2
             bool confirmed = a.Safety == ActionSafety.Safe ||
                              MessageBox.Show(this, a.Title + "?", "WinNotch", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
             if (!confirmed) return;
-            _ = ActionRegistry.Current?.InvokeAsync(a.Id, null, ActionInvoker.UI, default, confirmed);
+            var task = ActionRegistry.Current?.InvokeAsync(a.Id, null, ActionInvoker.UI, default, confirmed);
+            if (task == null) return;
+            // The registry says why it refused (a switch off, a missing parameter, nothing available): the user sees it.
+            _ = task.ContinueWith(t =>
+            {
+                string msg = t.IsCompletedSuccessfully ? t.Result?.Message : null;
+                if (!string.IsNullOrEmpty(msg)) Dispatcher.InvokeAsync(() => _hint.Text = msg);
+            }, System.Threading.Tasks.TaskScheduler.Default);
         }
 
         // ------------------------------------------------------------------ right column
@@ -335,21 +390,27 @@ namespace WinNotch.Features.WindowV2
 
         private double CenterWidth()
         {
-            double w = ActualWidth > 0 ? ActualWidth : Width;
-            if (!LayoutRules.SingleColumn(w)) w -= LayoutRules.SidebarWidth;
-            if (LayoutRules.ShowRightColumn(w)) w -= LayoutRules.RightWidth;
+            // One source of truth: both decisions are read from the window's width, not from an already shrunk one.
+            double full = ActualWidth > 0 ? ActualWidth : Width;
+            double w = full;
+            if (!LayoutRules.SingleColumn(full)) w -= LayoutRules.SidebarWidth;
+            if (LayoutRules.ShowRightColumn(full)) w -= LayoutRules.RightWidth;
             return Math.Max(200, w - 2 * LayoutRules.Pad);
         }
 
         private void Relayout()
         {
-            double w = ActualWidth > 0 ? ActualWidth : Width;
-            bool single = LayoutRules.SingleColumn(w);
-            _body.ColumnDefinitions[0].Width = single ? new GridLength(0) : Ui.Px(LayoutRules.SidebarWidth);
-            _rightHost.Visibility = LayoutRules.ShowRightColumn(w) ? Visibility.Visible : Visibility.Collapsed;
-            _hint.Text = LayoutRules.Hint(FeatureFlags.Current?.IsEnabled(Features.CommandBar.CommandBarRules.FeatureId) ?? false);
-            DrawHeader(w);
-            if (_center.Children.Count > 0) BuildCenter();          // the number of card columns follows the width
+            try
+            {
+                double w = ActualWidth > 0 ? ActualWidth : Width;
+                _body.ColumnDefinitions[0].Width = LayoutRules.SingleColumn(w) ? new GridLength(0) : Ui.Px(LayoutRules.SidebarWidth);
+                _rightHost.Visibility = LayoutRules.ShowRightColumn(w) ? Visibility.Visible : Visibility.Collapsed;
+                _hint.Text = LayoutRules.Hint(FeatureFlags.Current?.IsEnabled(Features.CommandBar.CommandBarRules.FeatureId) ?? false);
+                DrawHeader(w);
+                // The cards are rebuilt only when the number of columns really changes, not on every frame of a resize.
+                if (_cards.Children.Count == 0 || LayoutRules.Columns(CenterWidth()) != _cols) BuildCenter();
+            }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
         }
 
         /// <summary>The header's silhouette: the anchored notch's shape (P50), rebuilt on resize and frozen.</summary>
@@ -379,7 +440,8 @@ namespace WinNotch.Features.WindowV2
 
         private void OnKey(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+            if (e.Key == Key.Escape) { Close(); e.Handled = true; }
+            else if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
                 _search.Focus();
                 e.Handled = true;

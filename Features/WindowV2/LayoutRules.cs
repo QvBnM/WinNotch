@@ -52,7 +52,8 @@ namespace WinNotch.Features.WindowV2
         /// <summary>The sidebar, in order. Only groups that exist today; new ones are added at the end, without rearranging.</summary>
         public static readonly IReadOnlyList<V2Category> Categories = new[]
         {
-            new V2Category("actiuni", "Acțiuni", "", "Acțiuni", "Sistem", "Fereastră"),
+            new V2Category("actiuni", "Acțiuni", "", "Acțiuni", "Fereastră"),
+            new V2Category("sistem", "Sistem", "\uE713", "Sistem"),
             new V2Category("clipboard", "Clipboard", "", "Clipboard"),
             new V2Category("captura", "Captură", "", "Captură"),
             new V2Category("sunet", "Sunet", "", "Sunet"),

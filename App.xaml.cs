@@ -304,6 +304,7 @@ namespace WinNotch
             if (_v2Opening) return false;           // v2 asked for the classic window: let it through
             try
             {
+                if (_editor != null && _editor.IsVisible) _editor.Hide();      // one window at a time: they share the same settings
                 if (_windowV2 == null)
                 {
                     _windowV2 = new Features.WindowV2.WindowV2(Settings, _notch);
@@ -331,7 +332,7 @@ namespace WinNotch
         internal void OpenClassicEditor(string pageId)
         {
             _v2Opening = true;
-            try { OpenEditor(pageId); }
+            try { _windowV2?.Hide(); OpenEditor(pageId); }
             finally { _v2Opening = false; }
         }
 

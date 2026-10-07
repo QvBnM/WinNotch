@@ -163,5 +163,20 @@
   De asemenea, din coloana din dreapta lipsesc ultima captură și lista de ieșiri audio (nu există o stare citibilă pentru
   ele în afara notch-ului), iar bara de căutare pornește acțiunea potrivită direct, fără să deschidă Command Bar-ul.
   Toate trei rămân de făcut înainte de anunțarea comutatorului.
-- **Stare:** ramura `p52-window-v2`, fără merge și fără versiune nouă până la testarea pe Windows (verificările
-  P52.1–P52.10).
+- **Revizia R1:** 1 Critic (fereastra nu se deschidea deloc: cardul de căutare era mutat într-un `Grid` nou la fiecare
+  reconstruire, iar un element WPF are un singur părinte → excepție, prinsă de `OpenWindowV2`, deci se vedea doar ca
+  „v2 nu pornește”), 3 Majore (cardurile se reconstruiau la fiecare cadru de redimensionare; fereastra nu respecta
+  protocolul comutatorului și nu raporta erorile; tastatura și focusul cerute de brief lipseau) și 7 Medii/Minore.
+  Reparate toate: shell-ul (antet, căutare, bară) se construiește o dată și doar cardurile se refac, numai când se
+  schimbă numărul de coloane; abonare/dezabonare la `FeatureFlags.Changed` (fereastra se închide dacă comutatorul se
+  oprește) și `try/catch` → `ReportError` în fiecare intrare; rândurile din bara laterală sunt butoane (Tab, Enter,
+  Space, nume pentru accesibilitate), `Esc` închide fereastra; fundalul ferestrei e un jeton opac (`SegBrush`), ca
+  antetul desenat cu `NotchBrush` să se vadă; lățimile se citesc o singură dată, din lățimea ferestrei; rezultatul unei
+  acțiuni (inclusiv „lipsește un parametru”) apare în bara de jos; ceasul nu mai bate cu fereastra minimizată și
+  reîmprospătează coloana din dreapta; filele din antet sunt cele din brief (Acasă · Sistem · Dispozitive · Unelte),
+  cu o categorie „Sistem” proprie; la deschiderea v2 fereastra clasică se ascunde (și invers), ca să nu se salveze una
+  peste alta.
+- **Rămas de făcut înainte de anunț (pe lângă conținutul setărilor):** sub 900 px bara laterală se strânge la zero în loc
+  să devină un rând de jetoane; scurtătura din bara de jos e scrisă fix, nu citită din setări; dialogul de confirmare e
+  `MessageBox`, fără tema aplicației.
+- **Stare:** ramura `p52-window-v2`, fără versiune nouă până la testarea pe Windows (verificările P52.1–P52.10).

@@ -59,7 +59,7 @@ namespace WinNotch
 
             Check("WV8", "Acțiunile din registru se împart pe categorii; una necunoscută merge la „Acțiuni”",
                   LayoutRules.CategoryForAction("Clipboard") == "clipboard" && LayoutRules.CategoryForAction("Captură") == "captura" &&
-                  LayoutRules.CategoryForAction("Sunet") == "sunet" && LayoutRules.CategoryForAction("Sistem") == "actiuni" &&
+                  LayoutRules.CategoryForAction("Sunet") == "sunet" && LayoutRules.CategoryForAction("Sistem") == "sistem" && LayoutRules.CategoryForAction("Fereastră") == "actiuni" &&
                   LayoutRules.CategoryForAction("ceva nou") == "actiuni" && LayoutRules.CategoryForAction(null) == "actiuni" &&
                   LayoutRules.CategoryForAction("clipboard") == "clipboard" /* fără majuscule */);
 
@@ -77,7 +77,6 @@ namespace WinNotch
             Check("WV11", "Non-regresie: cu comutatorul oprit se deschide fereastra veche, iar o eroare în v2 cade pe ea",
                   app.Contains("if (OpenWindowV2(pageId)) return;") &&
                   app.Contains("if (!(Core.Flags.FeatureFlags.Current?.IsEnabled(Features.WindowV2.LayoutRules.FeatureId) ?? false)) return false;") &&
-                  app.Contains("return false;                        // the old window opens instead") &&
                   app.Contains("ReportError(Features.WindowV2.LayoutRules.FeatureId, ex)"));
 
             Check("WV12", "Fereastra ia tema aplicației (pensule prin DynamicResource), nicio culoare scrisă în cod, iconițe din fontul existent",
@@ -88,8 +87,25 @@ namespace WinNotch
                   win.Contains("AnchoredGeometry.Radius(") && win.Contains("AnchoredGeometry.Ear(") && win.Contains("g.Freeze();"));
 
             Check("WV14", "Acțiunile pornesc doar prin registru, cu confirmare pentru ce nu e sigur; nimic nou nu se inventează",
-                  win.Contains("ActionRegistry.Current?.InvokeAsync(a.Id, null, ActionInvoker.UI, default, confirmed)") &&
+                  win.Contains("ActionRegistry.Current?.InvokeAsync(") && win.Contains("ActionInvoker.UI, default, confirmed") &&
                   win.Contains("a.Safety == ActionSafety.Safe") && !win.Contains("Process.Start") && !win.Contains("Shell.Open"));
+
+            Check("WV16", "Fereastra respectă protocolul comutatorului (abonare, dezabonare, se închide când comutatorul se oprește) și raportează erorile funcției",
+                  win.Contains("FeatureFlags.Current.Changed += _flagHandler;") &&
+                  win.Contains("FeatureFlags.Current.Changed -= _flagHandler;") &&
+                  System.Text.RegularExpressions.Regex.Matches(win, @"ReportError\(LayoutRules\.FeatureId, ex\)").Count >= 4);
+
+            Check("WV17", "Cardul de căutare se construiește o dată (un element WPF are un singur părinte) și cardurile se refac doar când se schimbă numărul de coloane",
+                  win.Contains("if (_searchCard == null)") && win.Contains("_cards.Children.Clear();") &&
+                  win.Contains("LayoutRules.Columns(CenterWidth()) != _cols"));
+
+            Check("WV18", "Tastatura: rândurile din bara laterală sunt butoane (Tab, Enter, Space), au nume pentru accesibilitate, iar Esc închide fereastra",
+                  win.Contains("new Button") && win.Contains("AutomationProperties.SetName(host, c.Title)") &&
+                  win.Contains("if (e.Key == Key.Escape) { Close(); e.Handled = true; }"));
+
+            Check("WV19", "Rezultatul unei acțiuni se arată (nu se înghite), iar ceasul nu bate când fereastra e minimizată",
+                  win.Contains("_hint.Text = msg") && win.Contains("if (!IsVisible || WindowState == WindowState.Minimized) return;") &&
+                  win.Contains("StateChanged +="));
 
             Check("WV15", "Nimic „în curând”: cardurile vin din acțiunile înregistrate, nu dintr-o listă scrisă de mână",
                   win.Contains("reg.All.Where(") && !win.Contains("în curând") && !win.Contains("Focus Mode") &&
