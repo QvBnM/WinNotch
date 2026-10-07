@@ -276,3 +276,21 @@ Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai 
 | P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
 | P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
 | P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 17 PASS în ambele (din P20; 16 din P27; 15 / 16 din P14; 12 / 13 în 0.6.14). |
+
+### P51b — O alertă nu stă în calea unei acțiuni
+
+Comutatorul „Alertele nu stau în cale” (`alert-interrupt`) e pornit implicit. Pentru tragerea de fișiere pornește și
+comutatorul „Raft”.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P51b.1 | Cazul raportat | Lasă să apară „Pauză pentru ochi” (sau pornește-o din Setări cu un prag mic). Cât e pe ecran, trage un fișier din Explorer peste notch. | Alerta dispare imediat, notch-ul se deschide cu Raftul gata de drop; fișierul se lasă normal. |
+| P51b.2 | Nu revine imediat | După P51b.1, lasă mouse-ul în pace 10 secunde. | Pauza pentru ochi nu reapare imediat (răgaz de 30 s). După un minut poate reapărea. |
+| P51b.3 | Alerta de actualizare | Când apare „Actualizare disponibilă”, trage un fișier peste notch. | Alerta dispare, notch-ul se deschide pentru Raft; oferta de actualizare se oferă din nou mai târziu. |
+| P51b.4 | Scurtătura | Cât e o alertă pe pastilă (de exemplu piesă nouă sau pauza pentru ochi), apasă `Win + Alt + N`. | Notch-ul se deschide imediat, fără să aștepte sfârșitul alertei. |
+| P51b.5 | Command Bar | Cu Command Bar pornit: cât e o alertă pe pastilă, apasă scurtătura lui. | Bara se deschide, alerta dispare. |
+| P51b.6 | Hover pe o alertă de informare | Cât e pe pastilă o alertă fără butoane (volum, piesă nouă), ține mouse-ul pe ea. | Notch-ul se deschide, ca la hover-ul obișnuit. |
+| P51b.7 | Hover pe o alertă cu butoane | Cât e pe pastilă pauza pentru ochi (are „Sari”), ține mouse-ul pe ea fără să dai click. | Alerta rămâne (butonul trebuie să poată fi apăsat); nu se deschide notch-ul. |
+| P51b.8 | Mișcarea obișnuită nu întrerupe | Cu o alertă pe pastilă, plimbă mouse-ul prin alte zone ale ecranului și scrie în Notepad. | Alerta rămâne până la capătul duratei ei. |
+| P51b.9 | În log | Deschide `log.txt` după P51b.1. | Rândul „Alertă întreruptă: eye-break (tragere de fișiere).” — doar id-ul alertei și motivul, fără alte date. |
+| P51b.10 | Comutatorul oprit | Setări → funcții noi → oprește „Alertele nu stau în cale”. Repetă P51b.1. | Comportamentul de dinainte: notch-ul rămâne pe alertă și tragerea nu-l deschide. |

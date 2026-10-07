@@ -77,6 +77,8 @@ namespace WinNotch
         /// </summary>
         private bool Alert(string id, UIElement content, double w, double h, int ms, bool important = false)
         {
+            // P51b hook (Features/AlertInterrupt): an alert pushed aside a moment ago waits; a no-op with the switch off
+            if (!AlertInterruptAllows(id)) return false;
             if (!_activityOn || _activity == null) return ShowLive(content, w, h, ms, important);
             try
             {

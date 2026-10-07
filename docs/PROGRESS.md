@@ -105,3 +105,28 @@
 - **Publicare:** 0.6.19 (versiunea, `RELEASE_NOTES.md`, istoricul din `DOCUMENTATIE.md` și „Noutăți” din `README.md`);
   release-ul îl face GitHub Actions la push-ul pe `main`.
 
+
+
+## P51b — O alertă nu stă în calea unei acțiuni (cerere a autorului, 7 oct 2026)
+
+- **Cerut:** era afișată „Pauză pentru ochi”; autorul a început o tragere de fișiere pentru Raft și notch-ul a rămas pe
+  alertă, fără să devină țintă de drop.
+- **Cauza:** în `PollTick`, ramura alertei iese pe `if (_liveInteractive) return;` — o alertă cu butoane blochează orice
+  interacțiune, inclusiv o tragere adusă din afară, iar `ShelfDragHover` era verificat doar mai jos, pe calea standby.
+- **Făcut:** `Core/Ui/InterruptRules.cs` (pur): `Interrupts(intenție, areButoane)` — tragerea de fișiere, scurtătura,
+  Command Bar-ul, meniul iconiței și deschiderea unui panou întrerup orice alertă; hover-ul doar alertele fără butoane;
+  mișcarea mouse-ului, tastatul și o altă alertă niciodată. `InterruptMemory` (pur) ține alerta întreruptă 30 de secunde
+  (anti-buclă: altfel ar reapărea la următorul tick și ar întrerupe chiar acțiunea). Legătura e în
+  `Features/AlertInterrupt/NotchWindow.AlertInterrupt.cs`: tragerea e recunoscută cu **detectorul raftului**
+  (`ShelfDragHover`, P23 — niciun sistem nou), hrănit la fiecare tur al `PollTick`-ului existent, iar alerta se încheie
+  prin `EndLive()` (rutina existentă, fără animație de ieșire). Patru legături de un rând: `PollTick`, `ToggleByHotkey`,
+  `OnCommandBarShortcut`, `EndLive`, plus poarta anti-buclă din `Alert`.
+- **Comutator:** `alert-interrupt` (Beta, pornit implicit, oprit în `--safe-mode`); oprit = o alertă ține pastila până la
+  capătul duratei ei, ca înainte.
+- **Teste:** 18 noi (IR1–IR18) în `tests/InterruptTests.cs`, inclusiv cazul raportat (tragere peste o alertă cu butoane),
+  anti-bucla și pinurile pe legături; `dotnet` lipsește în container, rularea e în CI.
+- **Abateri:** meniul iconiței întrerupe prin `ToggleByHotkey` (aceeași cale ca scurtătura); celelalte comenzi din tray nu
+  au nevoie, fiindcă nu se suprapun cu o alertă. Deschiderea unui panou e în reguli, dar panourile se pot deschide doar cu
+  notch-ul deschis, unde nu există alertă — regula rămâne pentru viitor.
+- **Stare:** ramura `p51b-alert-interrupt`, pornită din `main`, fără merge și fără versiune nouă până la testarea pe
+  Windows (verificările P51b.1–P51b.10).

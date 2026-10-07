@@ -148,6 +148,7 @@ namespace WinNotch
             try
             {
                 bool full = false;
+                if (_cmdOn && !_cmdOpen) AlertInterrupt(Core.Ui.UserIntent.CommandBar);   // P51b hook (Features/AlertInterrupt)
                 if (_cmdOn && !_cmdOpen)
                 {
                     _cmdForeground ??= new Features.Context.ForegroundSource(work => work());

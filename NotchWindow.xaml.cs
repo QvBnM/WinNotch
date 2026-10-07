@@ -353,6 +353,8 @@ namespace WinNotch
 
             Native.GetCursorPos(out var p);
             var r = PillScreenRect();
+            // P51b hook (Features/AlertInterrupt): a drag carried onto the pill pushes an alert aside; no-op with the switch off
+            AlertInterruptPoll(Inside(r, p, 4));
 
             if (_mode == Mode.Expanded)
             {
@@ -414,6 +416,7 @@ namespace WinNotch
         public void ToggleByHotkey()
         {
             if (_mode == Mode.Expanded) { Collapse(); return; }
+            AlertInterrupt(Core.Ui.UserIntent.Shortcut);     // P51b hook (Features/AlertInterrupt)
             _pinned = true;
             _mouseWasInside = false;
             Expand();
@@ -890,6 +893,7 @@ namespace WinNotch
 
         private void EndLive()
         {
+            AlertInterruptEnded();          // P51b hook (Features/AlertInterrupt)
             _liveTimer.Stop();
             EndLiveInteractive();
             if (_mode != Mode.Live) return;

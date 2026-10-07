@@ -51,6 +51,8 @@ namespace WinNotch.Core.Flags
         public const string AudioSwitch = "audio-switch";
         /// <summary>Features/NotchGuard: same id as NotchGuardInfo.FeatureId (the tests check they match).</summary>
         public const string NotchGuard = "notch-guard";
+        /// <summary>Core/Ui + Features/AlertInterrupt: same id as InterruptRules.FeatureId (the tests check they match).</summary>
+        public const string AlertInterrupt = "alert-interrupt";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -83,6 +85,10 @@ namespace WinNotch.Core.Flags
             // B1 (0.6.18): a repair, announced with it, so Stable and on (also in --safe-mode); off = no checks, nothing repaired
             new FeatureInfo(NotchGuard, "Plasa de siguranță a notch-ului", "Dacă notch-ul se deschide gol sau pastila rămâne fără conținut, îl reface singur (pagina curentă, apoi Acasă) și scrie în log un rând „B1 recover”.",
                             FeatureStage.Stable, true),
+            // P51b: a repair of a behaviour, on by default (Beta, so --safe-mode turns it off); off = an alert holds the
+            // pill until it ends by itself, as before
+            new FeatureInfo(AlertInterrupt, "Alertele nu stau în cale", "O alertă se dă la o parte imediat ce faci ceva: tragi fișiere peste notch, apeși scurtătura sau deschizi Command Bar-ul.",
+                            FeatureStage.Beta, true),
         };
 
         public static FeatureInfo Find(string id) => All.FirstOrDefault(f => string.Equals(f.Id, id, StringComparison.Ordinal));
