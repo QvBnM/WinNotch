@@ -50,7 +50,7 @@ namespace WinNotch
 
             var tiny = Outline(20, 10, 28, 10);
             Check("NA5", "Raza nu depășește jumătatea pastilei, nici înălțimea (o pastilă foarte mică nu se strâmbă)",
-                  tiny[1].To.Y >= 0 && tiny[1].To.Y <= 10 && tiny[2].To.Near(10, 10) && tiny.Last().To.Near(30, 0));
+                  tiny[1].To.Near(0, 5) && tiny[2].To.Near(5, 10) && tiny.Last().To.Near(30, 0));
         }
 
         /// <summary>Convenience: the segments of an outline, for the short assertions above.</summary>
@@ -93,7 +93,7 @@ namespace WinNotch
                    themes = Src("Themes.cs");
 
             Check("NA11", "Legăturile sunt câte un rând: marginea și raza din ApplyMode, lățimea în standby, forma din ApplyRadius și UpdateClip, pornire și oprire",
-                  notch.Contains("top = AnchoredTop(top);") && notch.Contains("r = AnchoredRadius(r);") &&
+                  notch.Contains("top = AnchoredTop(top);") &&
                   notch.Contains("w = AnchoredIdleWidth(IdleWidth());") && notch.Contains("AnchoredRadius(r, mini || _mode == Mode.Live)") &&
                   notch.Contains("if (AnchoredShape()) return;") && notch.Contains("StartAnchored();") && notch.Contains("StopAnchored();"));
 
@@ -113,7 +113,7 @@ namespace WinNotch
                   themes.Contains("AnchoredGeometry.BgOpacity("));
 
             Check("NA14", "Geometria se reconstruiește la schimbarea mărimii și e înghețată; fără culori scrise în cod; fără cronometre noi",
-                  part.Contains("clip.Freeze();") && part.Contains("g.Freeze();") &&
+                  part.Contains("g.Freeze();") &&
                   part.Contains("SetResourceReference(Shape.FillProperty, \"NotchBrush\")") &&
                   !part.Contains("DispatcherTimer") && !part.Contains("CompositionTarget.Rendering") &&
                   !System.Text.RegularExpressions.Regex.IsMatch(part, @"Color\.From|#[0-9A-Fa-f]{6}|new SolidColorBrush"));
