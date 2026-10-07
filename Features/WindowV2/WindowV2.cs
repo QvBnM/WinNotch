@@ -30,7 +30,7 @@ namespace WinNotch.Features.WindowV2
         private readonly Grid _sidebar = new Grid();
         private readonly StackPanel _sidebarItems = new StackPanel();
         private readonly StackPanel _center = new StackPanel();
-        private readonly StackPanel _right = new StackPanel { Width = LayoutRules.RightWidth };
+        private readonly StackPanel _right = new StackPanel();        // the width lives on _rightHost, padding included
         private readonly Border _rightHost;
         private readonly TextBlock _hint = Ui.T("", 12, "MutedBrush");
         private readonly TextBox _search = new TextBox { FontSize = 13.5, BorderThickness = new Thickness(0), Background = Brushes.Transparent, MinWidth = 200 };
@@ -61,7 +61,13 @@ namespace WinNotch.Features.WindowV2
             SetResourceReference(ForegroundProperty, "InkBrush");
             SetResourceReference(BackgroundProperty, "SegBrush");       // opaque: NotchBrush carries the pill's own transparency
 
-            _rightHost = new Border { Child = _right, Padding = new Thickness(LayoutRules.Gap, 0, 0, 0) };
+            // RightWidth is the whole column, padding included, so CenterWidth() keeps matching what is really on screen.
+            // Without the right and top padding the states ("oprit") sat flush against the window's edge.
+            _rightHost = new Border
+            {
+                Child = _right, Width = LayoutRules.RightWidth,
+                Padding = new Thickness(LayoutRules.Gap, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad),
+            };
             Content = BuildShell();
             SizeChanged += (o, e) => Relayout();
             PreviewKeyDown += OnKey;
@@ -167,7 +173,8 @@ namespace WinNotch.Features.WindowV2
 
         private Button HeaderTab(string id, string title, string glyph)
         {
-            var btn = new Button { Style = Ui.S("IconButton"), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand };
+            // NavButton, not IconButton: that one forces 30x30, which cut "Acasă" down to "Ac" and ate the other tabs.
+            var btn = new Button { Style = Ui.S("NavButton"), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand };
             var content = Ui.H(6, Ui.Icon(glyph, 12, Ui.B(_category == id ? "InkBrush" : "MutedBrush")),
                                Ui.T(title, 12.5, _category == id ? "InkBrush" : "MutedBrush", _category == id));
             content.VerticalAlignment = VerticalAlignment.Center;
@@ -209,7 +216,8 @@ namespace WinNotch.Features.WindowV2
             // A Button, not a Border: it takes the focus with Tab and answers Enter and Space, as the brief asks.
             var host = new Button
             {
-                Style = Ui.S("IconButton"), Content = row, Padding = new Thickness(4, 7, 8, 7),
+                // NavButton: IconButton's fixed 30x30 left every sidebar entry as an icon and "…"
+                Style = Ui.S("NavButton"), Content = row, Padding = new Thickness(4, 7, 8, 7),
                 Cursor = Cursors.Hand, Margin = new Thickness(0, 2, 0, 2),
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
             };

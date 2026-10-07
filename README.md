@@ -16,6 +16,10 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.21
+
+- Fereastra WinNotch v2 (experimentală): filele de sus și categoriile din stânga își arată din nou numele întreg; categoriile se parcurg cu `Tab`.
+
 ## Noutăți în 0.6.20
 
 - Peste un joc sau un film pe tot ecranul notch-ul dispare complet și nu mai reapare la mișcarea mouse-ului; doar alertele importante coboară scurt.

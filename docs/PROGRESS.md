@@ -365,3 +365,26 @@
   să devină un rând de jetoane; scurtătura din bara de jos e scrisă fix, nu citită din setări; dialogul de confirmare e
   `MessageBox`, fără tema aplicației.
 - **Stare:** ramura `p52-window-v2`, fără versiune nouă până la testarea pe Windows (verificările P52.1–P52.10).
+
+
+## Reparație P52 — fereastra WinNotch, textul tăiat (raportat de autor pe 0.6.20, 7 oct 2026)
+
+- **Raportat:** captură de ecran a ferestrei WinNotch v2: filele scriau „Ac”, „Si”, „Di”, „Ur”, iar fiecare rând din bara
+  laterală era doar o iconiță și „…”; stările din coloana dreaptă („oprit”) stăteau lipite de marginea ferestrei.
+- **Cauza:** filele din antet și rândurile din bara laterală foloseau `Ui.S("IconButton")`, iar stilul acela fixează
+  `Width=30` / `Height=30` (plus `Focusable=False`). Orice buton cu text era tăiat la 30 px și centrat în coloana lui —
+  de aici și iconițele din bara laterală aliniate la mijloc, și tastatura care nu putea parcurge rândurile, deși
+  brief-ul o cere explicit.
+- **Reparat:** stil nou `NavButton` în `Theme.xaml` (fără mărime fixă, focusabil, contur de 2 px în `AccentBrush` la
+  focus de tastatură, fundal `HoverBrush` la hover); `IconButton` rămâne neatins. Coloana din dreapta are acum margini
+  pe toate părțile, iar cei 300 px ai ei includ marginile (lățimea stă pe gazdă, nu pe conținut), ca `CenterWidth()` să
+  rămână potrivit cu ce e pe ecran.
+- **Greșeală pe parcurs:** prima variantă a numit stilul `RowButton`, nume deja folosit în `Theme.xaml` pentru rândurile
+  din clipboard și raft. Două resurse cu aceeași cheie fac WPF să arunce la încărcarea dicționarului, deci aplicația
+  murea înainte de prima fereastră: cele 822 de teste unitare treceau toate, iar CI-ul a căzut abia la testul de fum.
+  De aici testul **WV23**, care refuză orice cheie repetată în `Theme.xaml`.
+- **Teste:** WV20–WV23 (pin-uri pe sursă, pică înainte de reparație).
+- **CI:** run 76 roșu (cheia dublată, aplicația nu pornea), run 77 verde: 822 C# + 16 + 3 extensie, build, ambele
+  drumuri de fum.
+- **Publicare:** 0.6.21, la cererea autorului.
+

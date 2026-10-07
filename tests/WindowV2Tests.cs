@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using WinNotch.Core.Flags;
 using WinNotch.Features.WindowV2;
 
@@ -106,6 +107,37 @@ namespace WinNotch
             Check("WV19", "Rezultatul unei acțiuni se arată (nu se înghite), iar ceasul nu bate când fereastra e minimizată",
                   win.Contains("_hint.Text = msg") && win.Contains("if (!IsVisible || WindowState == WindowState.Minimized) return;") &&
                   win.Contains("StateChanged +="));
+
+            // Reparație (0.6.20 testat de autor): filele arătau „Ac”, „Si”, iar bara laterală doar iconițe și „…”.
+            // IconButton impune Width=30 / Height=30 și Focusable=False, deci orice buton cu text era tăiat la 30 px.
+            string theme = Src("Theme.xaml");
+            Check("WV20", "Butoanele cu text (file, bara laterală) nu folosesc stilul de iconiță, care are 30×30 fix",
+                  !win.Contains("Ui.S(\"IconButton\")") && Count(Norm(win), "Ui.S(\"NavButton\")") == 2,
+                  Count(Norm(win), "Ui.S(\"NavButton\")") + " butoane-rând");
+
+            int nbStart = theme.IndexOf("x:Key=\"NavButton\"", StringComparison.Ordinal);
+            int nbEnd = nbStart < 0 ? -1 : theme.IndexOf("</Style>", nbStart, StringComparison.Ordinal);
+            string navButton = nbStart < 0 || nbEnd < 0 ? "" : Norm(theme.Substring(nbStart, nbEnd - nbStart));
+            Check("WV21", "Stilul „NavButton” nu fixează mărimea, e focusabil și arată focusul cu contur în AccentBrush",
+                  navButton.Length > 0 &&
+                  !navButton.Contains("Property=\"Width\"", StringComparison.Ordinal) &&
+                  !navButton.Contains("Property=\"Height\"", StringComparison.Ordinal) &&
+                  navButton.Contains("<Setter Property=\"Focusable\" Value=\"True\"/>", StringComparison.Ordinal) &&
+                  navButton.Contains("<Trigger Property=\"IsKeyboardFocused\" Value=\"True\">", StringComparison.Ordinal) &&
+                  navButton.Contains("{DynamicResource AccentBrush}", StringComparison.Ordinal),
+                  navButton.Length == 0 ? "stilul lipsește din Theme.xaml" : "");
+
+            Check("WV22", "Coloana din dreapta are spațiu la margini și cei 300 px includ marginile, ca lățimea centrului să rămână corectă",
+                  win.Contains("Width = LayoutRules.RightWidth,") &&
+                  win.Contains("Padding = new Thickness(LayoutRules.Gap, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad)") &&
+                  !win.Contains("new StackPanel { Width = LayoutRules.RightWidth }"));
+
+            // App-wide, learned the hard way: a repeated x:Key makes WPF throw while loading the resources, so the app
+            // dies before its first window. Nicio probă unitară nu prindea asta — doar testul de fum, la pornire.
+            var keys = Regex.Matches(theme, "x:Key=\"([^\"]+)\"").Select(m => m.Groups[1].Value).ToList();
+            var dup = keys.GroupBy(k => k, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+            Check("WV23", "Theme.xaml nu are două resurse cu aceeași cheie (WPF aruncă la pornire, înainte de orice fereastră)",
+                  dup.Count == 0, string.Join(", ", dup));
 
             Check("WV15", "Nimic „în curând”: cardurile vin din acțiunile înregistrate, nu dintr-o listă scrisă de mână",
                   win.Contains("reg.All.Where(") && !win.Contains("în curând") && !win.Contains("Focus Mode") &&
