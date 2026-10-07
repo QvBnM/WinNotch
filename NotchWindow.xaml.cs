@@ -30,7 +30,8 @@ namespace WinNotch
         // ---------------- shared with the panes ----------------
         internal readonly AppSettings S;
         internal readonly SystemStats Stats = new SystemStats();
-        internal readonly TempService Temps = new TempService();
+        // P51c: reopens the sensor library when the monitors change, and stays shut after repeated abrupt closures
+        internal readonly TempService Temps = new TempService(watchDisplay: true, abruptCount: () => App.Guard?.UnexplainedInARow ?? 0);
         internal readonly AudioService Audio = new AudioService();
         internal readonly MediaService Media = new MediaService();
         internal readonly AudioSessionsService Sessions = new AudioSessionsService();
@@ -609,7 +610,9 @@ namespace WinNotch
                 if (free != null) t = free;
             }
 
-            string log = string.Join(" | ", mons.Select((x, i) => "M" + (i + 1) + (x.Handle == t.Handle ? "*" : "") + (x.Busy ? " ocupat" : x.Maximized ? " maximizat" : " liber") + " <- " + x.Decider));
+            // Only the monitors' state goes in the log, not which one the notch sits on: that follows the mouse, so it
+            // would write a line every time the cursor crosses between screens and bury everything else (P51c).
+            string log = string.Join(" | ", mons.Select((x, i) => "M" + (i + 1) + (x.Busy ? " ocupat" : x.Maximized ? " maximizat" : " liber") + " <- " + x.Decider));
             if (log != _monLog) { _monLog = log; App.Log("Monitoare: " + log); }
 
             bool hidden = !always && t.Busy;

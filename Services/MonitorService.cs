@@ -79,14 +79,44 @@ namespace WinNotch.Services
 
                 mon.Busy = covers && !Native.IsZoomed(h);
                 mon.Maximized = zoomed;
-                string title = Native.Title(h);
-                if (title.Length > 40) title = title.Substring(0, 40) + "…";
-                mon.Decider = cls + " \"" + title + "\" [" + wr.Left + "," + wr.Top + " " + wr.Width + "x" + wr.Height + "]";
+                // The window's title never goes in the log: it is the user's business (section 14 of DOCUMENTATIE.md,
+                // and the same rule as ContextSnapshot.ToLogString). The class, the process and the geometry are enough
+                // to tell which window decided a monitor's state, and are what the fullscreen rules are judged on.
+                mon.Decider = Describe(h, cls, wr);
                 decided.Add(mh);
                 return true;
             }, IntPtr.Zero);
 
             return monitors;
+        }
+
+        /// <summary>
+        /// How a window is named in the log: its class, the process' file name and its rectangle. Deliberately without
+        /// the title — a title says what the user is reading or watching, and nothing of that goes in log.txt.
+        /// </summary>
+        private static string Describe(IntPtr h, string cls, Native.RECT wr) =>
+            cls + " (" + ProcessName(h) + ") [" + wr.Left + "," + wr.Top + " " + wr.Width + "x" + wr.Height + "]";
+
+        /// <summary>
+        /// The window's process, lower-cased, without path or extension. Cached per window: this runs for every monitor
+        /// on every scan, and opening the process each time would be work for nothing. Only ever used for the log line,
+        /// so a handle Windows reused keeps the old name at worst.
+        /// </summary>
+        private static readonly Dictionary<IntPtr, string> ProcessNames = new Dictionary<IntPtr, string>();
+
+        private static string ProcessName(IntPtr h)
+        {
+            if (ProcessNames.TryGetValue(h, out string cached)) return cached;
+            string name = "?";
+            try
+            {
+                string path = Native.ProcessPath(h);
+                if (!string.IsNullOrEmpty(path)) name = System.IO.Path.GetFileNameWithoutExtension(path).ToLowerInvariant();
+            }
+            catch { /* a window of a process we may not query: the class alone still tells enough */ }
+            if (ProcessNames.Count >= 64) ProcessNames.Clear();        // windows come and go; the cache never grows
+            ProcessNames[h] = name;
+            return name;
         }
 
         public static IntPtr MonitorUnderCursor()

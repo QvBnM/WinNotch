@@ -32,6 +32,7 @@ namespace WinNotch
                 ToolAlert(LegacyAlerts.Rollback, Ui.GWarn, CWarn, m, "Versiunea refuzată nu îți mai e propusă; o versiune mai nouă, da.", 560);
                 return;
             }
+            if (ShutdownReportTick()) return;                                         // P51c hook (Features/Diagnostics): closed by itself
             if (Bridge.OldExtensionSeen && !_oldExtShown && _mode == Mode.Idle && !_hidden) { _oldExtShown = true; ShowOldExtension(); return; }
 
             if (!Updater.Configured || _updating) return;
@@ -149,7 +150,8 @@ namespace WinNotch
                 await Task.Delay(600);
                 S.Save();
                 // the restart for the update is a clean exit (not counted as a crash), marked before the new version starts
-                if (Updater.Apply(file, () => { App.Guard?.MarkCleanExit(); App.ReleaseSingleInstance(); })) ((App)Application.Current).ExitApp();
+                if (Updater.Apply(file, () => { App.Guard?.MarkCleanExit(); App.ReleaseSingleInstance(); }))
+                    ((App)Application.Current).ExitApp(Core.Diagnostics.ShutdownKind.Update);
                 else
                 {
                     App.Guard?.Resume();          // this run goes on: protected again

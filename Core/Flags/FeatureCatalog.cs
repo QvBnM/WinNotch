@@ -51,6 +51,8 @@ namespace WinNotch.Core.Flags
         public const string AudioSwitch = "audio-switch";
         /// <summary>Features/NotchGuard: same id as NotchGuardInfo.FeatureId (the tests check they match).</summary>
         public const string NotchGuard = "notch-guard";
+        /// <summary>Features/Diagnostics: same id as ShutdownJournal.FeatureId (the tests check they match).</summary>
+        public const string ShutdownReport = "shutdown-report";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -83,6 +85,10 @@ namespace WinNotch.Core.Flags
             // B1 (0.6.18): a repair, announced with it, so Stable and on (also in --safe-mode); off = no checks, nothing repaired
             new FeatureInfo(NotchGuard, "Plasa de siguranță a notch-ului", "Dacă notch-ul se deschide gol sau pastila rămâne fără conținut, îl reface singur (pagina curentă, apoi Acasă) și scrie în log un rând „B1 recover”.",
                             FeatureStage.Stable, true),
+            // P51c: a repair, so Beta and on; the switch is the net. Off = the log still names every closure, but the
+            // notch says nothing about the ones it cannot explain.
+            new FeatureInfo(ShutdownReport, "Raportul închiderilor", "Dacă WinNotch s-a închis singur de două ori la rând, notch-ul te anunță și îți deschide log-ul. Fiecare ieșire scrie în log motivul ei.",
+                            FeatureStage.Beta, true),
         };
 
         public static FeatureInfo Find(string id) => All.FirstOrDefault(f => string.Equals(f.Id, id, StringComparison.Ordinal));

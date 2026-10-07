@@ -173,8 +173,10 @@ namespace WinNotch.Panes
             else
             {
                 _cpuTemp.Foreground = Ui.B("DimBrush");
-                _cpuTemp.Inlines.Add(new System.Windows.Documents.Run(!W.S.Temperatures ? "" : !App.IsAdmin && !TempHelper.Installed ? "temp: activează" : !TempService.PawnIOInstalled ? "temp: PawnIO" : "—") { FontSize = 11 });
-                _cpuTemp.ToolTip = !App.IsAdmin && !TempHelper.Installed ? "Temperatura procesorului: meniul iconiței › Activează temperatura procesorului (o singură dată, cere confirmare de administrator)." :
+                // P51c: say it when the reading was given up after repeated abrupt closures, instead of showing a silent "—"
+                _cpuTemp.Inlines.Add(new System.Windows.Documents.Run(!W.S.Temperatures ? "" : W.Temps.BlockedBySafety ? "temp: oprite" : !App.IsAdmin && !TempHelper.Installed ? "temp: activează" : !TempService.PawnIOInstalled ? "temp: PawnIO" : "—") { FontSize = 11 });
+                _cpuTemp.ToolTip = W.Temps.BlockedBySafety ? "Citirea temperaturilor s-a oprit: WinNotch s-a închis brusc de două ori la rând. Bifează din nou „Temperaturi” în Setări ca să încerci iar." :
+                                   !App.IsAdmin && !TempHelper.Installed ? "Temperatura procesorului: meniul iconiței › Activează temperatura procesorului (o singură dată, cere confirmare de administrator)." :
                                    !TempService.PawnIOInstalled ? "Instalează driverul gratuit PawnIO de pe pawnio.eu, apoi repornește PC-ul." : null;
             }
             DrawChart();
