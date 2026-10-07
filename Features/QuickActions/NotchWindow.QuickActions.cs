@@ -197,8 +197,8 @@ namespace WinNotch
         private void RemoveQuickActionsRow()
         {
             _qaMessageTimer?.Stop();
-            OverlayUnregister(OvQuickActions);   // P51 hook (Features/Overlays)
             _qaMessage = null;
+            OverlayUnregister(OvQuickActions);   // P51 hook (Features/Overlays)
             if (_qaRow == null) return;
             OverlayHost.Children.Remove(_qaRow);
             _qaRow = null;
