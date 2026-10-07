@@ -276,3 +276,24 @@ Testele rulează singure în CI (pasul „Smoke tests”); verificările de mai 
 | P02.3 | Fără `--smoke`, comenzile nu există | Pornește WinNotch normal; creează `%AppData%\WinNotch\smoke-commands.txt` cu `post-alert volume`. | Nu apare nicio alertă; fișierul rămâne neatins. |
 | P02.4 | Eșecul lasă urme | (Pentru dezvoltare) rulează P02.1 cu WinNotch deja pornit. | Testul eșuează („WinNotch s-a închis (cod 3)”); în `smoke-artifacts\` sunt `ecran.png` și `log.txt`. |
 | P02.5 | Release-ul rulează testele de fum (R1) | Pe GitHub › Actions, ultima rulare „Release” care a publicat o versiune. | Pașii „Smoke tests (activity-manager off)” și „(… on)” sunt verzi și sunt înaintea pasului „Sign”; 17 PASS în ambele (din P20; 16 din P27; 15 / 16 din P14; 12 / 13 în 0.6.14). |
+
+### P51 — Închiderea panourilor
+
+Comutatorul „Închiderea panourilor” (`overlay-dismiss`) e pornit implicit. Pentru raft, quick actions și ieșirea audio
+pornește întâi comutatoarele lor din Setări → funcții noi.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P51.1 | Ieșire audio, click pe pagină | Deschide notch-ul, Acasă → butonul de lângă volum. Dă click pe pagina din notch, în afara listei. | Lista se închide. În `log.txt`: „Panou închis: ieșire-audio (click în afară).” |
+| P51.2 | Click pe ecran, în afara notch-ului | Deschide din nou lista și dă click pe desktop. | Lista se închide (notch-ul se închide și el, ca până acum, când ieși cu mouse-ul). |
+| P51.3 | Esc | Deschide lista de ieșiri audio și apasă `Esc`. | Lista se închide, notch-ul rămâne deschis. |
+| P51.4 | Esc, de sus în jos | Cu Quick Actions pornit: deschide notch-ul (apar butoanele), apoi lista de ieșiri audio. Apasă `Esc` de două ori. | Prima apăsare închide lista, a doua butoanele; notch-ul rămâne deschis. |
+| P51.5 | Un panou închide celălalt | Deschide raftul, apoi lista de ieșiri audio. | Raftul se închide singur când se deschide lista („alt panou” în log). |
+| P51.6 | Indiciile nu se închid la un panou | Cu Quick Actions pornit, deschide lista de ieșiri audio. | Butoanele de sub conținut rămân; dispar la un click pe pagină sau la `Esc`. |
+| P51.7 | Galeria și mărimile | Editare → „Adaugă widget”: click în afara galeriei. Apoi atinge un widget (mărimile) și dă click pe fundalul întunecat. | Ambele se închid; panoul notch-ului revine la înălțimea lui (fără spațiu gol rămas). |
+| P51.8 | Mărimile, a doua oară | După P51.7, atinge din nou același widget. | Pop-up-ul se deschide normal (înainte rămâneau referințe moarte și a doua deschidere se purta ciudat). |
+| P51.9 | Esc nu fură tasta | Închide toate panourile. Deschide Notepad, scrie ceva și apasă `Esc` de câteva ori. | `Esc` ajunge în Notepad, ca întotdeauna; WinNotch nu reacționează. |
+| P51.10 | Editarea închide tot | Deschide lista de ieșiri audio, apoi intră în modul editare (butonul „Editează”). | Lista se închide la intrarea în editare. |
+| P51.11 | Nota paginii standard | Editare pe o pagină standard (apare nota de jos), apasă `Esc`. | Nota dispare, editarea rămâne. |
+| P51.12 | Fereastra WinNotch | Deschide fereastra WinNotch → o pagină → „Adaugă”, click pe un widget (apare pop-up-ul cu mărimi) și apasă `Esc`. | Pop-up-ul se închide; fereastra rămâne deschisă. |
+| P51.13 | Comutatorul oprit | Setări → funcții noi → oprește „Închiderea panourilor”. Repetă P51.1 și P51.3. | Comportamentul de dinainte: lista rămâne deschisă la click pe pagină și la `Esc`; se închide doar cu butonul ei. |

@@ -163,6 +163,7 @@ namespace WinNotch
             _mon.Tick += (o, a) => MonitorTick();
             _audioTick.Tick += (o, a) => Sessions.Scan();
             _poll.Start(); _sec.Start(); _mon.Start();
+            StartOverlays();                // P51 hook (Features/Overlays): closing panels the same way; a no-op with the switch off
             // Per-frame work and the 400 ms per-app audio scan only run while the notch is open (see Expand/Collapse).
 
             ApplySettings();
@@ -192,6 +193,7 @@ namespace WinNotch
         public void Cleanup()
         {
             StopSmoke();
+            StopOverlays();                 // P51 hook (Features/Overlays)
             StopActivities();
             StopCommandBar();
             StopQuickActions();
@@ -342,6 +344,7 @@ namespace WinNotch
             if (!IsLoaded || _hwnd == IntPtr.Zero) return;
             // A screen tool hid the notch (capture, region picker): hovering the invisible pill must not open or show it.
             if (_toolHidden) { ClearDwell(); return; }
+            OverlayPollTick();              // P51 hook (Features/Overlays): Esc and a click outside the window, only while a panel is open
 
             // remember the last real app window, for "Fereastra activă"
             var fg = Native.GetForegroundWindow();
@@ -461,6 +464,7 @@ namespace WinNotch
             _pinned = false;
             _mouseWasInside = false;
             _leaveStart = null;
+            OverlayCloseAll(Core.Ui.OverlayClose.NotchClosed);   // P51 hook (Features/Overlays): nothing stays open behind a closed notch
             ShelfOnClose();                 // P23 hook (Features/Shelf): the overlay goes with the panel
             StopTyping();
             AudioSwitchOnClose();           // P30 hook (Features/AudioSwitch): the list of outputs goes with the panel

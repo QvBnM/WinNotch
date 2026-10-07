@@ -40,12 +40,21 @@ namespace WinNotch
         private int _ticks;
         private ScrollViewer _centerScroll;
         private Grid _overlay;
+        /// <summary>P51: the open pop-up (a widget's sizes), so Esc closes it too — here the window has real focus.</summary>
+        private (Action Hide, Action Close) _edPopup;
         private SettingsWindow _settings;          // its content is shown on the "Setări" page
 
         public EditorWindow(AppSettings s, NotchWindow n)
         {
             S = s; N = n;
             Title = "WinNotch";
+            // P51: Esc closes the open pop-up (and only it); without one, the key goes where it did before
+            PreviewKeyDown += (o, e) =>
+            {
+                if (e.Key != System.Windows.Input.Key.Escape || _edPopup.Close == null) return;
+                _edPopup.Close();
+                e.Handled = true;
+            };
             // size and place: see PlaceOnScreen (wide by default, always fully on the screen you're using)
             var wa = SystemParameters.WorkArea;
             Width = Math.Min(1500, wa.Width * 0.94); Height = wa.Height * 0.9;
@@ -456,7 +465,8 @@ namespace WinNotch
                 if (_page.Add(type, size)) _gallery?.Message("");
                 else _gallery?.Message("Pagina e plină: scoate sau micșorează un widget.");
             }, null);
-            _gallery.Popup = fe => Gallery.ShowPopupIn(_overlay, fe, new Thickness(0), 780);
+            _gallery.Popup = fe => _edPopup = Gallery.ShowPopupIn(_overlay, fe, new Thickness(0), 780,
+                                                                  onClosed: () => _edPopup = (null, null));
             var gHost = new Border { MaxWidth = 760, Height = 330, CornerRadius = new CornerRadius(20), Padding = new Thickness(14), Child = _gallery, HorizontalAlignment = HorizontalAlignment.Left };
             gHost.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
             sp.Children.Add(gHost);

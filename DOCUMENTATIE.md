@@ -465,6 +465,14 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   - **`Win + Alt + N`** sau meniul iconiței.
   - Pe durata hover-ului, pastila devine semi-transparentă, ca să vezi ce e sub ea.
 - **Închidere.** Când ieși cu mouse-ul, după o scurtă întârziere.
+- **Închiderea panourilor (P51, comutatorul „Închiderea panourilor”).** Un panou deschis în notch — ieșire audio, raftul,
+  galeria de widget-uri, mărimile unui widget — se închide prin oricare dintre: butonul lui „Închide”, un click oriunde în
+  afara lui (în notch sau pe ecran), tasta `Esc`, deschiderea altui panou (unul nou îl închide pe cel dinainte), închiderea
+  notch-ului, intrarea în modul editare. `Esc` închide doar panoul de deasupra, câte unul la o apăsare; fără niciun panou
+  deschis, WinNotch nu atinge tastatura deloc, deci `Esc` rămâne al aplicației în care lucrezi. Butoanele de sub conținut
+  (Quick Actions) și nota paginii standard sunt „indicii”: nu dispar când deschizi un panou, dar dispar la un click pe pagină
+  și la `Esc`. În fereastra WinNotch, `Esc` închide pop-up-ul de mărimi (acolo fereastra are focus, nu se citește nicio tastă
+  în fundal). În log apare un rând scurt: „Panou închis: raft (Esc).”
 - **Monitoare.**
   - Urmează monitorul pe care e mouse-ul.
   - Dacă acel monitor e „ocupat” (joc sau video pe tot ecranul, inclusiv borderless), trece pe un monitor liber sau se ascunde. Setarea „Peste jocuri / fullscreen” alege între „se ascunde, apare doar pentru alerte” și „rămâne mereu vizibil”.

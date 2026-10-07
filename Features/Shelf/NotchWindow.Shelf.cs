@@ -453,6 +453,7 @@ namespace WinNotch
             _shPanel.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
             AutomationProperties.SetAutomationId(_shPanel, SmokeMode.ShelfPanelAutomationId);
             OverlayHost.Children.Add(_shPanel);
+            OverlayRegister(OvShelf, Core.Ui.OverlayLevel.Panel, _shPanel, () => ShelfHidePanel());         // P51 hook (Features/Overlays)
             _shDrawn = -1;
             ShelfRedraw();
             RelayoutPanel();
@@ -461,6 +462,7 @@ namespace WinNotch
         private void ShelfHidePanel(bool relayout = true)
         {
             _shMessageTimer?.Stop();
+            OverlayUnregister(OvShelf);     // P51 hook (Features/Overlays)
             if (_shPanel == null) return;
             OverlayHost.Children.Remove(_shPanel);
             _shPanel = null;

@@ -23,6 +23,7 @@
     <Compile Include="ShelfR1Tests.cs" />
     <Compile Include="AudioSwitchTests.cs" />
     <Compile Include="NotchGuardTests.cs" />
+    <Compile Include="OverlayStackTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -31,6 +32,8 @@
     <Compile Include="..\Services\CalendarService.cs" />
     <Compile Include="..\Widgets\Model.cs" />
     <Compile Include="..\Core\Flags\FeatureCatalog.cs" />
+    <!-- P51: the pure overlay rules (the notch's partial, with the WPF hooks, stays out) -->
+    <Compile Include="..\Core\Ui\OverlayStack.cs" />
     <Compile Include="..\Core\Flags\FeatureFlags.cs" />
     <Compile Include="..\Core\Flags\FeatureSettings.cs" />
     <Compile Include="..\Core\Diagnostics\HealthLog.cs" />
