@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using WinNotch.Core.Activity;
 using WinNotch.Features.Activity;
 
 namespace WinNotch.Features.Fullscreen
@@ -79,9 +78,6 @@ namespace WinNotch.Features.Fullscreen
         /// <summary>An alert that gets through over a fullscreen app stays at most this long, with no sound and no buttons to press.</summary>
         public const int PeekMs = 2500;
 
-        /// <summary>How long the discreet popup takes to come down and to pull back.</summary>
-        public const int PeekFadeMs = 120;
-
         /// <summary>Deferred alerts are shown this long after the fullscreen app is gone.</summary>
         public static readonly TimeSpan ReleaseDelay = TimeSpan.FromSeconds(2);
 
@@ -124,13 +120,31 @@ namespace WinNotch.Features.Fullscreen
             {
                 // Geometry and style, not IsZoomed: the window covers the whole monitor AND has no frame of its own,
                 // or it covers the taskbar's strip too (a normal maximized window leaves the work area's edge free).
+                // WS_CAPTION is WS_BORDER | WS_DLGFRAME: any of those bits means the window still draws a frame of its own.
                 bool frameless = !caption && !thickFrame;
+                // A normal maximized window leaves the taskbar's strip free, so covering it is the second signal.
+                // Known limit: on a monitor without a taskbar (or with an auto-hiding one) work == bounds, so only
+                // "frameless" is left — a borderless window that is merely maximized is read as busy there, and an app
+                // that goes fullscreen while keeping its frame is not. Both need a signal Windows does not give us.
                 bool coversTaskbar = !work.Same(bounds);
                 busy = covers && (frameless || coversTaskbar);
             }
             else busy = covers && !zoomed;
 
             return busy ? MonitorUse.Busy : maximized ? MonitorUse.Maximized : MonitorUse.Free;
+        }
+
+        /// <summary>
+        /// Is the window maximized (or filling the work area) as well? A busy window can be both — a browser in
+        /// fullscreen keeps WS_MAXIMIZE — and the small-pill rules still need to know ("always visible" setting).
+        /// </summary>
+        public static bool LooksMaximized(Box win, Box bounds, Box work, bool zoomed)
+        {
+            if (win.Empty || bounds.Empty) return false;
+            bool covers = win.Left <= bounds.Left && win.Top <= bounds.Top && win.Right >= bounds.Right && win.Bottom >= bounds.Bottom;
+            bool fillsWork = Math.Abs(win.Left - work.Left) <= FillTolerance && Math.Abs(win.Top - work.Top) <= FillTolerance &&
+                             Math.Abs(win.Right - work.Right) <= FillTolerance && Math.Abs(win.Bottom - work.Bottom) <= FillTolerance;
+            return zoomed || (fillsWork && !covers);
         }
 
         /// <summary>Alerts kept for later instead of being shown over a fullscreen app (a film is not interrupted).</summary>
@@ -145,16 +159,23 @@ namespace WinNotch.Features.Fullscreen
         /// </summary>
         public static HiddenAlert ForAlert(string id, bool important)
         {
-            if (id != null && DeferredIds.Contains(id)) return HiddenAlert.Defer;
             var known = id == null ? null : LegacyAlerts.Find(id);
+            // An alert with buttons cannot be kept and replayed: its caller wires the buttons after it is shown. Those
+            // have a gate of their own (eye break, update offer, what's new), which offers them again once we are back.
+            if (id != null && DeferredIds.Contains(id)) return known?.Interactive == true ? HiddenAlert.Drop : HiddenAlert.Defer;
             return (known?.Important ?? important) ? HiddenAlert.Show : HiddenAlert.Drop;
         }
 
-        /// <summary>The same decision for the Activity Manager path, from the priority alone (High and Critical get through).</summary>
-        public static bool Passes(ActivityPriority priority) => priority >= ActivityPriority.High;
-
-        /// <summary>How long a passing alert stays while hidden: short, unless it has buttons the user is meant to press.</summary>
-        public static int DurationWhileHidden(int ms, bool interactive) => interactive ? ms : Math.Min(ms, PeekMs);
+        /// <summary>
+        /// How long a passing alert stays while hidden: short, unless it has buttons the user is meant to press or it is
+        /// one step of a flow (a spinner replaced by its result: OCR, memory, download) — those keep their own duration.
+        /// </summary>
+        public static int DurationWhileHidden(string id, int ms)
+        {
+            var known = id == null ? null : LegacyAlerts.Find(id);
+            bool keep = known != null && (known.Interactive || !string.Equals(known.Key, known.Id, StringComparison.Ordinal));
+            return keep ? ms : Math.Min(ms, PeekMs);
+        }
 
         /// <summary>While the notch is hidden only an explicit request of the user opens it; hover and drag do not.</summary>
         public static bool Opens(HiddenTrigger trigger) =>

@@ -211,7 +211,7 @@ namespace WinNotch
             ("oferta-24h", LegacyAlerts.Updates, "S.UpdateSnoozeUntil = DateTime.Now.AddHours(24);"),
             ("extensie-poarta", LegacyAlerts.Updates, "if (Bridge.OldExtensionSeen && !_oldExtShown && _mode == Mode.Idle && !_hidden) { _oldExtShown = true; ShowOldExtension(); return; }"),
             ("extensie-reincearca", LegacyAlerts.Updates, "{ _oldExtShown = false; return; }"),
-            ("dupa-actualizare", LegacyAlerts.Updates, "if (App.JustUpdated && !_afterUpdateShown && _tick > 3 && _mode == Mode.Idle)"),
+            ("dupa-actualizare", LegacyAlerts.Updates, "if (App.JustUpdated && !_afterUpdateShown && _tick > 3 && _mode == Mode.Idle && !_hidden)"),
             ("revenire", LegacyAlerts.Updates, "if (App.RollbackMessage != null && _tick > 3 && _mode == Mode.Idle)"),
         };
 

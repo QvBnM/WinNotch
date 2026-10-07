@@ -24,7 +24,7 @@ namespace WinNotch
         /// <summary>Called every second.</summary>
         private void UpdateTick()
         {
-            if (App.JustUpdated && !_afterUpdateShown && _tick > 3 && _mode == Mode.Idle) { _afterUpdateShown = true; AfterUpdate(); return; }
+            if (App.JustUpdated && !_afterUpdateShown && _tick > 3 && _mode == Mode.Idle && !_hidden) { _afterUpdateShown = true; AfterUpdate(); return; }
             if (App.RollbackMessage != null && _tick > 3 && _mode == Mode.Idle)      // once, after an automatic rollback to this version
             {
                 string m = App.RollbackMessage;

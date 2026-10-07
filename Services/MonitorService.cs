@@ -44,26 +44,30 @@ namespace WinNotch.Services
             {
                 if (decided.Count >= monitors.Count) return false;
                 if (h == self || !Native.IsWindowVisible(h) || Native.IsIconic(h)) return true;
-                if (Native.GetWindowTextLength(h) == 0) return true;          // overlays and helper windows have no title
-
                 long ex = Native.GetExStyle(h);
                 if ((ex & Native.WS_EX_TOOLWINDOW) != 0 || (ex & Native.WS_EX_TRANSPARENT) != 0 || (ex & Native.WS_EX_NOACTIVATE) != 0) return true;
                 if (!Native.GetWindowRect(h, out var wr)) return true;
                 var box = Rect(wr);
                 string cls = Native.ClassName(h);
-                if (FullscreenRules.Ignored(cls, false, true, Native.IsCloaked(h), box)) return true;
+                if (FullscreenRules.Ignored(cls, h == self, Native.GetWindowTextLength(h) > 0, false, box)) return true;
+                if (Native.IsCloaked(h)) return true;              // after the cheap filters: this one asks DWM
 
                 IntPtr mh = Native.MonitorFromWindow(h, Native.MONITOR_DEFAULTTONEAREST);
                 var mon = monitors.FirstOrDefault(m => m.Handle == mh);
                 if (mon == null || decided.Contains(mh)) return true;
 
                 long st = Native.GetStyle(h);
-                var use = FullscreenRules.Classify(box, Rect(mon.Bounds), Rect(mon.Work), Native.IsZoomed(h),
+                bool zoomed = Native.IsZoomed(h);
+                var monBounds = Rect(mon.Bounds);
+                var monWork = Rect(mon.Work);
+                var use = FullscreenRules.Classify(box, monBounds, monWork, zoomed,
                                                   (st & Native.WS_CAPTION) != 0, (st & Native.WS_THICKFRAME) != 0, strict);
                 if (use == null) return true;            // too small to decide: keep looking below it
 
                 mon.Busy = use == MonitorUse.Busy;
-                mon.Maximized = use == MonitorUse.Maximized;
+                // A busy window is often maximized too (a browser in fullscreen keeps WS_MAXIMIZE): the small-pill rules
+                // need that for the "always visible" setting, where the notch stays on screen over it.
+                mon.Maximized = use == MonitorUse.Maximized || FullscreenRules.LooksMaximized(box, monBounds, monWork, zoomed);
                 // The window's title is personal: only its class and its rectangle go in the log.
                 mon.Decider = cls + " " + box;
                 decided.Add(mh);

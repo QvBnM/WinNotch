@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Windows;
 using WinNotch.Core.Flags;
-using WinNotch.Features.Activity;
 
 namespace WinNotch
 {
@@ -19,7 +18,7 @@ namespace WinNotch
         private readonly Dictionary<string, Action> _deferredShow = new Dictionary<string, Action>(StringComparer.Ordinal);
         private bool _fsReleasing;
 
-        private static bool FullscreenOn => FeatureFlags.Current?.IsEnabled(FullscreenRules.FeatureId) ?? false;
+        private static bool FullscreenOn => FeatureFlags.Current?.IsEnabled(FullscreenRules.FeatureId) ?? true;
 
         /// <summary>
         /// The gate of every alert while the notch is hidden: important ones come down briefly, a few are kept for a
@@ -31,7 +30,7 @@ namespace WinNotch
             switch (FullscreenRules.ForAlert(id, important))
             {
                 case HiddenAlert.Show:
-                    ms = FullscreenRules.DurationWhileHidden(ms, LegacyAlerts.Find(id)?.Interactive ?? false);
+                    ms = FullscreenRules.DurationWhileHidden(id, ms);
                     return true;
                 case HiddenAlert.Defer:
                     _deferred.Note(id, DateTime.Now);
@@ -46,7 +45,7 @@ namespace WinNotch
         /// <summary>Called from MonitorTick (every 500 ms): counts the delay and shows what was kept, once.</summary>
         private void FullscreenTick()
         {
-            if (!FullscreenOn) return;
+            if (!FullscreenOn) { FullscreenForget(); return; }      // switched off while something waited: nothing is kept
             if (_hidden) { _deferred.Hidden(); return; }
             var now = DateTime.Now;
             _deferred.Freed(now);

@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using WinNotch.Core.Activity;
 using WinNotch.Core.Flags;
 using WinNotch.Features.Activity;
 using WinNotch.Features.Fullscreen;
@@ -77,28 +76,37 @@ namespace WinNotch
                          A(LegacyAlerts.CaptureResult) == HiddenAlert.Show && A(LegacyAlerts.OcrDone) == HiddenAlert.Show;
             Check("FS11", "Trec peste fullscreen: baterie, temperatură, memorie, rezultatul unei unelte cerute de utilizator", shown);
 
-            Check("FS12", "Se amână: pauza pentru ochi, actualizarea, noutățile, piesa nouă",
-                  A(LegacyAlerts.EyeBreak) == HiddenAlert.Defer && A(LegacyAlerts.UpdateOffer) == HiddenAlert.Defer &&
-                  A(LegacyAlerts.WhatsNew) == HiddenAlert.Defer && A(LegacyAlerts.Track) == HiddenAlert.Defer);
+            Check("FS12", "Se amână piesa nouă (fără butoane); cele cu butoane se sar, fiindcă porțile lor le oferă din nou mai târziu",
+                  A(LegacyAlerts.Track) == HiddenAlert.Defer &&
+                  A(LegacyAlerts.EyeBreak) == HiddenAlert.Drop && A(LegacyAlerts.UpdateOffer) == HiddenAlert.Drop &&
+                  A(LegacyAlerts.WhatsNew) == HiddenAlert.Drop);
 
             Check("FS13", "Se sar: volum, alimentare, extensia veche, un id necunoscut neimportant",
                   A(LegacyAlerts.Volume) == HiddenAlert.Drop && A(LegacyAlerts.Power) == HiddenAlert.Drop &&
                   A(LegacyAlerts.OldExtension) == HiddenAlert.Drop && FullscreenRules.ForAlert("nu.exista", false) == HiddenAlert.Drop &&
-                  FullscreenRules.ForAlert(null, false) == HiddenAlert.Drop);
+                  FullscreenRules.ForAlert(null, false) == HiddenAlert.Drop && FullscreenRules.ForAlert("nu.exista", true) == HiddenAlert.Show);
 
-            Check("FS14", "Lista se potrivește cu prioritățile: High și Critical trec, Normal și Low nu",
-                  FullscreenRules.Passes(ActivityPriority.High) && FullscreenRules.Passes(ActivityPriority.Critical) &&
-                  !FullscreenRules.Passes(ActivityPriority.Normal) && !FullscreenRules.Passes(ActivityPriority.Low));
+            Check("FS14", "Alertele importante din tabel trec sau se amână; cele cu butoane care se amână sunt sărite, nu pierdute (au poarta lor)",
+                  LegacyAlerts.All.Where(a => a.Important && !a.Interactive).All(a => A(a.Id) != HiddenAlert.Drop));
 
-            Check("FS15", "Fiecare alertă importantă din tabel trece sau se amână, niciuna nu se pierde",
-                  LegacyAlerts.All.Where(a => a.Important).All(a => A(a.Id) != HiddenAlert.Drop));
+            Check("FS15", "Popup-ul peste fullscreen e scurt (2,5 s); butoanele și pașii unui flux își păstrează durata",
+                  FullscreenRules.DurationWhileHidden(LegacyAlerts.BatteryLow, 5000) == FullscreenRules.PeekMs &&
+                  FullscreenRules.DurationWhileHidden(LegacyAlerts.TempHot, 5000) == FullscreenRules.PeekMs &&
+                  FullscreenRules.DurationWhileHidden(LegacyAlerts.OcrReading, 30000) == 30000 &&
+                  FullscreenRules.DurationWhileHidden(LegacyAlerts.RamProgress, 60000) == 60000 &&
+                  FullscreenRules.DurationWhileHidden(LegacyAlerts.UpdateDownload, 600000) == 600000 &&
+                  FullscreenRules.DurationWhileHidden(LegacyAlerts.CaptureResult, 5000) == 5000 &&
+                  FullscreenRules.DurationWhileHidden("nu.exista", 9000) == FullscreenRules.PeekMs &&
+                  FullscreenRules.DurationWhileHidden(LegacyAlerts.Volume, 1600) == 1600 && FullscreenRules.PeekMs == 2500);
 
-            Check("FS16", "Popup-ul peste fullscreen e scurt (2,5 s); una cu butoane își păstrează durata",
-                  FullscreenRules.DurationWhileHidden(5000, false) == FullscreenRules.PeekMs &&
-                  FullscreenRules.DurationWhileHidden(1600, false) == 1600 &&
-                  FullscreenRules.DurationWhileHidden(21000, true) == 21000 && FullscreenRules.PeekMs == 2500);
+            Check("FS16", "O fereastră ocupată poate fi și maximizată: setarea „mereu vizibil” păstrează pastila mică",
+                  FullscreenRules.LooksMaximized(Box.At(-2560, 0, 2560, 1440), Mon, Work, zoomed: true) &&
+                  !FullscreenRules.LooksMaximized(Box.At(-2560, 0, 2560, 1440), Mon, Work, zoomed: false) &&
+                  FullscreenRules.LooksMaximized(new Box(-2558, 2, -2, 1398), Mon, Work, zoomed: false) &&
+                  !FullscreenRules.LooksMaximized(Box.At(-1200, 300, 500, 400), Mon, Work, zoomed: false) &&
+                  !FullscreenRules.LooksMaximized(default, Mon, Work, zoomed: true));
 
-            Check("FS17", "Cât e ascuns: hover-ul și drag-ul nu deschid, scurtătura, Command Bar și tray-ul da",
+            Check("FS17", "Cât e ascuns: hover-ul și tragerea nu deschid; scurtătura, Command Bar și tray-ul da",
                   !FullscreenRules.Opens(HiddenTrigger.Hover) && !FullscreenRules.Opens(HiddenTrigger.Drag) &&
                   FullscreenRules.Opens(HiddenTrigger.Shortcut) && FullscreenRules.Opens(HiddenTrigger.CommandBar) &&
                   FullscreenRules.Opens(HiddenTrigger.Tray));
@@ -148,7 +156,8 @@ namespace WinNotch
 
             Check("FS25", "MonitorService decide prin FullscreenRules.Classify, cu comutatorul citit o dată pe scanare",
                   mons.Contains("FullscreenRules.Classify(") && mons.Contains("FeatureFlags.Current?.IsEnabled(FullscreenRules.FeatureId)") &&
-                  mons.Contains("FullscreenRules.Ignored(") && !mons.Contains("covers && !Native.IsZoomed(h)"));
+                  mons.Contains("FullscreenRules.Ignored(") && !mons.Contains("covers && !Native.IsZoomed(h)") &&
+                  mons.Contains("mon.Maximized = use == MonitorUse.Maximized || FullscreenRules.LooksMaximized("));
 
             Check("FS26", "Titlul ferestrei nu mai ajunge în log (doar clasa și dreptunghiul)",
                   !mons.Contains("Native.Title(") && mons.Contains("mon.Decider = cls + \" \" + box;"));
