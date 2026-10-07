@@ -54,8 +54,14 @@ namespace WinNotch.Core.Ui
             }
         }
 
-        /// <summary>True only while something is open: the keyboard (Esc) is read only then, never otherwise.</summary>
+        /// <summary>True only while something is open: the mouse is watched only then, never otherwise.</summary>
         public bool NeedsKeyboard => _open.Count > 0;
+
+        /// <summary>
+        /// True only while a panel (or a modal) is open: Esc is read only then. A hint alone (quick actions, the note of
+        /// a standard page) never takes the key — the user is typing in their own application.
+        /// </summary>
+        public bool NeedsEscape => _open.Any(e => e.Level != OverlayLevel.Hint);
 
         public bool IsOpen(string id) => id != null && _open.Any(e => string.Equals(e.Id, id, StringComparison.Ordinal));
 
@@ -118,7 +124,8 @@ namespace WinNotch.Core.Ui
         public string OnOutsideClick(string insideId)
         {
             var top = Topmost;
-            if (top == null || string.Equals(top, insideId, StringComparison.Ordinal)) return null;
+            if (top == null) return null;
+            if (IsOpen(insideId)) return null;      // the click landed in an open overlay (any of them): nothing closes
             return Close(top, OverlayClose.OutsideClick) ? top : null;
         }
 

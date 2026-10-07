@@ -344,7 +344,6 @@ namespace WinNotch
             if (!IsLoaded || _hwnd == IntPtr.Zero) return;
             // A screen tool hid the notch (capture, region picker): hovering the invisible pill must not open or show it.
             if (_toolHidden) { ClearDwell(); return; }
-            OverlayPollTick();              // P51 hook (Features/Overlays): Esc and a click outside the window, only while a panel is open
 
             // remember the last real app window, for "Fereastra activă"
             var fg = Native.GetForegroundWindow();
@@ -356,6 +355,7 @@ namespace WinNotch
 
             Native.GetCursorPos(out var p);
             var r = PillScreenRect();
+            OverlayPollTick(p, r);          // P51 hook (Features/Overlays): Esc and a click outside the window, only while something is open
 
             if (_mode == Mode.Expanded)
             {
@@ -464,7 +464,6 @@ namespace WinNotch
             _pinned = false;
             _mouseWasInside = false;
             _leaveStart = null;
-            OverlayCloseAll(Core.Ui.OverlayClose.NotchClosed);   // P51 hook (Features/Overlays): nothing stays open behind a closed notch
             ShelfOnClose();                 // P23 hook (Features/Shelf): the overlay goes with the panel
             StopTyping();
             AudioSwitchOnClose();           // P30 hook (Features/AudioSwitch): the list of outputs goes with the panel
@@ -475,6 +474,7 @@ namespace WinNotch
             ApplyHidden();
             UpdateVisualizer();
             ActivityNotchClosed();          // P13 hook (Features/Activity): no-op with the switch off
+            OverlayCloseAll(Core.Ui.OverlayClose.NotchClosed);   // P51 hook (Features/Overlays): nothing stays open behind a closed notch
         }
 
         // =====================================================================

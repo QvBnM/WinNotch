@@ -472,7 +472,8 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   deschis, WinNotch nu atinge tastatura deloc, deci `Esc` rămâne al aplicației în care lucrezi. Butoanele de sub conținut
   (Quick Actions) și nota paginii standard sunt „indicii”: nu dispar când deschizi un panou, dar dispar la un click pe pagină
   și la `Esc`. În fereastra WinNotch, `Esc` închide pop-up-ul de mărimi (acolo fereastra are focus, nu se citește nicio tastă
-  în fundal). În log apare un rând scurt: „Panou închis: raft (Esc).”
+  în fundal). În log apare un rând scurt cu id-ul panoului și motivul, de exemplu „Panou închis: raft (Esc).” — doar când a fost
+  închis altfel decât cu butonul lui. Vezi `docs/adr/0014-inchiderea-panourilor.md`.
 - **Monitoare.**
   - Urmează monitorul pe care e mouse-ul.
   - Dacă acel monitor e „ocupat” (joc sau video pe tot ecranul, inclusiv borderless), trece pe un monitor liber sau se ascunde. Setarea „Peste jocuri / fullscreen” alege între „se ascunde, apare doar pentru alerte” și „rămâne mereu vizibil”.

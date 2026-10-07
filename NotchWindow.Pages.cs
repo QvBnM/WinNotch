@@ -210,8 +210,15 @@ namespace WinNotch
 
         private void CloseOverlays()
         {
-            OverlayUnregister(OvGallery);   // P51 hook (Features/Overlays)
+            OverlayUnregister(OvGallery);   // P51 hook (Features/Overlays): first out of the stack, then off the screen
             OverlayUnregister(OvSizes);
+            CloseOverlaysCore();
+        }
+
+        /// <summary>Takes the gallery / the sizes off the screen. P51: the stack's own closing routine calls this one,
+        /// so closing through the stack does not come back into <see cref="CloseOverlays"/>.</summary>
+        private void CloseOverlaysCore()
+        {
             if (_gallery != null) { OverlayHost.Children.Remove(_gallery); _gallery = null; _galleryView = null; }
             if (_sizes != null) { OverlayHost.Children.Remove(_sizes); _sizes = null; }
             _popup.Close?.Invoke();
@@ -242,7 +249,7 @@ namespace WinNotch
             _galleryView.DragEnded += () => { if (_gallery == host) { host.Visibility = Visibility.Visible; RelayoutPanel(); } };
             _gallery = host;
             OverlayHost.Children.Add(host);
-            OverlayRegister(OvGallery, Core.Ui.OverlayLevel.Panel, host, () => { CloseOverlays(); RelayoutPanel(); });    // P51 hook (Features/Overlays)
+            OverlayRegister(OvGallery, Core.Ui.OverlayLevel.Panel, host, () => { CloseOverlaysCore(); RelayoutPanel(); });    // P51 hook (Features/Overlays)
             RelayoutPanel();
         }
 
@@ -281,7 +288,9 @@ namespace WinNotch
             _popup = Gallery.ShowPopupIn(OverlayHost, body, new Thickness(-6, 36, -6, -4),
                                          onClosed: () => { _sizes = null; _popup = (null, null); OverlayUnregister(OvSizes); RelayoutPanel(); });
             _sizes = OverlayHost.Children[OverlayHost.Children.Count - 1] as FrameworkElement;
-            OverlayRegister(OvSizes, Core.Ui.OverlayLevel.Panel, _sizes, () => { CloseOverlays(); RelayoutPanel(); });    // P51 hook (Features/Overlays)
+            // P51: the card is what a click must land in — the dimmed backdrop around it counts as "outside"
+            OverlayRegister(OvSizes, Core.Ui.OverlayLevel.Panel, (_sizes as Border)?.Child as FrameworkElement ?? _sizes,
+                            () => { CloseOverlaysCore(); RelayoutPanel(); });    // P51 hook (Features/Overlays)
             RelayoutPanel();
         }
 

@@ -52,6 +52,8 @@ namespace WinNotch
             PreviewKeyDown += (o, e) =>
             {
                 if (e.Key != System.Windows.Input.Key.Escape || _edPopup.Close == null) return;
+                // the switch is read here, not at subscription, so turning it off takes effect right away (and in --safe-mode)
+                if (!(Core.Flags.FeatureFlags.Current?.IsEnabled(Core.Ui.OverlayStack.FeatureId) ?? false)) return;
                 _edPopup.Close();
                 e.Handled = true;
             };

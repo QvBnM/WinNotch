@@ -130,7 +130,18 @@
 - **Comutator:** `overlay-dismiss` (Beta, pornit implicit, oprit în `--safe-mode`), cu abonare la
   `FeatureFlags.Changed` și dezabonare la `Cleanup`; oprit = panourile se închid doar cu butonul lor, ca înainte, și
   nu se citește nicio tastă și niciun click.
-- **Teste:** 17 noi (OS1–OS17) în `tests/OverlayStackTests.cs`, inclusiv reintrarea (rutina de închidere a apelantului
-  apelează `Close` din nou) și pinurile pe legături. `dotnet` lipsește în container: rularea e în CI, la push pe ramură.
+- **Teste:** 21 noi (OS1–OS17, cu OS1a/OS1b și OS2b–OS2d) în `tests/OverlayStackTests.cs`, inclusiv reintrarea (rutina
+  de închidere a apelantului apelează `Close` din nou) și pinurile pe legături; OS12 și OS13 pică pe codul vechi.
+  `dotnet` lipsește în container: rularea e în CI, la push pe ramură.
+- **Decizie de arhitectură:** `docs/adr/0014-inchiderea-panourilor.md` (de ce `GetAsyncKeyState` în `PollTick`-ul
+  existent și nu `RegisterHotKey` pe `Esc`, nu un hook de tastatură, nu luarea focusului).
+- **Revizia R1:** 2 Critice (fișierul de teste lipsea din commit — o comandă scurtcircuitată; raportul din PROGRESS
+  care se sprijinea pe el), 1 Major pin spart (SH27: legătura din `Collapse` mutată la final, după `ApplyMode`, ca
+  ordinea veche să rămână și ca panourile să nu refacă aspectul în timpul animației), 2 Majore reparate (oprirea
+  comutatorului nu închidea nimic și lăsa înregistrări moarte; prima apăsare după golirea teancului era înghițită),
+  5 Medii (click într-un panou de dedesubt închidea panoul de deasupra; reacția la orice buton de mouse; `Esc` dublu
+  cu Command Bar-ul deschis; `Esc`-ul din fereastra WinNotch ocolea comutatorul; „mărimi” se înregistra cu fundalul,
+  nu cu cardul) și Minorele ieftine (`CloseOverlaysCore`, ordinea în `OverlayRegister`, cursorul primit din `PollTick`,
+  `Esc` doar cât e deschis un panou — nu un indiciu).
 - **Stare:** ramura `p51-overlay-dismiss`, pornită din `main` (fără P53), fără merge și fără versiune nouă până la
-  testarea pe Windows (verificările P51.1–P51.13 din `docs/TESTE-MANUALE.md`).
+  testarea pe Windows (verificările P51.1–P51.15 din `docs/TESTE-MANUALE.md`).

@@ -296,4 +296,6 @@ pornește întâi comutatoarele lor din Setări → funcții noi.
 | P51.10 | Editarea închide tot | Deschide lista de ieșiri audio, apoi intră în modul editare (butonul „Editează”). | Lista se închide la intrarea în editare. |
 | P51.11 | Nota paginii standard | Editare pe o pagină standard (apare nota de jos), apasă `Esc`. | Nota dispare, editarea rămâne. |
 | P51.12 | Fereastra WinNotch | Deschide fereastra WinNotch → o pagină → „Adaugă”, click pe un widget (apare pop-up-ul cu mărimi) și apasă `Esc`. | Pop-up-ul se închide; fereastra rămâne deschisă. |
+| P51.14 | Esc cu notch-ul deschis prin scurtătură | Deschide notch-ul cu `Win + Alt + N` (rămâne deschis), cu Quick Actions pornit. Fără niciun panou deschis, apasă `Esc` într-o altă aplicație. | Butoanele Quick Actions rămân: `Esc` nu e citit cât e deschis doar un „indiciu”. Deschide apoi lista de ieșiri audio și apasă `Esc`: se închide doar lista. |
+| P51.15 | Command Bar | Cu Command Bar pornit: deschide lista de ieșiri audio, apoi Command Bar-ul (`Win + Alt + Space`). Apasă `Esc` o dată. | Se închide doar Command Bar-ul; lista rămâne. A doua apăsare închide lista. |
 | P51.13 | Comutatorul oprit | Setări → funcții noi → oprește „Închiderea panourilor”. Repetă P51.1 și P51.3. | Comportamentul de dinainte: lista rămâne deschisă la click pe pagină și la `Esc`; se închide doar cu butonul ei. |

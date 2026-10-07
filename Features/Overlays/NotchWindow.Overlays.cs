@@ -35,9 +35,10 @@ namespace WinNotch
                     if (!string.Equals(id, OverlayStack.FeatureId, StringComparison.Ordinal)) return;
                     Dispatcher.InvokeAsync(() =>
                     {
-                        _overlayOn = FeatureFlags.Current?.IsEnabled(OverlayStack.FeatureId) ?? false;
-                        if (!_overlayOn) OverlayCloseAll(OverlayClose.Switch);
-                        OverlayHook(_overlayOn);
+                        bool on = FeatureFlags.Current?.IsEnabled(OverlayStack.FeatureId) ?? false;
+                        if (!on) { _overlays.CloseAll(OverlayClose.Switch); _overlayEls.Clear(); }
+                        _overlayOn = on;
+                        OverlayHook(on);
                     });
                 };
                 if (FeatureFlags.Current != null) FeatureFlags.Current.Changed += _overlayFlagHandler;
@@ -67,19 +68,18 @@ namespace WinNotch
         private void OverlayRegister(string id, OverlayLevel level, FrameworkElement element, Action close)
         {
             if (!_overlayOn || close == null) return;
-            _overlayEls[id] = element;
             _overlays.Register(id, level, why =>
             {
                 _overlayEls.Remove(id);
                 try { close(); } catch (Exception ex) { FeatureFlags.Current?.ReportError(OverlayStack.FeatureId, ex); }
                 if (why != OverlayClose.Button) App.Log("Panou închis: " + id + " (" + OverlayWhy(why) + ").");
             });
+            _overlayEls[id] = element;
         }
 
         /// <summary>The caller closed the overlay itself (its button, a choice made, the page changed).</summary>
         private void OverlayUnregister(string id)
         {
-            if (!_overlayOn) return;
             _overlayEls.Remove(id);
             _overlays.Close(id, OverlayClose.Button);
         }
@@ -103,7 +103,7 @@ namespace WinNotch
 
         private void OnOverlayPreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (!_overlayOn || _overlays.Count == 0) return;
+            if (!_overlayOn || _overlays.Count == 0 || e.ChangedButton != MouseButton.Left) return;
             _overlays.OnOutsideClick(OverlayHitId(e));
         }
 
@@ -123,10 +123,16 @@ namespace WinNotch
         /// Called from PollTick (30 ms, existing): a click outside the window never reaches WPF (the window is
         /// NOACTIVATE + TRANSPARENT), and Esc needs no focus. Both are read only while something is open.
         /// </summary>
-        private void OverlayPollTick()
+        private void OverlayPollTick(Native.POINT cursor, Native.RECT pill)
         {
-            if (!_overlayOn || !_overlays.NeedsKeyboard) return;
-            if (Native.GetAsyncKeyState(0x1B) < 0)              // Esc: the top one, one press at a time
+            // Nothing open (or the Command Bar has the keyboard): the flags are cleared, so the next press counts as new.
+            if (!_overlayOn || _overlays.Count == 0 || CommandBarOpen)
+            {
+                _overlayEscDown = _overlayClickDown = false;
+                return;
+            }
+            // Esc only while a panel is open: a hint alone never takes the key from the application the user types in.
+            if (_overlays.NeedsEscape && Native.GetAsyncKeyState(0x1B) < 0)
             {
                 if (!_overlayEscDown) { _overlayEscDown = true; _overlays.OnEscape(); }
                 return;
@@ -135,8 +141,7 @@ namespace WinNotch
             if (Native.GetAsyncKeyState(0x01) >= 0) { _overlayClickDown = false; return; }
             if (_overlayClickDown) return;                      // one press, one close
             _overlayClickDown = true;
-            Native.GetCursorPos(out var p);
-            if (!Inside(PillScreenRect(), p, 8)) _overlays.OnOutsideClick(null);
+            if (!Inside(pill, cursor, 8)) _overlays.OnOutsideClick(null);
         }
 
         private bool _overlayEscDown, _overlayClickDown;

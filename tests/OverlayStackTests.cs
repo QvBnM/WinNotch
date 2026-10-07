@@ -50,6 +50,12 @@ namespace WinNotch
             Check("OS2b", "Click în interiorul panoului de deasupra nu închide nimic",
                   st.OnOutsideClick(qa.Id) == null && qa.Closed == 0);
 
+            var under2 = new FakeOverlay { Id = "raft" };
+            st.Register(under2.Id, OverlayLevel.Panel, under2.Close);
+            Check("OS2d", "Click în interiorul unui panou de dedesubt nu închide panoul de deasupra",
+                  st.OnOutsideClick(qa.Id) == null && qa.Closed == 0 && under2.Closed == 0 &&
+                  st.OnOutsideClick("nu.exista") == under2.Id && under2.Closed == 1);
+
             Check("OS2c", "Click în afară închide și un indiciu, când e singurul deschis",
                   st.OnOutsideClick(null) == qa.Id && qa.Closed == 1 && st.Count == 0 && st.OnOutsideClick(null) == null);
 
@@ -93,8 +99,10 @@ namespace WinNotch
             Check("OS6", "Rutina de închidere a apelantului poate apela Close: se închide o singură dată, fără buclă",
                   re.Closed == 1 && max == 1 && st.Count == 0);
 
-            Check("OS7", "Tastatura se citește doar cât teancul nu e gol",
-                  !new OverlayStack().NeedsKeyboard && NeedsKeyboardWith(OverlayLevel.Hint) && NeedsKeyboardWith(OverlayLevel.Panel));
+            Check("OS7", "Mouse-ul se urmărește cât teancul nu e gol; Esc doar cât e deschis un panou (nu un indiciu)",
+                  !new OverlayStack().NeedsKeyboard && !new OverlayStack().NeedsEscape &&
+                  NeedsKeyboardWith(OverlayLevel.Hint) && NeedsKeyboardWith(OverlayLevel.Panel) &&
+                  !NeedsEscapeWith(OverlayLevel.Hint) && NeedsEscapeWith(OverlayLevel.Panel) && NeedsEscapeWith(OverlayLevel.Modal));
 
             var st2 = new OverlayStack();
             var modal = new FakeOverlay { Id = "command-bar" };
@@ -126,11 +134,15 @@ namespace WinNotch
                   st4.Ids.Count == 1 && st4.Ids[0] == hb.Id);
         }
 
-        static bool NeedsKeyboardWith(OverlayLevel level)
+        static bool NeedsKeyboardWith(OverlayLevel level) => With(level).NeedsKeyboard;
+
+        static bool NeedsEscapeWith(OverlayLevel level) => With(level).NeedsEscape;
+
+        static OverlayStack With(OverlayLevel level)
         {
             var st = new OverlayStack();
             st.Register("x", level, _ => { });
-            return st.NeedsKeyboard;
+            return st;
         }
 
         /// <summary>The hooks in the old files, and the repair the brief asks for by name: the pop-up tells its caller.</summary>
@@ -153,17 +165,20 @@ namespace WinNotch
                   Src("Features/Shelf/NotchWindow.Shelf.cs").Contains("OverlayRegister(OvShelf, Core.Ui.OverlayLevel.Panel") &&
                   Src("Features/QuickActions/NotchWindow.QuickActions.cs").Contains("OverlayRegister(OvQuickActions, Core.Ui.OverlayLevel.Hint") &&
                   pages.Contains("OverlayRegister(OvGallery, Core.Ui.OverlayLevel.Panel") &&
-                  pages.Contains("OverlayRegister(OvSizes, Core.Ui.OverlayLevel.Panel") &&
+                  pages.Contains("OverlayRegister(OvSizes, Core.Ui.OverlayLevel.Panel, (_sizes as Border)?.Child as FrameworkElement") &&
                   pages.Contains("OverlayRegister(OvNote, Core.Ui.OverlayLevel.Hint"));
 
             Check("OS15", "Legăturile din notch: pornire, oprire, Esc/click din PollTick, închiderea notch-ului și editarea",
-                  notch.Contains("StartOverlays();") && notch.Contains("StopOverlays();") && notch.Contains("OverlayPollTick();") &&
+                  notch.Contains("StartOverlays();") && notch.Contains("StopOverlays();") && notch.Contains("OverlayPollTick(p, r);") &&
                   notch.Contains("OverlayCloseAll(Core.Ui.OverlayClose.NotchClosed);") &&
-                  pages.Contains("OverlayCloseAll(Core.Ui.OverlayClose.EditMode);"));
+                  pages.Contains("OverlayCloseAll(Core.Ui.OverlayClose.EditMode);") &&
+                  // the stack's own routine does not come back into CloseOverlays, and the Command Bar keeps its own Esc
+                  pages.Contains("private void CloseOverlaysCore()") &&
+                  Src("Features/Overlays/NotchWindow.Overlays.cs").Contains("|| CommandBarOpen"));
 
-            Check("OS16", "În fereastra WinNotch, Esc trece prin PreviewKeyDown (acolo e focus real), nu prin polling",
+            Check("OS16", "În fereastra WinNotch, Esc trece prin PreviewKeyDown (acolo e focus real), nu prin polling, și respectă comutatorul",
                   editor.Contains("PreviewKeyDown += (o, e) =>") && editor.Contains("_edPopup.Close();") &&
-                  !editor.Contains("GetAsyncKeyState"));
+                  editor.Contains("IsEnabled(Core.Ui.OverlayStack.FeatureId)") && !editor.Contains("GetAsyncKeyState"));
 
             Check("OS17", "Numele panourilor sunt aceleași cu cele din plasa de siguranță (fără „alte-N”)",
                   new[] { "galerie", "mărimi", "notă", "raft", "ieșire-audio", "quick-actions" }
