@@ -301,6 +301,7 @@ namespace WinNotch.Features.WindowV2
         private UIElement EmbeddedPage() => _category switch
         {
             "setari" => _pages.Settings(_s, _notch, _centerScroll, () => { if (_category == "setari") BuildCenter(); }),
+            "noutati" => _pages.News(),
             _ => ClassicCard(),
         };
 

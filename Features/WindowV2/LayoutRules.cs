@@ -98,7 +98,7 @@ namespace WinNotch.Features.WindowV2
         /// grows one page at a time (settings first, as the brief asks); the rest still open the classic window.
         /// </summary>
         public static bool IsEmbeddedContent(string categoryId) =>
-            categoryId is "setari";
+            categoryId is "setari" or "noutati";
 
         /// <summary>Categories that still show the old window's own pages (until their content moves here too).</summary>
         public static bool IsClassicContent(string categoryId) =>

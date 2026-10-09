@@ -88,6 +88,11 @@ namespace WinNotch
                   Count(Norm(v2), "_pages.Detach();") == 2 &&
                   Norm(v2).Contains("!LayoutRules.IsPageContent(_category) && LayoutRules.Columns(CenterWidth()) != _cols"));
 
+            Check("WV28", "Noutățile sunt în fereastra nouă, citite cu codul existent, cu jetoanele temei",
+                  LayoutRules.IsEmbeddedContent("noutati") && !LayoutRules.IsClassicContent("noutati") &&
+                  emb.Contains("Services.Updater.ParseNotes(Services.Updater.OwnNotes())") &&
+                  !System.Text.RegularExpressions.Regex.IsMatch(emb, @"Color\.From|#[0-9A-Fa-f]{6}|Brushes\.(?!Transparent)"));
+
             // Pe tema întunecată, cardurile albe ale setărilor cu text alb erau ilizibile: pagina își duce cromul cu ea.
             string sw = Src("SettingsWindow.xaml.cs");
             Check("WV27", "Conținutul setărilor își duce fundalul și cerneala proprii oriunde e găzduit",

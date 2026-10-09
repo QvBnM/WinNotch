@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -35,6 +36,46 @@ namespace WinNotch.Features.WindowV2
             var box = new Border { Child = content, MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Left };
             box.SetBinding(FrameworkElement.HeightProperty, new Binding("ViewportHeight") { Source = host });
             return box;
+        }
+
+        /// <summary>
+        /// What this version brought: the same notes the classic window shows, read with the same code
+        /// (<c>Updater.ParseNotes(Updater.OwnNotes())</c>). Only the wrapping is new — the theme's own tokens, so the
+        /// page reads the same on a light and on a dark theme.
+        /// </summary>
+        internal FrameworkElement News()
+        {
+            var sp = new StackPanel { MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Left };
+            sp.Children.Add(Ui.T("Noutăți în WinNotch " + Services.Updater.Current, 20, "InkBrush", true));
+            var intro = Ui.T(Services.Updater.Configured
+                                 ? "Versiunile noi se instalează din notch („Actualizează”); fiecare îți arată aici ce a adus."
+                                 : "Ce a adus versiunea pe care o folosești.", 13, "MutedBrush");
+            intro.Margin = new Thickness(0, 4, 0, LayoutRules.Pad);
+            sp.Children.Add(intro);
+
+            var items = Services.Updater.ParseNotes(Services.Updater.OwnNotes());
+            if (items.Count == 0) sp.Children.Add(Ui.T("Nicio notă pentru această versiune.", 13, "DimBrush"));
+            foreach (var group in items.GroupBy(i => i.Kind))
+            {
+                var list = new StackPanel();
+                list.Children.Add(Ui.Cap(group.Key.ToUpperInvariant()));
+                foreach (var (_, text) in group)
+                {
+                    var row = Ui.Cols(Ui.Px(18), Ui.Star());
+                    var dot = Ui.T("•", 13, "AccentBrush", true);
+                    dot.VerticalAlignment = VerticalAlignment.Top;
+                    row.Put(dot);
+                    var line = Ui.T(text, 13.5, "InkBrush");
+                    line.TextWrapping = TextWrapping.Wrap;
+                    row.Put(line, 1);
+                    row.Margin = new Thickness(0, 0, 0, 8);
+                    list.Children.Add(row);
+                }
+                var card = Ui.Card(list, 18, 14, LayoutRules.CardRadius);
+                card.Margin = new Thickness(0, 0, 0, LayoutRules.Gap);
+                sp.Children.Add(card);
+            }
+            return sp;
         }
 
         /// <summary>P14 ("settings.*" actions): the hosted settings page, scrolled to one option and focused.</summary>
