@@ -29,6 +29,7 @@
     <Compile Include="InterruptTests.cs" />
     <Compile Include="NotchAnchoredTests.cs" />
     <Compile Include="WindowV2Tests.cs" />
+    <Compile Include="FeatureAuditTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
