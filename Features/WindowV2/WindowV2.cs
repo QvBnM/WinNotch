@@ -38,6 +38,10 @@ namespace WinNotch.Features.WindowV2
         private readonly TextBlock _clock = Ui.T("--:--", 12, "MutedBrush", false, true);
         private readonly System.Windows.Threading.DispatcherTimer _tick =
             new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        /// <summary>Debounce for the sliders of the themes page (nothing is saved while one is still moving).</summary>
+        private readonly System.Windows.Threading.DispatcherTimer _soon =
+            new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        private Action _pending;
         private readonly StackPanel _cards = new StackPanel();
         private UIElement _searchCard;
         private ScrollViewer _centerScroll;
@@ -74,11 +78,22 @@ namespace WinNotch.Features.WindowV2
             SizeChanged += (o, e) => Relayout();
             PreviewKeyDown += OnKey;
             _tick.Tick += (o, e) => OnTick();
+            _soon.Tick += (o, e) =>
+            {
+                _soon.Stop();
+                var a = _pending; _pending = null;
+                try { a?.Invoke(); }
+                catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
+            };
             Loaded += (o, e) => { OnTick(); _tick.Start(); Relayout(); };
             StateChanged += (o, e) => { if (WindowState == WindowState.Minimized) _tick.Stop(); else { OnTick(); _tick.Start(); } };
             Closed += (o, e) =>
             {
                 _tick.Stop();
+                _soon.Stop();
+                var last = _pending; _pending = null;
+                try { last?.Invoke(); }               // a slider still pending is saved, not lost
+                catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
                 _pages.Detach();
                 if (_flagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _flagHandler;
                 _flagHandler = null;
@@ -297,11 +312,28 @@ namespace WinNotch.Features.WindowV2
             return card;
         }
 
+        /// <summary>Rebuilds the open page where it is, keeping the place you had scrolled to.</summary>
+        private void ReloadPage()
+        {
+            double off = _centerScroll?.VerticalOffset ?? 0;
+            BuildCenter();
+            if (_centerScroll != null) Dispatcher.InvokeAsync(() => _centerScroll.ScrollToVerticalOffset(off), System.Windows.Threading.DispatcherPriority.Loaded);
+        }
+
+        /// <summary>Runs the last asked-for change shortly after the slider stops moving (one timer, not one per row).</summary>
+        private void Soon(Action a)
+        {
+            _pending = a;
+            _soon.Stop();
+            _soon.Start();
+        }
+
         /// <summary>The body of a page that now lives here: built by the same code the classic window uses.</summary>
         private UIElement EmbeddedPage() => _category switch
         {
             "setari" => _pages.Settings(_s, _notch, _centerScroll, () => { if (_category == "setari") BuildCenter(); }),
             "noutati" => _pages.News(),
+            "teme" => _pages.Themes(_s, _notch, ReloadPage, Soon),
             _ => ClassicCard(),
         };
 

@@ -91,7 +91,23 @@ namespace WinNotch
             Check("WV28", "Noutățile sunt în fereastra nouă, citite cu codul existent, cu jetoanele temei",
                   LayoutRules.IsEmbeddedContent("noutati") && !LayoutRules.IsClassicContent("noutati") &&
                   emb.Contains("Services.Updater.ParseNotes(Services.Updater.OwnNotes())") &&
-                  !System.Text.RegularExpressions.Regex.IsMatch(emb, @"Color\.From|#[0-9A-Fa-f]{6}|Brushes\.(?!Transparent)"));
+                  !System.Text.RegularExpressions.Regex.IsMatch(emb, @"Color\.From|Brushes\.(?!Transparent)") &&
+                  // singurele culori: cele ale paletei desenate în previzualizarea temei
+                  Count(emb, "new SolidColorBrush") == Count(emb, "new SolidColorBrush(ThemeManager.Parse"));
+
+            string edits = Src("Core/Ui/ThemeEdits.cs"), ed = Src("EditorWindow.cs");
+            Check("WV29", "Temele sunt în fereastra nouă; ce schimbă pagina trece printr-o singură bucată de cod, folosită de ambele ferestre",
+                  LayoutRules.IsEmbeddedContent("teme") && !LayoutRules.IsClassicContent("teme") &&
+                  emb.Contains("internal FrameworkElement Themes(") &&
+                  new[] { "SetOverride", "ResetOverride", "ResetAll", "IsChanged", "Choose", "SaveAs", "Delete", "PickColor" }
+                      .All(m => edits.Contains("internal static") && edits.Contains(m + "(") &&
+                                emb.Contains("Core.Ui.ThemeEdits." + m + "(") && ed.Contains("Core.Ui.ThemeEdits." + m + "(")) &&
+                  edits.Contains("ValidHex(") && ed.Contains("Core.Ui.ThemeEdits.ValidHex("),
+                  "lipsește o metodă din ThemeEdits sau un apelant");
+
+            Check("WV30", "Fereastra clasică nu mai ține o a doua copie a regulilor temelor",
+                  !ed.Contains("S.CustomThemes.Add(") && !ed.Contains("S.ThemeOverrides.Remove(") &&
+                  !ed.Contains("System.Windows.Forms.ColorDialog") && !ed.Contains("Uri.IsHexDigit"));
 
             // Pe tema întunecată, cardurile albe ale setărilor cu text alb erau ilizibile: pagina își duce cromul cu ea.
             string sw = Src("SettingsWindow.xaml.cs");

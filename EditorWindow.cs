@@ -695,20 +695,10 @@ namespace WinNotch
             return sp;
         }
 
-        static bool ValidHex(string t)
-        {
-            if (!t.StartsWith("#") || (t.Length != 7 && t.Length != 9)) return false;
-            return t.Skip(1).All(Uri.IsHexDigit);
-        }
+        static bool ValidHex(string t) => Core.Ui.ThemeEdits.ValidHex(t);
 
-        private string PickColor(string start)
-        {
-            using var dlg = new System.Windows.Forms.ColorDialog { FullOpen = true, AnyColor = true };
-            var c = ThemeManager.Parse(start, "#5AA9FF");
-            dlg.Color = System.Drawing.Color.FromArgb(c.R, c.G, c.B);
-            if (dlg.ShowDialog() != System.Windows.Forms.DialogResult.OK) return null;
-            return $"#{dlg.Color.R:X2}{dlg.Color.G:X2}{dlg.Color.B:X2}";
-        }
+        // P52: one implementation for both windows (Core/Ui/ThemeEdits.cs)
+        private string PickColor(string start) => Core.Ui.ThemeEdits.PickColor(start);
 
         // =====================================================================
         //  What this version brought
@@ -783,13 +773,12 @@ namespace WinNotch
             // colors of the theme in use
             var cur = ThemeManager.Current(S);
             string themeName = cur.Name;
-            S.ThemeOverrides.TryGetValue(themeName, out var ov);
             var colors = new WrapPanel();
             foreach (var (key, label) in ThemeManager.Keys)
             {
                 var k = key;
                 string hex = cur.Colors.TryGetValue(key, out var h) ? h : "#000000";
-                bool changed = ov != null && ov.ContainsKey(key) || (key == "Accent" && !string.IsNullOrEmpty(S.Accent));
+                bool changed = Core.Ui.ThemeEdits.IsChanged(S, themeName, key);
                 var sw = new Border { Width = 30, Height = 30, CornerRadius = new CornerRadius(8), BorderBrush = Line, BorderThickness = new Thickness(1), Cursor = Cursors.Hand,
                                       Background = new SolidColorBrush(ThemeManager.Parse(hex, "#000000")), ToolTip = "Alege culoarea" };
                 sw.MouseLeftButtonUp += (s, e) =>
@@ -808,8 +797,7 @@ namespace WinNotch
             colorBody.Children.Add(colors);
             var resetAll = Btn("Toate înapoi la tema „" + themeName + "”", () =>
             {
-                S.ThemeOverrides.Remove(themeName);
-                S.Accent = "";
+                Core.Ui.ThemeEdits.ResetAll(S, themeName);
                 ApplyTheme(true);
             });
             resetAll.HorizontalAlignment = HorizontalAlignment.Left;
@@ -826,13 +814,7 @@ namespace WinNotch
             var nameBox = new TextBox { Width = 220, Padding = new Thickness(4, 3, 4, 3), Text = themeName + " (a mea)", MaxLength = 30, Margin = new Thickness(0, 0, 8, 0) };
             var save = Btn("Salvează ca temă nouă", () =>
             {
-                var n = nameBox.Text.Trim();
-                if (n.Length == 0 || ThemeManager.All(S).Any(p => p.Name == n)) { nameBox.BorderBrush = Red; return; }
-                var t = ThemeManager.Current(S).Clone(n);
-                t.Light = ThemeManager.IsLight(S);
-                S.CustomThemes.Add(t);
-                if (t.Light) S.ThemeLight = n; else S.ThemeDark = n;
-                S.Accent = "";
+                if (!Core.Ui.ThemeEdits.SaveAs(S, nameBox.Text)) { nameBox.BorderBrush = Red; return; }
                 ApplyTheme(true);
             }, true);
             sp.Children.Add(Section("Temă nouă", "Păstrează culorile de acum (cu modificările tale) ca temă separată, pe care o poți alege oricând.", Ui.H(0, nameBox, save)));
@@ -874,7 +856,7 @@ namespace WinNotch
                 notch.Child = inner;
                 mini.Children.Add(notch);
                 var body = Ui.V(6, mini, Ui.H(6, T(t.Name, 12.5, Ink, on), on ? Glyph("", 11, Blue) : new TextBlock()));
-                var cardB = Click(body, () => { if (light) S.ThemeLight = theme.Name; else S.ThemeDark = theme.Name; ApplyTheme(true); }, null, on ? SelBg : null, 12, new Thickness(8));
+                var cardB = Click(body, () => { Core.Ui.ThemeEdits.Choose(S, theme.Name, light); ApplyTheme(true); }, null, on ? SelBg : null, 12, new Thickness(8));
                 cardB.BorderBrush = on ? Blue : Brushes.Transparent;
                 cardB.BorderThickness = new Thickness(1.5);
                 cardB.Margin = new Thickness(0, 0, 8, 8);
@@ -884,11 +866,7 @@ namespace WinNotch
                     holder.Children.Add(cardB);
                     var del = Click(Glyph("", 11, Red), () =>
                     {
-                        S.CustomThemes.Remove(theme);
-                        S.ThemeOverrides.Remove(theme.Name);
-                        if (S.ThemeDark == theme.Name) S.ThemeDark = "Noapte";
-                        if (S.ThemeLight == theme.Name) S.ThemeLight = "Luminos";
-                        ApplyTheme(true);
+                        if (Core.Ui.ThemeEdits.Delete(S, theme)) ApplyTheme(true);
                     }, "Șterge tema", Panel, 10, new Thickness(5));
                     del.HorizontalAlignment = HorizontalAlignment.Right; del.VerticalAlignment = VerticalAlignment.Top; del.Margin = new Thickness(0, 4, 12, 0);
                     holder.Children.Add(del);
@@ -901,20 +879,13 @@ namespace WinNotch
 
         private void SetOverride(string theme, string key, string hex)
         {
-            if (key == "Accent") S.Accent = "";          // the theme editor wins over the accent from Settings
-            if (!S.ThemeOverrides.TryGetValue(theme, out var ov)) S.ThemeOverrides[theme] = ov = new Dictionary<string, string>();
-            ov[key] = hex;
+            Core.Ui.ThemeEdits.SetOverride(S, theme, key, hex);
             ApplyTheme(true);
         }
 
         private void ResetOverride(string theme, string key)
         {
-            if (key == "Accent") S.Accent = "";
-            if (S.ThemeOverrides.TryGetValue(theme, out var ov))
-            {
-                ov.Remove(key);
-                if (ov.Count == 0) S.ThemeOverrides.Remove(theme);
-            }
+            Core.Ui.ThemeEdits.ResetOverride(S, theme, key);
             ApplyTheme(true);
         }
 
