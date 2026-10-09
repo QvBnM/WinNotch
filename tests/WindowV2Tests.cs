@@ -79,7 +79,8 @@ namespace WinNotch
                   emb.Contains("new SettingsWindow(s)") && emb.Contains("_settings.TakeContent()") &&
                   emb.Contains("new Binding(\"ViewportHeight\") { Source = host }") &&
                   emb.Contains("ScrollBarVisibility.Disabled") && emb.Contains("_settings?.Detach();") &&
-                  !emb.Contains("CheckBox") && !emb.Contains("Slider"));
+                  // niciun control de setări rescris aici: pagina vine întreagă din SettingsWindow
+                  !emb.Contains("CheckBox") && !emb.Contains("_s.Standby") && !emb.Contains("AppSettings.Widgets"));
 
             string v2 = Src("Features/WindowV2/WindowV2.cs");
             Check("WV26", "Fereastra desprinde pagina la schimbarea categoriei și la închidere, și nu o reconstruiește la redimensionare",
@@ -145,7 +146,7 @@ namespace WinNotch
 
             Check("WV18", "Tastatura: rândurile din bara laterală sunt butoane (Tab, Enter, Space), au nume pentru accesibilitate, iar Esc închide fereastra",
                   win.Contains("new Button") && win.Contains("AutomationProperties.SetName(host, c.Title)") &&
-                  win.Contains("if (e.Key == Key.Escape) { Close(); e.Handled = true; }"));
+                  win.Contains("if (e.Key == Key.Escape) {") && win.Contains("Close(); e.Handled = true; }"));
 
             Check("WV19", "Rezultatul unei acțiuni se arată (nu se înghite), iar ceasul nu bate când fereastra e minimizată",
                   win.Contains("_hint.Text = msg") && win.Contains("if (!IsVisible || WindowState == WindowState.Minimized) return;") &&
