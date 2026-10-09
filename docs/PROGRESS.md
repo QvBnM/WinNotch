@@ -388,3 +388,42 @@
   drumuri de fum.
 - **Publicare:** 0.6.21, la cererea autorului.
 
+
+
+## Audit comutatoare — „am pornit o funcție și nu s-a schimbat nimic” (raportat de autor, 9 oct 2026)
+
+- **Raportat:** „Am pornit funcția pentru jocuri / ecran complet și n-am văzut nicio diferență. Bănuiesc că nu e
+  singura.” Cerut: un tabel scurt (comutator → ce face concret → merge / nu merge / merge doar în anumite condiții),
+  reparat ce e rupt, și condițiile scrise în descrierea din catalog.
+- **Cum a fost făcut auditul:** pentru fiecare dintre cele 16 intrări din `Core/Flags/FeatureCatalog.cs` s-a căutat în
+  cod (1) cine citește `IsEnabled(id)`, (2) ce se întâmplă pe `Changed`, (3) dacă funcția se oprește curat.
+- **Rezultat: niciun comutator nu e cod mort.** Toate 15 (fără `demo-flag`, care prin definiție nu face nimic) au
+  cel puțin un cititor; toate cele care se abonează la `Changed` se și dezabonează, în același fișier; cele care nu se
+  abonează (`fullscreen-hide`, `notch-guard`, `shutdown-report`, `context-pages`) citesc comutatorul la fiecare
+  folosire, deci se opresc în cel mult o bătaie de ceas (500 ms pentru monitoare). Plumbăria „Salvează” e corectă:
+  `FeatureFlags` scrie direct în dicționarul `Settings.Features`, care e apoi salvat.
+- **Cauza adevărată a raportului, reparată:**
+  1. **„Ascuns pe tot ecranul” era deja pornită** (Beta, `DefaultOn = true`), deci bifarea ei nu putea schimba nimic.
+     Același lucru pentru plasa notch-ului, raportul închiderilor, închiderea panourilor, alertele care nu stau în cale
+     și motorul de context. Setările scriu acum „pornită implicit” lângă numele lor
+     (`FeatureCatalog.RowNote`, o regulă pură, testată).
+  2. **Schimbările se aplicau abia la „Salvează”**, fără s-o spună nicăieri: un utilizator care bifa și închidea
+     fereastra nu vedea nimic. Textul secțiunii o spune acum.
+  3. **Descrierile nu spuneau condiția** în care funcția se vede. Fiecare dintre cele 16 o spune acum: setarea de care
+     depinde, fereastra fără ramă și monitorul liber (`fullscreen-hide`), „Motorul de context” pornit
+     (`quick-actions`, `context-pages`), pagina Acasă vizibilă (`audio-switch`), widget-ul Clipboard
+     (`smart-clipboard`), scurtătura (`command-bar`), tragerea de fișiere (`shelf`), și așa mai departe.
+- **Limită cunoscută, acum scrisă pe față (DOCUMENTATIE.md secțiunea 11 și descrierea funcției):** pe un monitor fără
+  bară de activități (sau cu ea ascunsă automat) `work == bounds`, deci singurul semn rămas e „fără ramă”; o aplicație
+  care intră în ecran complet păstrându-și rama (Chrome păstrează `WS_THICKFRAME`) nu e văzută ca „ocupat” acolo.
+  Windows nu ne dă alt semnal fără interop nou, deci nu am lărgit detecția în pasul acesta.
+- **Teste:** `tests/FeatureAuditTests.cs`, FA1–FA9. FA1 caută cititorul fiecărui comutator prin clasa lui de reguli,
+  găsită prin reflecție după valoarea constantei `FeatureId`, și pică dacă o intrare din catalog rămâne fără cititor —
+  adică exact „un comutator care nu face nimic”. FA2–FA7 păzesc marcajul, textul paginii de setări și condițiile din
+  descrieri. FA8 cere dezabonarea în fiecare fișier care se abonează.
+- **Revizia R1 (pe `git diff main...audit-feature-flags`):** fără Critic sau Major. `RowNote` e pură și testată;
+  singura atingere a unui fișier vechi e un rând în `SettingsWindow.xaml.cs` (marcajul) și un text în
+  `SettingsWindow.xaml`. Nimic nou în log, nicio funcție nouă, niciun cronometru.
+  Mediu acceptat conștient: FA1 citește toate fișierele `.cs` ale aplicației la rulare (≈100 de fișiere) — e un test, nu
+  cod care rulează în aplicație, și e singurul mod de a prinde un comutator rămas fără cititor.
+- **Stare:** ramura `audit-feature-flags`, fără versiune nouă până la testarea pe Windows (verificările FA.1–FA.6).

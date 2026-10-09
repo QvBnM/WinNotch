@@ -402,3 +402,14 @@ clasică), apoi deschide fereastra din notch (Setări sau tray).
 | P52.8 | Tema | Apasă butonul de temă din antet, de două ori. | Fereastra trece pe luminos și revine; textele rămân lizibile în ambele (fără gri pe gri), iar notch-ul se schimbă la fel. |
 | P52.9 | Setările vechi | Deschide „Setări”, „Teme”, „Pagini”, „Noutăți” din coloana din stânga și apasă „Deschide”. | Se deschide fereastra clasică, la secțiunea aleasă; toate setările de dinainte sunt acolo și funcționează. |
 | P52.10 | Comutatorul oprit | Oprește „Fereastra WinNotch v2” și deschide fereastra din notch. | Se deschide fereastra clasică, neschimbată (test de non-regresie). |
+
+### Audit comutatoare — ce vezi când pornești o funcție
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| FA.1 | Marcajul „pornită implicit” | Setări → „Funcții noi”. | Lângă numele funcțiilor „Motorul de context”, „Plasa de siguranță a notch-ului”, „Raportul închiderilor”, „Ascuns pe tot ecranul”, „Închiderea panourilor” și „Alertele nu stau în cale” scrie „pornită implicit”. La celelalte nu scrie. |
+| FA.2 | „Se aplică la Salvează” | Citește textul de sub titlul „Funcții noi (experimental)”. | Spune limpede că schimbarea se aplică abia la „Salvează” și că bifarea celor marcate „pornită implicit” nu schimbă nimic. |
+| FA.3 | Bifat fără Salvează | Bifează „Raft”, apasă „Anulează”. | Raftul **nu** pornește (tragi un fișier peste notch: nu se întâmplă nimic). Bifează din nou și apasă „Salvează”: acum pornește. |
+| FA.4 | Descrierile spun condiția | Citește descrierea fiecărei funcții. | Fiecare spune unde sau când se vede (scurtătura, pagina Acasă, widget-ul Clipboard, tragerea de fișiere, „Motorul de context” pornit…) sau că e pornită implicit. |
+| FA.5 | Ascuns pe tot ecranul, condițiile | Setări → „Peste jocuri / fullscreen” pe „ascuns”. Pe un **singur** monitor, pornește un video pe tot ecranul în browser. | Notch-ul dispare complet în ~1 s. Cu două monitoare, notch-ul se mută pe cel liber în loc să dispară (și asta scrie în descriere). |
+| FA.6 | Oprirea curată | Pornește pe rând „Raft”, „Căști/boxe”, „Quick Actions”, „Smart Clipboard” (cu „Salvează”), verifică efectul, apoi debifează-le și salvează. | Fiecare dispare complet: fără buton rămas lângă volum, fără butoane sub pastilă, fără jetoane în Clipboard, fără drop pe notch. Nimic în log în afară de rândurile normale. |

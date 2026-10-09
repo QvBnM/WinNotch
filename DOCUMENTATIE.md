@@ -750,7 +750,7 @@ Setările sunt pagina „Setări” din fereastra WinNotch (o singură fereastr�
 | Vremea | Orașul, latitudinea și longitudinea |
 | Pagina după context | Pentru fiecare categorie (Programare, Browser, Întâlnire, Joc, Media, Birou, Creație) pagina pe care se deschide notch-ul, sau „—” (nicio schimbare, implicit); merge cu „Pagina după context” pornită în „Funcții noi” (din P27) |
 | Smart Clipboard | Peek la copiere (implicit oprit): un mesaj scurt în pastilă când copiezi un JSON, un link cu urmărire sau un JWT; merge cu „Smart Clipboard” și „Manager de activități” pornite (din P21) |
-| Funcții noi (experimental) | Un comutator pentru fiecare funcție nouă din catalog, cu numele, o descriere de un rând și eticheta de stadiu (**Experimental**, **Beta**, **Stabil**); se aplică la „Salvează”, fără repornire. Dacă o funcție a fost oprită automat, apare și motivul |
+| Funcții noi (experimental) | Un comutator pentru fiecare funcție nouă din catalog, cu numele, o descriere de un rând, eticheta de stadiu (**Experimental**, **Beta**, **Stabil**) și, pentru cele care merg deja, marcajul „pornită implicit”; se aplică la „Salvează”, fără repornire (și textul secțiunii o spune). Dacă o funcție a fost oprită automat, apare și motivul |
 
 **Fiecare opțiune e și o acțiune (din P14):** `settings.<nume>` (lista în secțiunea „Acțiuni”) deschide fereastra WinNotch la Setări, derulată la opțiune și cu focusul pe ea; din Command Bar le găsești cu „setări <opțiune>”.
 
@@ -760,6 +760,29 @@ Setările sunt pagina „Setări” din fereastra WinNotch (o singură fereastr�
 - Funcțiile pornesc și se opresc pe loc: ascultă evenimentul `Changed` al `FeatureFlags`, care se declanșează o singură dată la fiecare schimbare reală.
 - **Oprire automată:** o funcție care prinde 3 erori în 10 minute se oprește singură; motivul (cel mult 120 de caractere) apare în log și în Setări. „Salvează” aplică doar comutatoarele pe care le-ai schimbat, deci nu repornește din greșeală o funcție oprită automat cât pagina era deschisă. O pornești din nou bifând-o și apăsând „Salvează”.
 - **Mod sigur:** `WinNotch.exe --safe-mode` pornește cu toate funcțiile Experimental și Beta oprite, fără să schimbe ce e salvat (Setări arată în continuare alegerile tale, cu o notă despre modul sigur). La următoarea pornire normală revin cum erau.
+- **Ce vezi când pornești un comutator.** Unele funcții sunt **pornite implicit** (merg deja, deci bifarea lor nu
+  schimbă nimic), iar altele au nevoie de o anumită situație ca să se vadă. Setările scriu „pornită implicit” lângă
+  numele celor din prima categorie, iar descrierea fiecărei funcții spune condiția ei. Pe scurt:
+
+| Comutator | Ce face concret când e pornit | Când se vede |
+|---|---|---|
+| Funcție de test (`demo-flag`) | nimic | niciodată — e doar pentru verificat pornirea/oprirea |
+| Motorul de context (`context-engine`) | urmărește aplicația din față, ecranul complet, întâlnirile, media | **pornit implicit**; nu are ecran propriu — doar prin „Pagina după context” și „Quick Actions”, care fără el nu pornesc |
+| Manager de activități (`activity-manager`) | alertele trec printr-o coadă cu priorități | doar când vin două sau mai multe alerte aproape una de alta |
+| Command Bar (`command-bar`) | înregistrează `Win+Alt+Space` / `Win+Alt+K` | apăsând scurtătura (dacă nu e luată de altă aplicație) |
+| Pagina după context (`context-pages`) | alege pagina la deschiderea notch-ului | cu „Motorul de context” pornit **și** o alegere făcută în Setări → „Pagina după context”; o pagină aleasă de tine o oprește 10 minute |
+| Quick Actions (`quick-actions`) | butoane sub pastilă, după context | cu „Motorul de context” pornit, și numai când contextul le cere (întâlnire, muzică, stick) |
+| Smart Clipboard (`smart-clipboard`) | recunoaște ce copiezi și pune butoane în widget-ul Clipboard | pe o pagină care are widget-ul Clipboard, după ce copiezi ceva recunoscut |
+| Raft (`shelf`) | notch-ul devine țintă de drop și ține fișierele | trăgând fișiere peste notch |
+| Căști/boxe (`audio-switch`) | buton lângă volum, lista ieșirilor audio | pe pagina Acasă din notch (deci doar dacă pagina Acasă nu e ascunsă) |
+| Plasa notch-ului (`notch-guard`) | reface notch-ul dacă se deschide gol | **pornită implicit**; doar când ceva s-a stricat |
+| Raportul închiderilor (`shutdown-report`) | alertă după închideri neexplicate | **pornită implicit**; doar după două închideri neexplicate la rând |
+| Ascuns pe tot ecranul (`fullscreen-hide`) | „ocupat” se decide după geometrie și stil, notch-ul dispare | **pornită implicit**; cu „Peste jocuri / fullscreen” pe „ascuns”, o aplicație care acoperă tot monitorul **fără ramă**, și fără un alt monitor liber (atunci notch-ul se mută acolo). Pe un monitor fără bară de activități (sau cu ea ascunsă automat) Windows nu mai dă niciun semn care să deosebească „maximizat” de „pe tot ecranul”, deci o aplicație cu ramă nu e văzută |
+| Închiderea panourilor (`overlay-dismiss`) | click în afară și `Esc` închid panoul deschis | **pornită implicit**; cu un panou deschis |
+| Alertele nu stau în cale (`alert-interrupt`) | o alertă se dă la o parte la o intenție clară | **pornită implicit**; doar cât e o alertă pe ecran |
+| Notch lipit de ramă (`notch-anchored`) | silueta ancorată de marginea de sus | în standby și cu notch-ul deschis; peste o fereastră maximizată pastila trece oricum la forma mică |
+| Fereastra WinNotch v2 (`window-v2`) | fereastra nouă în loc de cea clasică | la următoarea deschidere a ferestrei WinNotch |
+
 - **Rezumat de sănătate:** la fiecare 6 ore, un rând în `log.txt`: memoria WinNotch (MB), procesorul folosit în medie de WinNotch în acest interval și numărul de erori prinse pe fiecare funcție. Fără date personale: în log ajunge doar tipul erorii, nu mesajul ei.
 
 **Pornirea cu Windows:** o intrare în „Run” din registru, cu drepturi normale. WinNotch nu mai pornește niciodată ca administrator (până la 0.6.4 exista o sarcină de logare elevată; instalarea serviciului de temperatură o șterge).
