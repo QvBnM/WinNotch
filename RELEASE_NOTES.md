@@ -1,14 +1,13 @@
-# WinNotch 0.6.22
+# WinNotch 0.6.23
 
-## Nou
-- Fereastra WinNotch v2 (experimentală) e acum **o singură fereastră**: „Pagini”, „Teme”, „Setări” și „Noutăți” se deschid înăuntru, nu mai trimit la fereastra de dinainte. Setările sunt cele pe care le știi, cu „Salvează” la vedere; „Pagini” are editorul întreg de widget-uri (lista de pagini, grila vie, opțiunile din dreapta, galeria); „Teme” schimbă totul pe loc; „Noutăți” arată notele versiunii.
-- În fereastra nouă, `Esc` închide întâi ce e deschis peste pagină (mărimile unui widget), apoi fereastra.
+## Modificat
+- Fereastra WinNotch v2 (experimentală) e regândită de la zero. Avea trei coloane de navigare una lângă alta și repeta aceleași lucruri în două locuri. Acum are **o singură navigare**: patru file sus — Workspace, Widgeturi, Teme, Sistem — iar coloana din stânga aparține filei pe care ești, nu ferestrei.
+- **Workspace** e locul unde îți construiești pagina: în stânga paginile tale și cele standard, plus iconița paginii; în mijloc numele, pagina vie (aceeași grilă pe care o vezi în notch) și managerul de widget-uri; în dreapta mărimile și opțiunile widget-ului pe care ai dat click.
+- **Widgeturi** e catalogul întreg, pe toată înălțimea; ce alegi se adaugă pe pagina din Workspace.
+- **Sistem** adună într-un singur loc acțiunile aplicației, setările și noutățile.
+- Jos e un câmp de comandă: scrii numele unei acțiuni și `Enter` o pornește. `Ctrl + K` te duce acolo, iar rezultatul apare sub el.
 
 ## Îmbunătățit
-- În Setări → „Funcții noi”, funcțiile care merg deja sunt marcate „pornită implicit”, iar fiecare descriere spune acum **când se vede** funcția: scurtătura, pagina Acasă, widget-ul Clipboard, tragerea de fișiere sau un alt comutator de care depinde. Textul secțiunii spune limpede că schimbările se aplică la „Salvează”.
-
-## Reparat
-- „Notch lipit de ramă” (experimental): racordările din stânga și dreapta sus se continuă acum lin în colțurile de jos — nu se mai vede o îmbinare — și notch-ul are o singură nuanță pe toată suprafața, la toate temele. Pe tema luminoasă diferența se vedea.
-- „Notch lipit de ramă”: pornirea comutatorului aplică imediat fundalul aproape opac; până acum aștepta o salvare de setări.
-- „Notch lipit de ramă”: pe forma mică a pastilei racordarea nu mai trece peste colțul rotunjit, deci forma nu se mai strâmbă.
-- Deschiderea ferestrei WinNotch când e deja pe pagina cerută nu o mai reconstruiește: nu se pierde ce ai scris în Setări, nici widget-ul pe care l-ai selectat.
+- Toată fereastra folosește acum culorile temei tale, și pe luminos și pe întunecat — nu mai apar cardurile albe ale ferestrei vechi peste ea.
+- `Esc` închide întâi fereastra de mărimi a unui widget, apoi fereastra.
+- Pe ferestre mai înguste se strânge întâi coloana din dreapta, apoi cea din stânga, fără să se taie nimic.

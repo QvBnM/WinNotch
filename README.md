@@ -16,6 +16,12 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.23
+
+- Fereastra WinNotch v2 (experimentală) regândită: o singură navigare, patru file — Workspace, Widgeturi, Teme, Sistem — și coloana din stânga aparține filei pe care ești.
+- Workspace: paginile, pagina vie și inspectorul widget-ului, toate pe culorile temei tale.
+- Jos, un câmp de comandă care pornește acțiuni (`Ctrl + K`).
+
 ## Noutăți în 0.6.22
 
 - Fereastra WinNotch v2 (experimentală) e o singură fereastră: paginile, temele, setările și noutățile se deschid înăuntru.
