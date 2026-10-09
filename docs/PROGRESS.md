@@ -388,3 +388,46 @@
   drumuri de fum.
 - **Publicare:** 0.6.21, la cererea autorului.
 
+
+
+## Reparație P52 — fuziunea cu setările: o singură fereastră (cerut de autor pe 0.6.21, 9 oct 2026)
+
+- **Raportat:** în fereastra v2, categoriile „Pagini”, „Teme”, „Setări” și „Noutăți” arătau doar un card cu
+  „Se deschide în fereastra clasică, neschimbată. [Deschide]”. Nici brief-ul nu cerea asta: el spune explicit că
+  „conținutul paginilor existente se mută în structura nouă fără a schimba logica”.
+- **Direcția cerută de autor:** se umple v2 cu conținutul real, nu invers; se începe cu Setări, apoi Noutăți, Teme,
+  Pagini, câte un commit pe pagină, ca să poată testa pe parcurs.
+- **Făcut, în patru commit-uri:**
+  1. **Setări** — `Features/WindowV2/EmbeddedPages.cs` găzduiește conținutul real al paginii de setări
+     (`SettingsWindow.TakeContent`, exact mecanismul făcut pentru asta): derulajul gazdei se oprește și pagina se leagă
+     la `ViewportHeight` al `ScrollViewer`-ului centrului, ca „Salvează” să rămână vizibil; `Detach()` la schimbarea
+     categoriei și la închiderea ferestrei. `SettingsWindow.TakeContent` își duce acum fundalul și cerneala cu el —
+     altfel, pe tema întunecată, cardurile albe ale setărilor primeau text alb din gazdă și erau ilizibile.
+     „settings.*” (P14) merge și în v2 (`WindowV2.RevealSetting`).
+  2. **Noutăți** — aceleași note, citite cu `Updater.ParseNotes(Updater.OwnNotes())`; doar ambalajul e nou, cu jetoanele
+     temei.
+  3. **Teme** — pagina se construiește în v2 cu jetoanele temei, iar tot ce **schimbă** (culoarea ta peste o temă,
+     revenirea, alegerea temei, tema nouă, ștergerea, dialogul de culoare, validarea hex) s-a extras o dată în
+     `Core/Ui/ThemeEdits.cs`: fereastra clasică nu mai ține o a doua copie, doar apelează. Culorile din previzualizare
+     vin exclusiv din paleta temei. Un singur cronometru de temporizare pentru slidere; ce e în așteptare se salvează la
+     închiderea ferestrei.
+  4. **Pagini** — editorul de widget-uri e cel existent, găzduit prin `EditorWindow.TakeContent(host)` /
+     `DetachContent()`; în `EditorWindow.cs` s-au adăugat doar aceste trei metode (plus `CloseOpenPopup` pentru Esc) și
+     dialogurile de fișiere primesc fereastra gazdă, fiindcă `ShowDialog` pe o fereastră nearătată aruncă. Coloana din
+     dreapta a v2 se dă la o parte (`LayoutRules.WideContent`). O pagină schimbată în notch ajunge și la editorul
+     găzduit (`App.HostedEditor`).
+- **Ce a dispărut:** `ClassicCard`, `ClassicPageId`, `App.OpenClassicEditor` și `_v2Opening` — nicio categorie nu mai
+  trimite la fereastra clasică. `LayoutRules.IsClassicContent` rămâne, ca `false`, ca test de non-regresie.
+- **Teste:** WV24–WV34 (pică înainte de reparație), WV9/WV11/WV13/WV18/WV24/WV25 urmăresc regulile noi. Plus o reparație
+  de test: B9 folosea `First(...)` pe tab-urile punții, deci un socket lent pe runner omora toată rularea în loc să
+  pichează un singur test.
+- **Revizia R1 (pe `git diff main...p52-settings-fusion`):** 1 Mediu găsit și reparat — `Open(pageId)` reconstruia
+  pagina găzduită la fiecare redeschidere a ferestrei, deci se pierdea ce era scris în setări sau widget-ul selectat;
+  acum se reconstruiește doar dacă s-a schimbat categoria sau pagina cerută. Verificate: dezabonările (`Detach` la
+  închidere și la schimbarea categoriei, `DetachContent` închide fereastra ascunsă), firele (totul pe Dispatcher),
+  absența polling-ului nou, absența culorilor scrise în cod în afara paletei, și că nimic sensibil nu ajunge în log.
+- **Rămas spus pe față:** pagina de setări păstrează cromul ei deschis (carduri albe) și în fereastra pe tema
+  întunecată — e conținutul neschimbat al `SettingsWindow`, exact ca în fereastra clasică de azi; mutarea ei pe jetoanele
+  temei ar însemna rescrierea `SettingsWindow.xaml`, ce brief-ul interzice în pasul acesta. Editorul găzduit își ține
+  cronometrul de 100 ms pornit și cu fereastra minimizată, ca fereastra clasică de azi.
+- **Stare:** ramura `p52-settings-fusion`, fără versiune nouă până la testarea pe Windows (verificările P52.9, P52.11–P52.17).

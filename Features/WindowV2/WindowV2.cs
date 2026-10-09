@@ -114,11 +114,17 @@ namespace WinNotch.Features.WindowV2
         {
             try
             {
-                _category = LayoutRules.CategoryFor(pageId);
-                _pageId = LayoutRules.IsPageContent(_category) && _category == "pagini" ? pageId : null;
-                _slotId = _pageId != null ? slotId : null;
+                string category = LayoutRules.CategoryFor(pageId);
+                string wanted = category == "pagini" ? pageId : null;
+                // Opening the window again on the page it already shows must not rebuild it: a hosted page (the settings
+                // form, the widget editor) would lose what is typed or selected in it.
+                bool same = category == _category && wanted == _pageId && (wanted == null || slotId == _slotId) &&
+                            _cards.Children.Count > 0;
+                _category = category;
+                _pageId = wanted;
+                _slotId = wanted != null ? slotId : null;
                 BuildSidebar();
-                BuildCenter();
+                if (!same) BuildCenter();
                 BuildRight();
                 Relayout();
             }
