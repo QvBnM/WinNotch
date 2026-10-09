@@ -89,9 +89,20 @@ namespace WinNotch.Features.WindowV2
             return hit?.Id ?? "actiuni";
         }
 
-        /// <summary>Categories that show the old window's own pages instead of cards (until their content moves here).</summary>
-        public static bool IsClassicContent(string categoryId) =>
+        /// <summary>Every category whose body is a page of its own (settings, news, themes, pages) rather than cards.</summary>
+        public static bool IsPageContent(string categoryId) =>
             categoryId is "pagini" or "teme" or "setari" or "noutati";
+
+        /// <summary>
+        /// The pages whose content now lives in this window, built by the same code the classic window uses. The list
+        /// grows one page at a time (settings first, as the brief asks); the rest still open the classic window.
+        /// </summary>
+        public static bool IsEmbeddedContent(string categoryId) =>
+            categoryId is "setari";
+
+        /// <summary>Categories that still show the old window's own pages (until their content moves here too).</summary>
+        public static bool IsClassicContent(string categoryId) =>
+            IsPageContent(categoryId) && !IsEmbeddedContent(categoryId);
 
         /// <summary>Geometry of the header-notch and of the cards (the brief's scale: 4 / 8 / 12 / 16 / 24 / 32).</summary>
         public const double HeaderHeight = 52, CardRadius = 18, ChipRadius = 12, Gap = 12, Pad = 24;

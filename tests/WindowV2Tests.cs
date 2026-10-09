@@ -64,10 +64,34 @@ namespace WinNotch
                   LayoutRules.CategoryForAction("ceva nou") == "actiuni" && LayoutRules.CategoryForAction(null) == "actiuni" &&
                   LayoutRules.CategoryForAction("clipboard") == "clipboard" /* fără majuscule */);
 
-            Check("WV9", "Paginile, temele, setările și noutățile se deschid în fereastra clasică (conținutul nu e dublat)",
-                  LayoutRules.IsClassicContent("pagini") && LayoutRules.IsClassicContent("teme") &&
-                  LayoutRules.IsClassicContent("setari") && LayoutRules.IsClassicContent("noutati") &&
-                  !LayoutRules.IsClassicContent("actiuni") && !LayoutRules.IsClassicContent("clipboard"));
+            Check("WV9", "Paginile, temele, setările și noutățile sunt pagini întregi, nu carduri",
+                  LayoutRules.IsPageContent("pagini") && LayoutRules.IsPageContent("teme") &&
+                  LayoutRules.IsPageContent("setari") && LayoutRules.IsPageContent("noutati") &&
+                  !LayoutRules.IsPageContent("actiuni") && !LayoutRules.IsPageContent("clipboard"));
+
+            // Fuziunea cerută de autor: v2 nu mai arată un card „se deschide în fereastra clasică” pentru Setări.
+            Check("WV24", "Setările sunt în fereastra nouă, nu un card care trimite la cea clasică",
+                  LayoutRules.IsEmbeddedContent("setari") && !LayoutRules.IsClassicContent("setari") &&
+                  !LayoutRules.IsEmbeddedContent("actiuni") && !LayoutRules.IsEmbeddedContent("clipboard") &&
+                  LayoutRules.Categories.Where(c => LayoutRules.IsPageContent(c.Id))
+                            .All(c => LayoutRules.IsEmbeddedContent(c.Id) != LayoutRules.IsClassicContent(c.Id)));
+
+            string emb = Src("Features/WindowV2/EmbeddedPages.cs");
+            Check("WV25", "Pagina de setări e cea existentă (TakeContent), legată la ScrollViewer-ul centrului, și se desprinde (Detach)",
+                  emb.Contains("new SettingsWindow(s)") && emb.Contains("_settings.TakeContent()") &&
+                  emb.Contains("new Binding(\"ViewportHeight\") { Source = host }") &&
+                  emb.Contains("ScrollBarVisibility.Disabled") && emb.Contains("_settings?.Detach();") &&
+                  !emb.Contains("CheckBox") && !emb.Contains("Slider"));
+
+            string v2 = Src("Features/WindowV2/WindowV2.cs");
+            Check("WV26", "Fereastra desprinde pagina la schimbarea categoriei și la închidere, și nu o reconstruiește la redimensionare",
+                  Count(Norm(v2), "_pages.Detach();") == 2 &&
+                  Norm(v2).Contains("!LayoutRules.IsPageContent(_category) && LayoutRules.Columns(CenterWidth()) != _cols"));
+
+            // Pe tema întunecată, cardurile albe ale setărilor cu text alb erau ilizibile: pagina își duce cromul cu ea.
+            string sw = Src("SettingsWindow.xaml.cs");
+            Check("WV27", "Conținutul setărilor își duce fundalul și cerneala proprii oriunde e găzduit",
+                  sw.Contains("content.SetValue(TextBlock.ForegroundProperty") && sw.Contains("sheet.Background = new SolidColorBrush"));
 
             Check("WV10", "Comutatorul din catalog are id-ul regulilor, e Experimental și oprit implicit",
                   LayoutRules.FeatureId == FeatureCatalog.WindowV2 &&

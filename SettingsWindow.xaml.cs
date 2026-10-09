@@ -37,6 +37,10 @@ namespace WinNotch
             Content = null;
             _content = content;
             content.Resources.MergedDictionaries.Add(Resources);
+            // The page keeps its own light chrome wherever it is hosted: the window's background and ink do not travel
+            // with the content, and a host with a dark theme (the new window) would leave white cards with white text.
+            if (content is Panel sheet && sheet.Background == null) sheet.Background = new SolidColorBrush(Color.FromRgb(0xF6, 0xF7, 0xF9));
+            content.SetValue(TextBlock.ForegroundProperty, new SolidColorBrush(Color.FromRgb(0x15, 0x17, 0x1A)));
             // in the big window Esc and Enter must not cancel or save the settings behind your back
             void Walk(object o)
             {

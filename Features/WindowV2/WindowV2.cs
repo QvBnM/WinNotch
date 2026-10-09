@@ -40,6 +40,8 @@ namespace WinNotch.Features.WindowV2
             new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
         private readonly StackPanel _cards = new StackPanel();
         private UIElement _searchCard;
+        private ScrollViewer _centerScroll;
+        private readonly EmbeddedPages _pages = new EmbeddedPages();
         private string _category = LayoutRules.DefaultCategory;
         private Grid _body;
         private int _cols = -1;
@@ -77,6 +79,7 @@ namespace WinNotch.Features.WindowV2
             Closed += (o, e) =>
             {
                 _tick.Stop();
+                _pages.Detach();
                 if (_flagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _flagHandler;
                 _flagHandler = null;
             };
@@ -99,6 +102,18 @@ namespace WinNotch.Features.WindowV2
                 BuildCenter();
                 BuildRight();
                 Relayout();
+            }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
+        }
+
+        /// <summary>P14 ("settings.*" actions): the settings page, scrolled to one option and focused — as in the classic window.</summary>
+        internal void RevealSetting(string target)
+        {
+            try
+            {
+                if (!LayoutRules.IsEmbeddedContent("setari")) return;
+                Select("setari");
+                _pages.Reveal(target);
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
         }
@@ -127,7 +142,8 @@ namespace WinNotch.Features.WindowV2
             var sideHost = new Border { Child = _sidebar, CornerRadius = new CornerRadius(0, LayoutRules.CardRadius, LayoutRules.CardRadius, 0) };
             sideHost.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
             _body.Put(sideHost);
-            _body.Put(new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _center, Padding = new Thickness(LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad) }, 1);
+            _centerScroll = new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _center, Padding = new Thickness(LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad) };
+            _body.Put(_centerScroll, 1);
             _body.Put(_rightHost, 2);
             root.Put(_body, 0, 1);
 
@@ -255,7 +271,11 @@ namespace WinNotch.Features.WindowV2
                 _center.Children.Add(_cards);
             }
             _cards.Children.Clear();
+            _pages.Detach();                      // whatever page was hosted lets go before another one is built
             _cols = LayoutRules.Columns(CenterWidth());
+            // A page of its own fills the centre: the search field looks for actions, which is not what it offers.
+            _searchCard.Visibility = LayoutRules.IsPageContent(_category) ? Visibility.Collapsed : Visibility.Visible;
+            if (LayoutRules.IsEmbeddedContent(_category)) { _cards.Children.Add(EmbeddedPage()); return; }
             if (LayoutRules.IsClassicContent(_category)) { _cards.Children.Add(ClassicCard()); return; }
             var cat = LayoutRules.Find(_category);
             var actions = VisibleActions().Where(a => string.Equals(LayoutRules.CategoryForAction(a.Category), _category, StringComparison.Ordinal)).ToList();
@@ -276,6 +296,13 @@ namespace WinNotch.Features.WindowV2
             card.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
             return card;
         }
+
+        /// <summary>The body of a page that now lives here: built by the same code the classic window uses.</summary>
+        private UIElement EmbeddedPage() => _category switch
+        {
+            "setari" => _pages.Settings(_s, _notch, _centerScroll, () => { if (_category == "setari") BuildCenter(); }),
+            _ => ClassicCard(),
+        };
 
         private UIElement ClassicCard()
         {
@@ -416,7 +443,9 @@ namespace WinNotch.Features.WindowV2
                 _hint.Text = LayoutRules.Hint(FeatureFlags.Current?.IsEnabled(Features.CommandBar.CommandBarRules.FeatureId) ?? false);
                 DrawHeader(w);
                 // The cards are rebuilt only when the number of columns really changes, not on every frame of a resize.
-                if (_cards.Children.Count == 0 || LayoutRules.Columns(CenterWidth()) != _cols) BuildCenter();
+                // A hosted page (settings) is never rebuilt by a resize: that would throw away what is typed in it.
+                if (_cards.Children.Count == 0 ||
+                    (!LayoutRules.IsPageContent(_category) && LayoutRules.Columns(CenterWidth()) != _cols)) BuildCenter();
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
         }

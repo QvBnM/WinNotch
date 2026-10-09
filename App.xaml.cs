@@ -310,6 +310,7 @@ namespace WinNotch
         {
             OpenEditor("settings");
             _editor?.RevealSetting(target);
+            _windowV2?.RevealSetting(target);        // P52: the settings page lives in v2 too
         }
 
         /// <summary>
