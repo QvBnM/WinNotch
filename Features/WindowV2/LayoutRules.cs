@@ -4,116 +4,139 @@ using System.Linq;
 
 namespace WinNotch.Features.WindowV2
 {
-    /// <summary>One entry of the sidebar: a group of things the user can do (only what exists today).</summary>
-    public sealed class V2Category
+    /// <summary>One of the window's four tabs: a whole area of the app, not a list of links.</summary>
+    public sealed class V2Tab
     {
-        public V2Category(string id, string title, string glyph, params string[] actionCategories)
+        public V2Tab(string id, string title, string glyph)
         {
-            Id = id; Title = title; Glyph = glyph; ActionCategories = actionCategories ?? Array.Empty<string>();
+            Id = id; Title = title; Glyph = glyph;
         }
 
         /// <summary>Stable id (lowercase, never renamed once shipped).</summary>
         public string Id { get; }
-        /// <summary>Shown in the sidebar (Romanian).</summary>
+        /// <summary>Shown in the header (Romanian).</summary>
         public string Title { get; }
         /// <summary>A glyph from the app's icon font.</summary>
         public string Glyph { get; }
-        /// <summary>Which action categories (from the registry) belong here; empty: the category is not built from actions.</summary>
+    }
+
+    /// <summary>One entry of the contextual panel on the left (only inside the tab that owns it).</summary>
+    public sealed class V2Section
+    {
+        public V2Section(string id, string title, string glyph, params string[] actionCategories)
+        {
+            Id = id; Title = title; Glyph = glyph; ActionCategories = actionCategories ?? Array.Empty<string>();
+        }
+
+        public string Id { get; }
+        public string Title { get; }
+        public string Glyph { get; }
+        /// <summary>Which action categories (from the registry) belong here; empty: the section is not built from actions.</summary>
         public IReadOnlyList<string> ActionCategories { get; }
     }
 
     /// <summary>
-    /// P52: the layout of the WinNotch window, version 2 — pure rules only (no WPF): how many card columns fit a width,
-    /// when the right column and the sidebar step aside, which sidebar category a page or an action belongs to.
-    /// The window itself is in <c>Features/WindowV2/WindowV2.cs</c>; with the switch off the old window opens.
+    /// P52: the layout of the WinNotch window — pure rules only (no WPF).
+    /// <para>The window has <b>one</b> navigation: four tabs in the header (Workspace, Widgeturi, Teme, Sistem). The
+    /// column on the left is not a second navigation: it belongs to the open tab and changes with it (the pages and the
+    /// icon in Workspace, the sections in Sistem, nothing in the other two). The column on the right is the inspector of
+    /// whatever is selected, and only Workspace has one. That is the whole structure.</para>
+    /// The window itself is in <c>Features/WindowV2/</c>; with the switch off the old window opens.
     /// </summary>
     public static class LayoutRules
     {
         /// <summary>Same id as the entry in FeatureCatalog (the tests check they match).</summary>
         public const string FeatureId = "window-v2";
 
-        public const double SidebarWidth = 240, RightWidth = 300, MinWidth = 900, MinHeight = 600;
+        public const double LeftWidth = 212, InspectorWidth = 300, MinWidth = 900, MinHeight = 600;
 
-        /// <summary>Cards per row: 4 over 1280, 3 over 900, 2 below (one when the window is narrower than the sidebar plus a card).</summary>
-        public static int Columns(double width)
+        public const string Workspace = "workspace", Widgets = "widgeturi", Themes = "teme", System = "sistem";
+
+        /// <summary>The header's tabs, in order. Four areas; nothing else navigates.</summary>
+        public static readonly IReadOnlyList<V2Tab> Tabs = new[]
         {
-            if (width >= 1280) return 4;
-            if (width >= 900) return 3;
-            if (width >= 620) return 2;
-            return 1;
-        }
-
-        /// <summary>The right column (clipboard, last capture, privacy) only fits from 1100 px up.</summary>
-        public static bool ShowRightColumn(double width) => width >= 1100;
-
-        /// <summary>Under the minimum width everything stacks in one column and the sidebar becomes a row of chips.</summary>
-        public static bool SingleColumn(double width) => width < MinWidth;
-
-        /// <summary>The sidebar, in order. Only groups that exist today; new ones are added at the end, without rearranging.</summary>
-        public static readonly IReadOnlyList<V2Category> Categories = new[]
-        {
-            new V2Category("actiuni", "Acțiuni", "", "Acțiuni", "Fereastră"),
-            new V2Category("sistem", "Sistem", "\uE713", "Sistem"),
-            new V2Category("clipboard", "Clipboard", "", "Clipboard"),
-            new V2Category("captura", "Captură", "", "Captură"),
-            new V2Category("sunet", "Sunet", "", "Sunet"),
-            new V2Category("pagini", "Pagini", ""),
-            new V2Category("teme", "Teme", ""),
-            new V2Category("setari", "Setări", ""),
-            new V2Category("noutati", "Noutăți", ""),
+            new V2Tab(Workspace, "Workspace", ""),
+            new V2Tab(Widgets, "Widgeturi", ""),
+            new V2Tab(Themes, "Teme", ""),
+            new V2Tab(System, "Sistem", ""),
         };
 
-        public static V2Category Find(string id) => Categories.FirstOrDefault(c => string.Equals(c.Id, id, StringComparison.Ordinal));
+        public static V2Tab FindTab(string id) => Tabs.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.Ordinal));
 
-        /// <summary>The first category, shown when the window opens with nothing asked for.</summary>
-        public static string DefaultCategory => Categories[0].Id;
+        /// <summary>The tab the window opens on when nothing is asked for.</summary>
+        public static string DefaultTab => Tabs[0].Id;
 
         /// <summary>
-        /// Which sidebar category a request opens: the old window's ids ("themes", "settings", "news") and a page id
-        /// (anything else) keep working, so every entry point into the window still lands somewhere sensible.
+        /// Which tab a request opens: the old window's ids ("themes", "settings", "news") and a page id (anything else)
+        /// keep working, so every entry point into the window still lands somewhere sensible.
         /// </summary>
-        public static string CategoryFor(string pageId) => pageId switch
+        public static string TabFor(string pageId) => pageId switch
         {
-            null or "" => DefaultCategory,
-            "themes" => "teme",
-            "settings" => "setari",
-            "news" => "noutati",
-            _ => "pagini",
+            null or "" => DefaultTab,
+            "themes" => Themes,
+            "settings" or "news" => System,
+            _ => Workspace,
         };
 
-        /// <summary>Which category an action from the registry belongs to (its category name); unknown ones go to „Acțiuni”.</summary>
-        public static string CategoryForAction(string actionCategory)
+        /// <summary>Inside Sistem, the section a request opens (the settings and the news keep their own entry points).</summary>
+        public static string SectionFor(string pageId) => pageId switch
+        {
+            "settings" => "setari",
+            "news" => "noutati",
+            _ => Sections[0].Id,
+        };
+
+        /// <summary>The contextual panel of the Sistem tab. Only groups that exist today.</summary>
+        public static readonly IReadOnlyList<V2Section> Sections = new[]
+        {
+            new V2Section("actiuni", "Acțiuni", "", "Acțiuni", "Fereastră"),
+            new V2Section("sistem", "Sistem", "", "Sistem"),
+            new V2Section("clipboard", "Clipboard", "", "Clipboard"),
+            new V2Section("captura", "Captură", "", "Captură"),
+            new V2Section("sunet", "Sunet", "", "Sunet"),
+            new V2Section("setari", "Setări", ""),
+            new V2Section("noutati", "Noutăți", ""),
+        };
+
+        public static V2Section FindSection(string id) => Sections.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.Ordinal));
+
+        /// <summary>Which section an action from the registry belongs to; an unknown one goes to „Acțiuni”.</summary>
+        public static string SectionForAction(string actionCategory)
         {
             if (string.IsNullOrEmpty(actionCategory)) return "actiuni";
-            var hit = Categories.FirstOrDefault(c => c.ActionCategories.Any(a => string.Equals(a, actionCategory, StringComparison.OrdinalIgnoreCase)));
+            var hit = Sections.FirstOrDefault(s => s.ActionCategories.Any(a => string.Equals(a, actionCategory, StringComparison.OrdinalIgnoreCase)));
             return hit?.Id ?? "actiuni";
         }
 
-        /// <summary>Every category whose body is a page of its own (settings, news, themes, pages) rather than cards.</summary>
-        public static bool IsPageContent(string categoryId) =>
-            categoryId is "pagini" or "teme" or "setari" or "noutati";
+        /// <summary>Sections that are a page of their own (built by the same code the classic window uses).</summary>
+        public static bool IsPageSection(string sectionId) => sectionId is "setari" or "noutati";
 
-        /// <summary>
-        /// Every page of the classic window (settings, news, themes, pages) is now built inside this window, with the
-        /// same code — there is no category left that sends the user back to the old window.
-        /// </summary>
-        public static bool IsEmbeddedContent(string categoryId) => IsPageContent(categoryId);
+        /// <summary>The tab's own column on the left: the pages in Workspace, the sections in Sistem, nothing elsewhere.</summary>
+        public static bool HasLeftPanel(string tabId) => tabId == Workspace || tabId == System;
 
-        /// <summary>Nothing opens the classic window any more: it is the old look, behind the switch being off.</summary>
-        public static bool IsClassicContent(string categoryId) => false;
+        /// <summary>Only the workspace has something to inspect (the selected widget).</summary>
+        public static bool HasInspector(string tabId) => tabId == Workspace;
 
-        /// <summary>
-        /// Pages that need the whole centre (the widget editor brings its own three columns): the window's own right
-        /// column steps aside for them, whatever the width.
-        /// </summary>
-        public static bool WideContent(string categoryId) => categoryId is "pagini";
+        /// <summary>Under this width the left panel folds away so the content keeps its room.</summary>
+        public static bool ShowLeftPanel(string tabId, double width) => HasLeftPanel(tabId) && width >= MinWidth;
 
-        /// <summary>Geometry of the header-notch and of the cards (the brief's scale: 4 / 8 / 12 / 16 / 24 / 32).</summary>
-        public const double HeaderHeight = 52, CardRadius = 18, ChipRadius = 12, Gap = 12, Pad = 24;
+        /// <summary>The inspector needs the width of the panel plus a usable page beside it.</summary>
+        public static bool ShowInspector(string tabId, double width) => HasInspector(tabId) && width >= 1120;
 
-        /// <summary>The hint in the bottom bar: one line, and the shortcut that goes with it.</summary>
+        /// <summary>Cards per row in the Sistem tab: 3 over 1280, 2 over 900, 1 below.</summary>
+        public static int Columns(double width)
+        {
+            if (width >= 1280) return 3;
+            if (width >= 900) return 2;
+            return 1;
+        }
+
+        /// <summary>Geometry and spacing (the brief's scale: 4 / 8 / 12 / 16 / 24 / 32).</summary>
+        public const double HeaderHeight = 56, CardRadius = 18, ChipRadius = 12, Gap = 12, Pad = 24;
+
+        /// <summary>The line in the bottom bar, beside the command field.</summary>
         public static string Hint(bool commandBarOn) => commandBarOn
             ? "Scrie ce vrei să faci, de exemplu „volum 30” sau „captură”."
-            : "Pornește Command Bar-ul din Setări → funcții noi ca să scrii ce vrei să faci.";
+            : "Pornește Command Bar-ul din Sistem → Setări → funcții noi ca să scrii ce vrei să faci.";
     }
 }

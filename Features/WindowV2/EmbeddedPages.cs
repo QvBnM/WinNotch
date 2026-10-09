@@ -4,27 +4,24 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
 
 namespace WinNotch.Features.WindowV2
 {
     /// <summary>
-    /// P52: the pages that used to open the classic window (settings, news, themes, pages), now shown inside the new
-    /// window. Nothing is reimplemented here: each page is built by the same code the classic window uses — the
-    /// settings page is the real <see cref="SettingsWindow"/> content (<c>TakeContent</c>), as the brief asks — and this
-    /// class only hosts it and takes it apart again. One builder, two windows.
+    /// P52: the two pages that are shown here exactly as the classic window builds them — the settings (the real
+    /// <see cref="SettingsWindow"/> content, through <c>TakeContent</c>) and the release notes — plus the themes page,
+    /// which is the same logic (<see cref="Core.Ui.ThemeEdits"/>, used by both windows) in this window's wrapping.
+    /// Nothing about them is written twice; this class only hosts them and takes them apart again.
     /// </summary>
     internal sealed class EmbeddedPages
     {
         private SettingsWindow _settings;
-        private EditorWindow _editor;
         private ScrollViewer _host;
         private ScrollBarVisibility _hostScroll = ScrollBarVisibility.Auto;
 
         /// <summary>
         /// The settings page, moved in as it is. It scrolls itself (so the Save row stays visible), which means the
-        /// host's own scrolling is switched off and the page is bound to the host's viewport height — exactly what the
-        /// classic window does in <c>BuildSettings()</c>.
+        /// host's own scrolling is switched off and the page is bound to the host's viewport height.
         /// </summary>
         internal FrameworkElement Settings(AppSettings s, NotchWindow notch, ScrollViewer host, Action reload)
         {
@@ -32,37 +29,7 @@ namespace WinNotch.Features.WindowV2
             _settings = new SettingsWindow(s);
             _settings.Saved += () => notch?.ApplySettings();
             _settings.Reverted += reload;
-            return Fill(host, _settings.TakeContent(), 640);
-        }
-
-        /// <summary>
-        /// The pages editor (the widget grid, the inspector, the gallery), shown inside the new window: the same editor
-        /// the classic window is, simply never shown as a window of its own (<c>EditorWindow.TakeContent</c>). Nothing
-        /// about editing a page is written twice.
-        /// </summary>
-        internal FrameworkElement Pages(AppSettings s, NotchWindow notch, Window owner, ScrollViewer host, string pageId, string slotId)
-        {
-            Detach();
-            _editor = new EditorWindow(s, notch);
-            _editor.Open(pageId, slotId);
-            var content = _editor.TakeContent(owner);
-            if (Application.Current is App app) app.HostedEditor = _editor;
-            return Fill(host, content, double.PositiveInfinity);
-        }
-
-        /// <summary>P51: Esc closes the pop-up of the hosted editor (a widget's sizes) before anything else.</summary>
-        internal bool CloseOpenPopup() => _editor?.CloseOpenPopup() ?? false;
-
-        /// <summary>
-        /// A page that manages its own scrolling fills the centre instead of growing inside it: the host's scrolling is
-        /// switched off and the page is bound to the host's viewport height — what the classic window does for the
-        /// settings; the editor's own grid needs the same, or its lists would be given an endless height.
-        /// </summary>
-        private FrameworkElement Fill(ScrollViewer host, FrameworkElement content, double maxWidth)
-        {
-            var box = new Border { Child = content };
-            if (double.IsPositiveInfinity(maxWidth)) box.HorizontalAlignment = HorizontalAlignment.Stretch;
-            else { box.MaxWidth = maxWidth; box.HorizontalAlignment = HorizontalAlignment.Left; }
+            var box = new Border { Child = _settings.TakeContent(), MaxWidth = 660, HorizontalAlignment = HorizontalAlignment.Left };
             _host = host;
             _hostScroll = host.VerticalScrollBarVisibility;
             host.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
@@ -72,8 +39,7 @@ namespace WinNotch.Features.WindowV2
 
         /// <summary>
         /// What this version brought: the same notes the classic window shows, read with the same code
-        /// (<c>Updater.ParseNotes(Updater.OwnNotes())</c>). Only the wrapping is new — the theme's own tokens, so the
-        /// page reads the same on a light and on a dark theme.
+        /// (<c>Updater.ParseNotes(Updater.OwnNotes())</c>). Only the wrapping is new — the theme's own tokens.
         /// </summary>
         internal FrameworkElement News()
         {
@@ -82,6 +48,7 @@ namespace WinNotch.Features.WindowV2
             var intro = Ui.T(Services.Updater.Configured
                                  ? "Versiunile noi se instalează din notch („Actualizează”); fiecare îți arată aici ce a adus."
                                  : "Ce a adus versiunea pe care o folosești.", 13, "MutedBrush");
+            intro.TextWrapping = TextWrapping.Wrap;
             intro.Margin = new Thickness(0, 4, 0, LayoutRules.Pad);
             sp.Children.Add(intro);
 
@@ -111,9 +78,8 @@ namespace WinNotch.Features.WindowV2
         }
 
         /// <summary>
-        /// „Teme și culori”: the same page as in the classic window, in the new window's wrapping. Everything it
-        /// changes goes through <see cref="Core.Ui.ThemeEdits"/> — the one piece of logic, shared by both windows —
-        /// and the colours on screen come from the palettes themselves, never from a value written here.
+        /// „Teme și culori”: everything it changes goes through <see cref="Core.Ui.ThemeEdits"/> — the one piece of
+        /// logic, shared with the classic window — and the colours on screen come from the palettes themselves.
         /// </summary>
         internal FrameworkElement Themes(AppSettings s, NotchWindow notch, Action reload, Action<Action> soon)
         {
@@ -127,6 +93,7 @@ namespace WinNotch.Features.WindowV2
             var sp = new StackPanel { MaxWidth = 980, HorizontalAlignment = HorizontalAlignment.Left };
             sp.Children.Add(Ui.T("Teme și culori", 20, "InkBrush", true));
             var hint = Ui.T("Se aplică pe loc: deschide notch-ul (Win+Alt+N) ca să vezi rezultatul.", 13, "MutedBrush");
+            hint.TextWrapping = TextWrapping.Wrap;
             hint.Margin = new Thickness(0, 4, 0, LayoutRules.Pad);
             sp.Children.Add(hint);
 
@@ -164,7 +131,7 @@ namespace WinNotch.Features.WindowV2
                 {
                     Width = 30, Height = 30, CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1),
                     Cursor = Cursors.Hand, ToolTip = "Alege culoarea",
-                    Background = new SolidColorBrush(ThemeManager.Parse(hex, "#000000")),
+                    Background = new System.Windows.Media.SolidColorBrush(ThemeManager.Parse(hex, "#000000")),
                 };
                 swatch.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
                 swatch.MouseLeftButtonUp += (o, e) =>
@@ -176,10 +143,9 @@ namespace WinNotch.Features.WindowV2
                 };
                 var row = Ui.Cols(Ui.Auto, Ui.Px(10), Ui.Star(), Ui.Auto);
                 row.Put(swatch);
-                var code = Ui.T(hex, 11.5, "DimBrush", false, true);
-                row.Put(Ui.V(0, Ui.T(label, 12.5, "InkBrush"), code), 2);
+                row.Put(Ui.V(0, Ui.T(label, 12.5, "InkBrush"), Ui.T(hex, 11.5, "DimBrush", false, true)), 2);
                 if (Core.Ui.ThemeEdits.IsChanged(s, themeName, key))
-                    row.Put(Ui.IconBtn("\uE72C", () => { Core.Ui.ThemeEdits.ResetOverride(s, themeName, k); Apply(true); }, "Înapoi la culoarea temei", 26, 12), 3);
+                    row.Put(Ui.IconBtn("", () => { Core.Ui.ThemeEdits.ResetOverride(s, themeName, k); Apply(true); }, "Înapoi la culoarea temei", 26, 12), 3);
                 colors.Children.Add(new Border { Width = 220, Padding = new Thickness(0, 0, 12, 10), Child = row });
             }
             var colorBody = new StackPanel();
@@ -198,7 +164,9 @@ namespace WinNotch.Features.WindowV2
             sp.Children.Add(Section("Formă", "Fundalul transparent lasă să se vadă ce e în spate; 100% e opac.", shape));
 
             // a theme of your own
-            var nameBox = new TextBox { Width = 220, Padding = new Thickness(4, 3, 4, 3), Text = themeName + " (a mea)", MaxLength = 30, Margin = new Thickness(0, 0, 8, 0) };
+            var nameBox = WidgetInspector.Field(themeName + " (a mea)", 220);
+            nameBox.MaxLength = 30;
+            nameBox.Margin = new Thickness(0, 0, 8, 0);
             var save = Ui.PillBtn("Salvează ca temă nouă", () =>
             {
                 if (!Core.Ui.ThemeEdits.SaveAs(s, nameBox.Text)) { nameBox.SetResourceReference(Control.BorderBrushProperty, "HotBrush"); return; }
@@ -209,7 +177,7 @@ namespace WinNotch.Features.WindowV2
             return sp;
         }
 
-        /// <summary>The cards of the ready-made and of your own themes: a small preview drawn in the palette's own colours.</summary>
+        /// <summary>The cards of the ready-made and of your own themes: a preview drawn in the palette's own colours.</summary>
         private static FrameworkElement ThemeCards(AppSettings s, bool light, Action<bool> apply)
         {
             var wrap = new WrapPanel();
@@ -218,7 +186,8 @@ namespace WinNotch.Features.WindowV2
             {
                 var theme = t;
                 bool on = t.Name == chosen;
-                SolidColorBrush C(string k, string fb) => new SolidColorBrush(ThemeManager.Parse(theme.Colors.TryGetValue(k, out var v) ? v : null, fb));
+                System.Windows.Media.SolidColorBrush C(string k, string fb) =>
+                    new System.Windows.Media.SolidColorBrush(ThemeManager.Parse(theme.Colors.TryGetValue(k, out var v) ? v : null, fb));
                 var mini = new Grid { Width = 150, Height = 74 };
                 var inner = Ui.Cols(Ui.Star(), Ui.Px(6), Ui.Star());
                 var card1 = new Border { Background = C("Chip", "#1B1D21"), CornerRadius = new CornerRadius(6), Padding = new Thickness(6) };
@@ -234,11 +203,10 @@ namespace WinNotch.Features.WindowV2
                 inner.Put(card1); inner.Put(card2, 2);
                 mini.Children.Add(new Border { Background = C("Notch", "#000000"), CornerRadius = new CornerRadius(12), Padding = new Thickness(8), Child = inner });
 
-                var label = Ui.H(6, Ui.T(theme.Name, 12.5, "InkBrush", on));
                 var pick = new Button
                 {
-                    Style = Ui.S("NavButton"), Content = Ui.V(6, mini, label), Padding = new Thickness(8),
-                    Margin = new Thickness(0, 0, 8, 8), Cursor = Cursors.Hand, BorderThickness = new Thickness(1.5),
+                    Style = Ui.S("NavButton"), Content = Ui.V(6, mini, Ui.T(theme.Name, 12.5, "InkBrush", on)),
+                    Padding = new Thickness(8), Margin = new Thickness(0, 0, 8, 8), Cursor = Cursors.Hand, BorderThickness = new Thickness(1.5),
                 };
                 System.Windows.Automation.AutomationProperties.SetName(pick, theme.Name);
                 if (on) { pick.SetResourceReference(Control.BackgroundProperty, "ChipHoverBrush"); pick.SetResourceReference(Control.BorderBrushProperty, "AccentBrush"); }
@@ -248,7 +216,7 @@ namespace WinNotch.Features.WindowV2
                 if (ThemeManager.Presets.Contains(t)) { wrap.Children.Add(pick); continue; }
                 var holder = new Grid();
                 holder.Children.Add(pick);
-                var del = Ui.IconBtn("\uE74D", () => { if (Core.Ui.ThemeEdits.Delete(s, theme)) apply(true); }, "Șterge tema", 26, 11, Ui.B("HotBrush"));
+                var del = Ui.IconBtn("", () => { if (Core.Ui.ThemeEdits.Delete(s, theme)) apply(true); }, "Șterge tema", 26, 11, Ui.B("HotBrush"));
                 del.HorizontalAlignment = HorizontalAlignment.Right;
                 del.VerticalAlignment = VerticalAlignment.Top;
                 del.Margin = new Thickness(0, 4, 12, 0);
@@ -258,7 +226,7 @@ namespace WinNotch.Features.WindowV2
             return wrap;
         }
 
-        /// <summary>A section of the page: title, one line of help, body — the new window's card, the theme's own tokens.</summary>
+        /// <summary>A section of a page: title, one line of help, body — this window's card, the theme's own tokens.</summary>
         private static FrameworkElement Section(string title, string hint, UIElement body)
         {
             var sp = new StackPanel();
@@ -296,20 +264,11 @@ namespace WinNotch.Features.WindowV2
         /// <summary>P14 ("settings.*" actions): the hosted settings page, scrolled to one option and focused.</summary>
         internal void Reveal(string target) => _settings?.Reveal(target);
 
-        /// <summary>
-        /// Lets go of whatever page was hosted: the settings page stops its own timer and the host gets its scrolling
-        /// back. Called when the category changes and when the window closes; calling it twice is harmless.
-        /// </summary>
+        /// <summary>Lets go of whatever page was hosted; calling it twice is harmless.</summary>
         internal void Detach()
         {
             _settings?.Detach();
             _settings = null;
-            if (_editor != null)
-            {
-                if (Application.Current is App app && ReferenceEquals(app.HostedEditor, _editor)) app.HostedEditor = null;
-                _editor.DetachContent();
-                _editor = null;
-            }
             if (_host != null) { _host.VerticalScrollBarVisibility = _hostScroll; _host = null; }
         }
     }

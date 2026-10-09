@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -7,50 +6,48 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using WinNotch.Core.Actions;
 using WinNotch.Core.Flags;
 using WinNotch.Features.NotchAnchored;
-using WinNotch.Services;
 
 namespace WinNotch.Features.WindowV2
 {
     /// <summary>
-    /// P52: the WinNotch window, version 2. Its signature is the header: the same silhouette as the anchored notch
-    /// (P50) — stuck to the top edge, rounded only at the bottom, with the two concave fillets — so the window reads as
-    /// the same object as the notch in the screen's edge. Everything else is quiet: a 240 px sidebar of categories, a
-    /// centre with the search field and cards built from the <b>existing</b> action registry, and a 300 px right column
-    /// with what the app already knows (clipboard, privacy). All the decisions about sizes and columns are in
-    /// <see cref="LayoutRules"/> (pure, tested). Nothing here invents a feature: the cards are actions that exist, and
-    /// the pages / themes / settings / news open the classic window, exactly as before.
+    /// P52: the WinNotch window. Its signature is the header — the same silhouette as the anchored notch (P50), so the
+    /// window reads as the notch, unfolded. Under it there is <b>one</b> navigation: four tabs (Workspace, Widgeturi,
+    /// Teme, Sistem), each a whole area of the app. A tab may bring a column of its own on the left (its pages, its
+    /// sections) and an inspector on the right, but those belong to the tab, not to the window. At the bottom, the
+    /// command field — the same one the Command Bar uses.
+    /// <para>Every decision about sizes and tabs is in <see cref="LayoutRules"/> (pure, tested). Nothing here invents a
+    /// feature: the pages, the widgets, the themes and the settings are the ones the app already has.</para>
     /// </summary>
     public sealed class WindowV2 : Window
     {
         private readonly AppSettings _s;
         private readonly NotchWindow _notch;
-        private readonly Grid _sidebar = new Grid();
-        private readonly StackPanel _sidebarItems = new StackPanel();
-        private readonly StackPanel _center = new StackPanel();
-        private readonly StackPanel _right = new StackPanel();        // the width lives on _rightHost, padding included
-        private readonly Border _rightHost;
-        private readonly TextBlock _hint = Ui.T("", 12, "MutedBrush");
-        private readonly TextBox _search = new TextBox { FontSize = 13.5, BorderThickness = new Thickness(0), Background = Brushes.Transparent, MinWidth = 200 };
-        private readonly Path _headerShape = new Path { IsHitTestVisible = false };
+
+        private readonly Path _headerShape = new Path { IsHitTestVisible = false, UseLayoutRounding = false, SnapsToDevicePixels = false };
+        private readonly StackPanel _tabs = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _clock = Ui.T("--:--", 12, "MutedBrush", false, true);
-        private readonly System.Windows.Threading.DispatcherTimer _tick =
-            new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-        /// <summary>Debounce for the sliders of the themes page (nothing is saved while one is still moving).</summary>
-        private readonly System.Windows.Threading.DispatcherTimer _soon =
-            new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        private readonly Border _bodyHost = new Border();
+        private readonly TextBox _command = new TextBox { FontSize = 13.5, BorderThickness = new Thickness(0), Background = Brushes.Transparent };
+        private readonly TextBlock _hint = Ui.T("", 12, "MutedBrush");
+
+        private readonly DispatcherTimer _clockTick = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        private readonly DispatcherTimer _live = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+        private readonly DispatcherTimer _soonTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(350) };
         private Action _pending;
-        private readonly StackPanel _cards = new StackPanel();
-        private UIElement _searchCard;
-        private ScrollViewer _centerScroll;
-        private readonly EmbeddedPages _pages = new EmbeddedPages();
-        private string _category = LayoutRules.DefaultCategory;
-        /// <summary>What Open() was asked for, so the pages editor opens on the right page and widget.</summary>
+        private int _ticks;
+
+        private WorkspaceView _workspace;
+        private WidgetsView _widgets;
+        private SystemView _system;
+        private ScrollViewer _themesHost;
+        private readonly EmbeddedPages _themes = new EmbeddedPages();
+
+        private string _tab = LayoutRules.DefaultTab;
         private string _pageId, _slotId;
-        private Grid _body;
-        private int _cols = -1;
         private Action<string> _flagHandler;
 
         public WindowV2(AppSettings s, NotchWindow notch)
@@ -60,45 +57,40 @@ namespace WinNotch.Features.WindowV2
             MinWidth = LayoutRules.MinWidth;
             MinHeight = LayoutRules.MinHeight;
             var wa = SystemParameters.WorkArea;
-            Width = Math.Min(1400, wa.Width * 0.9);
-            Height = Math.Min(900, wa.Height * 0.88);
+            Width = Math.Min(1440, wa.Width * 0.92);
+            Height = Math.Min(920, wa.Height * 0.9);
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             UseLayoutRounding = true;
             SnapsToDevicePixels = true;
             FontFamily = (FontFamily)Application.Current.FindResource("UiFont");
             SetResourceReference(ForegroundProperty, "InkBrush");
-            SetResourceReference(BackgroundProperty, "SegBrush");       // opaque: NotchBrush carries the pill's own transparency
+            SetResourceReference(BackgroundProperty, "SegBrush");       // opaque: NotchBrush carries the pill's transparency
 
-            // RightWidth is the whole column, padding included, so CenterWidth() keeps matching what is really on screen.
-            // Without the right and top padding the states ("oprit") sat flush against the window's edge.
-            _rightHost = new Border
-            {
-                Child = _right, Width = LayoutRules.RightWidth,
-                Padding = new Thickness(LayoutRules.Gap, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad),
-            };
             Content = BuildShell();
             SizeChanged += (o, e) => Relayout();
             PreviewKeyDown += OnKey;
-            _tick.Tick += (o, e) => OnTick();
-            _soon.Tick += (o, e) =>
+            _clockTick.Tick += (o, e) => OnClock();
+            _live.Tick += (o, e) => LiveTick();
+            _soonTimer.Tick += (o, e) => { _soonTimer.Stop(); var a = _pending; _pending = null; Guarded(() => a?.Invoke()); };
+            Loaded += (o, e) => { OnClock(); _clockTick.Start(); _live.Start(); Relayout(); };
+            StateChanged += (o, e) =>
             {
-                _soon.Stop();
-                var a = _pending; _pending = null;
-                try { a?.Invoke(); }
-                catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
+                bool off = WindowState == WindowState.Minimized;
+                if (off) { _clockTick.Stop(); _live.Stop(); }
+                else { OnClock(); _clockTick.Start(); _live.Start(); }
             };
-            Loaded += (o, e) => { OnTick(); _tick.Start(); Relayout(); };
-            StateChanged += (o, e) => { if (WindowState == WindowState.Minimized) _tick.Stop(); else { OnTick(); _tick.Start(); } };
             Closed += (o, e) =>
             {
-                _tick.Stop();
-                _soon.Stop();
-                var last = _pending; _pending = null;
-                try { last?.Invoke(); }               // a slider still pending is saved, not lost
-                catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
-                _pages.Detach();
+                _clockTick.Stop();
+                _live.Stop();
+                _soonTimer.Stop();
+                Flush();                                   // a name or a slider still pending is saved, not lost
+                _themes.Detach();
+                _system?.Detach();
+                if (Application.Current is App app && ReferenceEquals(app.HostedWorkspace, _workspace)) app.HostedWorkspace = null;
                 if (_flagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _flagHandler;
                 _flagHandler = null;
+                _s.Save();
             };
             // The switch can be turned off from Settings while the window is open: then it closes, like any feature stopping.
             _flagHandler = id =>
@@ -109,51 +101,43 @@ namespace WinNotch.Features.WindowV2
             if (FeatureFlags.Current != null) FeatureFlags.Current.Changed += _flagHandler;
         }
 
-        /// <summary>Opens the window on a category; the old window's ids ("themes", "settings", "news") and page ids still work.</summary>
+        /// <summary>Opens the window on a tab; the old window's ids ("themes", "settings", "news") and page ids still work.</summary>
         public void Open(string pageId = null, string slotId = null)
         {
-            try
+            Guarded(() =>
             {
-                string category = LayoutRules.CategoryFor(pageId);
-                string wanted = category == "pagini" ? pageId : null;
-                // Opening the window again on the page it already shows must not rebuild it: a hosted page (the settings
-                // form, the widget editor) would lose what is typed or selected in it.
-                bool same = category == _category && wanted == _pageId && (wanted == null || slotId == _slotId) &&
-                            _cards.Children.Count > 0;
-                _category = category;
-                _pageId = wanted;
-                _slotId = wanted != null ? slotId : null;
-                BuildSidebar();
-                if (!same) BuildCenter();
-                BuildRight();
-                Relayout();
-            }
-            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
+                string tab = LayoutRules.TabFor(pageId);
+                bool samePage = tab == LayoutRules.Workspace && pageId == _pageId && slotId == _slotId;
+                _pageId = tab == LayoutRules.Workspace ? pageId : null;
+                _slotId = _pageId != null ? slotId : null;
+                // Opening the window again where it already is must not rebuild it: a form keeps what is typed in it.
+                if (tab == _tab && (tab != LayoutRules.Workspace ? ShowsSection(pageId) : samePage) && _bodyHost.Child != null)
+                {
+                    Relayout();
+                    return;
+                }
+                _tab = tab;
+                ShowTab(pageId);
+            });
         }
 
-        /// <summary>P14 ("settings.*" actions): the settings page, scrolled to one option and focused — as in the classic window.</summary>
-        internal void RevealSetting(string target)
-        {
-            try
-            {
-                if (!LayoutRules.IsEmbeddedContent("setari")) return;
-                Select("setari");
-                _pages.Reveal(target);
-            }
-            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
-        }
+        /// <summary>True when the Sistem tab already shows the section this request asks for.</summary>
+        private bool ShowsSection(string pageId) => _tab != LayoutRules.System || _system == null || pageId == null;
 
-        /// <summary>The clock and the right column, every 10 s and only while the window is really on screen.</summary>
-        private void OnTick()
+        /// <summary>P14 ("settings.*" actions): the settings page, scrolled to one option and focused.</summary>
+        internal void RevealSetting(string target) => Guarded(() =>
         {
-            try
-            {
-                if (!IsVisible || WindowState == WindowState.Minimized) return;
-                _clock.Text = DateTime.Now.ToString("HH:mm");
-                BuildRight();
-            }
-            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
-        }
+            Open("settings");
+            _system?.Reveal(target);
+        });
+
+        /// <summary>A page was edited in the notch: the workspace, if open on it, shows the new layout.</summary>
+        internal void PageChangedElsewhere(string pageId) => Guarded(() => _workspace?.PageChangedElsewhere(pageId));
+
+        internal void PagesChangedElsewhere() => Guarded(() => _workspace?.PagesChangedElsewhere());
+
+        /// <summary>P51: Esc closes the open pop-up (a widget's sizes) before the window.</summary>
+        internal bool CloseOpenPopup() => _workspace?.CloseOpenPopup() ?? false;
 
         // ------------------------------------------------------------------ the shell
 
@@ -161,69 +145,132 @@ namespace WinNotch.Features.WindowV2
         {
             var root = Ui.Rows(Ui.Px(LayoutRules.HeaderHeight), Ui.Star(), Ui.Auto);
             root.Put(BuildHeader());
-
-            _body = Ui.Cols(Ui.Px(LayoutRules.SidebarWidth), Ui.Star(), Ui.Auto);
-            _sidebar.Children.Add(new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _sidebarItems, Padding = new Thickness(12, 12, 12, 12) });
-            var sideHost = new Border { Child = _sidebar, CornerRadius = new CornerRadius(0, LayoutRules.CardRadius, LayoutRules.CardRadius, 0) };
-            sideHost.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
-            _body.Put(sideHost);
-            _centerScroll = new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _center, Padding = new Thickness(LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad) };
-            _body.Put(_centerScroll, 1);
-            _body.Put(_rightHost, 2);
-            root.Put(_body, 0, 1);
-
-            var bar = new Border { Padding = new Thickness(LayoutRules.Pad, 10, LayoutRules.Pad, 12) };
-            bar.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
-            var hintRow = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto);
-            hintRow.Put(Ui.Icon("", 12, Ui.B("MutedBrush")));
-            _hint.Margin = new Thickness(8, 0, 0, 0);
-            hintRow.Put(_hint, 1);
-            hintRow.Put(Ui.Chip(Ui.T("Win + Alt + Space", 11, "DimBrush"), 8, 3, LayoutRules.ChipRadius), 2);
-            bar.Child = hintRow;
-            root.Put(bar, 0, 2);
+            root.Put(_bodyHost, 0, 1);
+            root.Put(BuildCommandBar(), 0, 2);
             return root;
         }
 
-        /// <summary>The header is the notch, unfolded: the same silhouette as P50, with the tabs of the notch.</summary>
+        /// <summary>The header is the notch, unfolded: the same silhouette as P50, with the window's four tabs on it.</summary>
         private UIElement BuildHeader()
         {
             var host = new Grid();
             _headerShape.SetResourceReference(Shape.FillProperty, "NotchBrush");
             _headerShape.HorizontalAlignment = HorizontalAlignment.Center;
             _headerShape.VerticalAlignment = VerticalAlignment.Top;
-            _headerShape.UseLayoutRounding = false;
-            _headerShape.SnapsToDevicePixels = false;
             host.Children.Add(_headerShape);
 
             var row = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto);
             row.Margin = new Thickness(LayoutRules.Pad, 0, LayoutRules.Pad, 0);
-            var tabs = Ui.H(4);
-            foreach (var (id, title, glyph) in new[]
-                     {
-                         ("actiuni", "Acasă", ""), ("sistem", "Sistem", "\uE713"),
-                         ("sunet", "Dispozitive", "\uE767"), ("captura", "Unelte", "\uE722"),
-                     })
-                tabs.Children.Add(HeaderTab(id, title, glyph));
-            row.Put(tabs);
-
-            var rightSide = Ui.H(8, Ui.IconBtn("", ToggleTheme, "Schimbă tema", 28, 13), _clock);
-            rightSide.VerticalAlignment = VerticalAlignment.Center;
-            row.Put(rightSide, 2);
             row.VerticalAlignment = VerticalAlignment.Center;
+            row.Put(_tabs);
+            var right = Ui.H(10, Ui.IconBtn("", ToggleTheme, "Schimbă tema", 28, 13), _clock);
+            right.VerticalAlignment = VerticalAlignment.Center;
+            row.Put(right, 2);
             host.Children.Add(row);
+            BuildTabs();
             return host;
         }
 
-        private Button HeaderTab(string id, string title, string glyph)
+        private void BuildTabs()
         {
-            // NavButton, not IconButton: that one forces 30x30, which cut "Acasă" down to "Ac" and ate the other tabs.
-            var btn = new Button { Style = Ui.S("NavButton"), Padding = new Thickness(10, 4, 10, 4), Cursor = Cursors.Hand };
-            var content = Ui.H(6, Ui.Icon(glyph, 12, Ui.B(_category == id ? "InkBrush" : "MutedBrush")),
-                               Ui.T(title, 12.5, _category == id ? "InkBrush" : "MutedBrush", _category == id));
-            content.VerticalAlignment = VerticalAlignment.Center;
-            btn.Content = content;
-            btn.Click += (o, e) => Select(id);
-            return btn;
+            _tabs.Children.Clear();
+            foreach (var t in LayoutRules.Tabs)
+            {
+                var tab = t;
+                bool on = string.Equals(t.Id, _tab, StringComparison.Ordinal);
+                // NavButton, not IconButton: that one forces 30x30 and would cut the titles down to two letters
+                var btn = new Button
+                {
+                    Style = Ui.S("NavButton"), Padding = new Thickness(12, 6, 12, 6), Cursor = Cursors.Hand,
+                    Margin = new Thickness(0, 0, 4, 0),
+                };
+                var content = Ui.H(7, Ui.Icon(t.Glyph, 13, Ui.B(on ? "InkBrush" : "MutedBrush")),
+                                      Ui.T(t.Title, 13, on ? "InkBrush" : "MutedBrush", on));
+                content.VerticalAlignment = VerticalAlignment.Center;
+                btn.Content = content;
+                System.Windows.Automation.AutomationProperties.SetName(btn, t.Title);
+                if (on) btn.SetResourceReference(Control.BackgroundProperty, "ChipHoverBrush");
+                btn.Click += (o, e) => { if (!on) { _tab = tab.Id; ShowTab(null); } };
+                _tabs.Children.Add(btn);
+            }
+        }
+
+        private UIElement BuildCommandBar()
+        {
+            var bar = new Border { Padding = new Thickness(LayoutRules.Pad, 10, LayoutRules.Pad, 12), BorderThickness = new Thickness(0, 1, 0, 0) };
+            bar.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
+            bar.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
+
+            var field = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto);
+            field.Put(Ui.Icon("", 13, Ui.B("MutedBrush")));
+            _command.Margin = new Thickness(8, 0, 8, 0);
+            _command.SetResourceReference(Control.ForegroundProperty, "InkBrush");
+            _command.SetResourceReference(TextBoxBase.CaretBrushProperty, "InkBrush");
+            _command.VerticalAlignment = VerticalAlignment.Center;
+            field.Put(_command, 1);
+            field.Put(Ui.Chip(Ui.T("Win + Alt + Space", 11, "DimBrush"), 8, 3, LayoutRules.ChipRadius), 2);
+            var box = new Border { Child = field, Padding = new Thickness(12, 8, 8, 8), CornerRadius = new CornerRadius(LayoutRules.ChipRadius), MaxWidth = 720 };
+            box.SetResourceReference(Border.BackgroundProperty, "TrackBrush");
+
+            var rows = Ui.Rows(Ui.Auto, Ui.Auto);
+            rows.Put(box);
+            _hint.Margin = new Thickness(4, 6, 0, 0);
+            _hint.TextWrapping = TextWrapping.Wrap;
+            rows.Put(_hint, 0, 1);
+            bar.Child = rows;
+            return bar;
+        }
+
+        // ------------------------------------------------------------------ the tabs
+
+        private void ShowTab(string pageId)
+        {
+            Guarded(() =>
+            {
+                BuildTabs();
+                switch (_tab)
+                {
+                    case LayoutRules.Workspace:
+                        if (_workspace == null)
+                        {
+                            _workspace = new WorkspaceView(_s, _notch, () => this, Soon, Flush, Say);
+                            if (Application.Current is App app) app.HostedWorkspace = _workspace;
+                        }
+                        _workspace.Open(pageId ?? _pageId, _slotId);
+                        _bodyHost.Child = _workspace;
+                        break;
+                    case LayoutRules.Widgets:
+                        _widgets ??= new WidgetsView(() => _workspace, Say);
+                        _widgets.Open();
+                        _bodyHost.Child = _widgets;
+                        break;
+                    case LayoutRules.Themes:
+                        _themesHost ??= new ScrollViewer
+                        {
+                            Style = Ui.S("SlimScroll"),
+                            Padding = new Thickness(LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad),
+                        };
+                        _themesHost.Content = _themes.Themes(_s, _notch, ReloadThemes, Soon);
+                        _bodyHost.Child = _themesHost;
+                        break;
+                    default:
+                        _system ??= new SystemView(_s, _notch, () => this, Say);
+                        _system.Open(LayoutRules.SectionFor(pageId), BodyWidth());
+                        _bodyHost.Child = _system;
+                        break;
+                }
+                if (_tab != LayoutRules.System) _system?.Detach();
+                Relayout();
+            });
+        }
+
+        /// <summary>Rebuilds the themes page where it is, keeping the place you had scrolled to.</summary>
+        private void ReloadThemes()
+        {
+            double off = _themesHost?.VerticalOffset ?? 0;
+            if (_themesHost == null) return;
+            _themesHost.Content = _themes.Themes(_s, _notch, ReloadThemes, Soon);
+            Dispatcher.InvokeAsync(() => _themesHost.ScrollToVerticalOffset(off), DispatcherPriority.Loaded);
         }
 
         /// <summary>Light ↔ dark, through the existing theme manager (the window takes the app's theme, like everything else).</summary>
@@ -233,260 +280,71 @@ namespace WinNotch.Features.WindowV2
             _s.Save();
             ThemeManager.Apply(_s);
             _notch?.ApplySettings();
+            if (_tab == LayoutRules.Themes) ReloadThemes();
         }
 
-        // ------------------------------------------------------------------ sidebar
+        // ------------------------------------------------------------------ time, timers, messages
 
-        private void BuildSidebar()
+        private void OnClock() => Guarded(() =>
         {
-            _sidebarItems.Children.Clear();
-            _sidebarItems.Children.Add(Ui.Cap("TOATE UNELTELE"));
-            foreach (var c in LayoutRules.Categories) _sidebarItems.Children.Add(SidebarRow(c));
-        }
+            if (!IsVisible || WindowState == WindowState.Minimized) return;
+            _clock.Text = DateTime.Now.ToString("HH:mm");
+        });
 
-        private UIElement SidebarRow(V2Category c)
+        /// <summary>The live page in the workspace keeps itself fresh, as it does in the notch.</summary>
+        private void LiveTick() => Guarded(() =>
         {
-            bool on = string.Equals(c.Id, _category, StringComparison.Ordinal);
-            var mark = new Border { Width = 3, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 2, 8, 2) };
-            if (on) mark.SetResourceReference(Border.BackgroundProperty, "AccentBrush");
-            var row = Ui.Cols(Ui.Px(3), Ui.Auto, Ui.Star());
-            row.Put(mark);
-            row.Put(Ui.Icon(c.Glyph, 13, Ui.B(on ? "InkBrush" : "MutedBrush")), 1);
-            var label = Ui.T(c.Title, 13.5, on ? "InkBrush" : "MutedBrush", on);
-            label.Margin = new Thickness(8, 0, 0, 0);
-            label.VerticalAlignment = VerticalAlignment.Center;
-            row.Put(label, 2);
-            // A Button, not a Border: it takes the focus with Tab and answers Enter and Space, as the brief asks.
-            var host = new Button
-            {
-                // NavButton: IconButton's fixed 30x30 left every sidebar entry as an icon and "…"
-                Style = Ui.S("NavButton"), Content = row, Padding = new Thickness(4, 7, 8, 7),
-                Cursor = Cursors.Hand, Margin = new Thickness(0, 2, 0, 2),
-                HorizontalContentAlignment = HorizontalAlignment.Stretch,
-            };
-            System.Windows.Automation.AutomationProperties.SetName(host, c.Title);
-            if (on) host.SetResourceReference(Control.BackgroundProperty, "ChipHoverBrush");
-            host.Click += (o, e) => Select(c.Id);
-            return host;
-        }
+            var page = _workspace?.Page;
+            if (page == null || _tab != LayoutRules.Workspace || !IsVisible || WindowState == WindowState.Minimized) return;
+            page.Fast();
+            if (++_ticks % 10 == 0) { page.MediaChanged(); page.Refresh(); }
+        });
 
-        private void Select(string categoryId)
-        {
-            try
-            {
-                if (LayoutRules.Find(categoryId) == null || string.Equals(categoryId, _category, StringComparison.Ordinal)) return;
-                _category = categoryId;
-                BuildSidebar();
-                BuildCenter();
-                Relayout();
-            }
-            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
-        }
-
-        // ------------------------------------------------------------------ centre
-
-        /// <summary>
-        /// Only the cards are rebuilt; the search card is built once and stays in the tree (a WPF element has exactly one
-        /// parent, so putting it into a new row would throw — that is what kept v2 from opening at all).
-        /// </summary>
-        private void BuildCenter()
-        {
-            if (_searchCard == null)
-            {
-                _searchCard = BuildSearch();
-                _center.Children.Add(_searchCard);
-                _center.Children.Add(_cards);
-            }
-            _cards.Children.Clear();
-            _pages.Detach();                      // whatever page was hosted lets go before another one is built
-            _cols = LayoutRules.Columns(CenterWidth());
-            // A page of its own fills the centre: the search field looks for actions, which is not what it offers.
-            _searchCard.Visibility = LayoutRules.IsPageContent(_category) ? Visibility.Collapsed : Visibility.Visible;
-            if (LayoutRules.IsPageContent(_category) && EmbeddedPage() is UIElement page) { _cards.Children.Add(page); return; }
-            var cat = LayoutRules.Find(_category);
-            var actions = VisibleActions().Where(a => string.Equals(LayoutRules.CategoryForAction(a.Category), _category, StringComparison.Ordinal)).ToList();
-            _cards.Children.Add(Group(cat?.Title ?? "Acțiuni", actions));
-        }
-
-        private UIElement BuildSearch()
-        {
-            var row = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto);
-            row.Put(Ui.Icon("", 13, Ui.B("MutedBrush")));
-            _search.Margin = new Thickness(8, 0, 8, 0);
-            _search.SetResourceReference(Control.ForegroundProperty, "InkBrush");
-            _search.SetResourceReference(TextBoxBase.CaretBrushProperty, "InkBrush");
-            _search.VerticalAlignment = VerticalAlignment.Center;
-            row.Put(_search, 1);
-            row.Put(Ui.Chip(Ui.T("Ctrl + K", 11, "DimBrush"), 8, 3, LayoutRules.ChipRadius), 2);
-            var card = new Border { Child = row, Padding = new Thickness(14, 10, 10, 10), CornerRadius = new CornerRadius(LayoutRules.CardRadius), Margin = new Thickness(0, 0, 0, LayoutRules.Pad) };
-            card.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
-            return card;
-        }
-
-        /// <summary>Rebuilds the open page where it is, keeping the place you had scrolled to.</summary>
-        private void ReloadPage()
-        {
-            double off = _centerScroll?.VerticalOffset ?? 0;
-            BuildCenter();
-            if (_centerScroll != null) Dispatcher.InvokeAsync(() => _centerScroll.ScrollToVerticalOffset(off), System.Windows.Threading.DispatcherPriority.Loaded);
-        }
-
-        /// <summary>Runs the last asked-for change shortly after the slider stops moving (one timer, not one per row).</summary>
+        /// <summary>Runs a change shortly after the last keystroke (a page's name, a slider).</summary>
         private void Soon(Action a)
         {
             _pending = a;
-            _soon.Stop();
-            _soon.Start();
+            _soonTimer.Stop();
+            _soonTimer.Start();
         }
 
-        /// <summary>The body of a page that now lives here: built by the same code the classic window uses.</summary>
-        private UIElement EmbeddedPage() => _category switch
+        private void Flush()
         {
-            "setari" => _pages.Settings(_s, _notch, _centerScroll, () => { if (_category == "setari") BuildCenter(); }),
-            "noutati" => _pages.News(),
-            "teme" => _pages.Themes(_s, _notch, ReloadPage, Soon),
-            "pagini" => _pages.Pages(_s, _notch, this, _centerScroll, _pageId, _slotId),
-            // Every page of the old window lives here now; a category with no page of its own shows its cards.
-            _ => null,
-        };
-
-        private IReadOnlyList<ActionDescriptor> VisibleActions()
-        {
-            var reg = ActionRegistry.Current;
-            if (reg == null) return Array.Empty<ActionDescriptor>();
-            // Every registered action, in the registry's own order; it refuses the ones that are off or unavailable at invoke time.
-            try { return reg.All.Where(a => (a.AllowedInvokers & ActionInvoker.UI) == ActionInvoker.UI).ToList(); }
-            catch { return Array.Empty<ActionDescriptor>(); }
+            if (_pending == null) return;
+            _soonTimer.Stop();
+            var a = _pending; _pending = null;
+            Guarded(a);
         }
 
-        private UIElement Group(string title, IReadOnlyList<ActionDescriptor> actions)
+        /// <summary>One line in the bottom bar: what an action answered, or why something did not happen.</summary>
+        private void Say(string text) => _hint.Text = text;
+
+        private void Guarded(Action a)
         {
-            var box = Ui.V(0, Ui.Cap(title.ToUpperInvariant()));
-            if (actions.Count == 0)
-            {
-                box.Children.Add(Ui.T("Nimic aici deocamdată: pornește funcțiile din Setări → funcții noi.", 12.5, "MutedBrush"));
-                return box;
-            }
-            var grid = new Grid { Margin = new Thickness(0, 8, 0, 0) };
-            int cols = LayoutRules.Columns(CenterWidth());
-            for (int i = 0; i < cols; i++) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = Ui.Star() });
-            for (int i = 0; i < actions.Count; i++)
-            {
-                int row = i / cols;
-                if (grid.RowDefinitions.Count <= row) grid.RowDefinitions.Add(new RowDefinition { Height = Ui.Auto });
-                var card = ActionCard(actions[i]);
-                Grid.SetColumn(card, i % cols);
-                Grid.SetRow(card, row);
-                grid.Children.Add(card);
-            }
-            box.Children.Add(grid);
-            return box;
-        }
-
-        private UIElement ActionCard(ActionDescriptor a)
-        {
-            var icon = new Border { Width = 40, Height = 40, CornerRadius = new CornerRadius(LayoutRules.ChipRadius), Child = Ui.Icon(string.IsNullOrEmpty(a.Icon) ? "" : a.Icon, 16) };
-            icon.SetResourceReference(Border.BackgroundProperty, "TrackBrush");      // the family colour at ~12 %, from the theme
-            icon.HorizontalAlignment = HorizontalAlignment.Left;
-            var title = Ui.T(a.Title, 13.5, "InkBrush", true);
-            title.TextWrapping = TextWrapping.Wrap;
-            var desc = Ui.T(a.Category ?? "", 12, "MutedBrush");
-            desc.TextWrapping = TextWrapping.Wrap;
-            var run = Ui.PillBtn(a.Safety == ActionSafety.Safe ? "Pornește" : "Pornește…", () => Run(a), true);
-            run.HorizontalAlignment = HorizontalAlignment.Left;
-            run.Margin = new Thickness(0, LayoutRules.Gap, 0, 0);
-            var card = Ui.Card(Ui.V(8, icon, title, desc, run), 14, 14, LayoutRules.CardRadius);
-            card.Margin = new Thickness(0, 0, LayoutRules.Gap, LayoutRules.Gap);
-            return card;
-        }
-
-        private void Run(ActionDescriptor a)
-        {
-            // The registry does the checking: a Confirm/Dangerous action is asked about first, and only then confirmed.
-            bool confirmed = a.Safety == ActionSafety.Safe ||
-                             MessageBox.Show(this, a.Title + "?", "WinNotch", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
-            if (!confirmed) return;
-            var task = ActionRegistry.Current?.InvokeAsync(a.Id, null, ActionInvoker.UI, default, confirmed);
-            if (task == null) return;
-            // The registry says why it refused (a switch off, a missing parameter, nothing available): the user sees it.
-            _ = task.ContinueWith(t =>
-            {
-                string msg = t.IsCompletedSuccessfully ? t.Result?.Message : null;
-                if (!string.IsNullOrEmpty(msg)) Dispatcher.InvokeAsync(() => _hint.Text = msg);
-            }, System.Threading.Tasks.TaskScheduler.Default);
-        }
-
-        // ------------------------------------------------------------------ right column
-
-        private void BuildRight()
-        {
-            _right.Children.Clear();
-            var clips = _s.PinnedClips ?? new List<string>();
-            _right.Children.Add(Ui.Cap("CLIPBOARD"));
-            _right.Children.Add(Ui.T(clips.Count == 0 ? "Nimic fixat" : clips.Count + (clips.Count == 1 ? " element fixat" : " elemente fixate"), 12, "MutedBrush"));
-            foreach (var c in clips.Take(3))
-            {
-                var t = Ui.T(c.Length > 60 ? c.Substring(0, 59) + "…" : c, 12, "InkBrush");
-                t.TextWrapping = TextWrapping.Wrap;
-                var card = Ui.Card(t, 12, 10, LayoutRules.ChipRadius);
-                card.Margin = new Thickness(0, 6, 0, 0);
-                _right.Children.Add(card);
-            }
-
-            _right.Children.Add(Ui.Cap("CONFIDENȚIALITATE"));
-            _right.Children.Add(PrivacyRow("Microfon", PrivacyService.Microphone()));
-            _right.Children.Add(PrivacyRow("Cameră", PrivacyService.Camera()));
-        }
-
-        private UIElement PrivacyRow(string name, CapabilityUse use)
-        {
-            var row = Ui.Cols(Ui.Star(), Ui.Auto);
-            row.Put(Ui.T(name, 12.5, "InkBrush"));
-            var state = Ui.T(use != null && use.InUse ? "în folosință" : "oprit", 12, use != null && use.InUse ? "WarnBrush" : "MutedBrush");
-            row.Put(state, 1);
-            row.Margin = new Thickness(0, 6, 0, 0);
-            return row;
+            try { a(); }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
         }
 
         // ------------------------------------------------------------------ layout
 
-        private double CenterWidth()
-        {
-            // One source of truth: both decisions are read from the window's width, not from an already shrunk one.
-            double full = ActualWidth > 0 ? ActualWidth : Width;
-            double w = full;
-            if (!LayoutRules.SingleColumn(full)) w -= LayoutRules.SidebarWidth;
-            if (LayoutRules.ShowRightColumn(full)) w -= LayoutRules.RightWidth;
-            return Math.Max(200, w - 2 * LayoutRules.Pad);
-        }
+        private double BodyWidth() => ActualWidth > 0 ? ActualWidth : Width;
 
-        private void Relayout()
+        private void Relayout() => Guarded(() =>
         {
-            try
-            {
-                double w = ActualWidth > 0 ? ActualWidth : Width;
-                _body.ColumnDefinitions[0].Width = LayoutRules.SingleColumn(w) ? new GridLength(0) : Ui.Px(LayoutRules.SidebarWidth);
-                _rightHost.Visibility = LayoutRules.ShowRightColumn(w) && !LayoutRules.WideContent(_category)
-                                        ? Visibility.Visible : Visibility.Collapsed;
-                _hint.Text = LayoutRules.Hint(FeatureFlags.Current?.IsEnabled(Features.CommandBar.CommandBarRules.FeatureId) ?? false);
-                DrawHeader(w);
-                // The cards are rebuilt only when the number of columns really changes, not on every frame of a resize.
-                // A hosted page (settings) is never rebuilt by a resize: that would throw away what is typed in it.
-                if (_cards.Children.Count == 0 ||
-                    (!LayoutRules.IsPageContent(_category) && LayoutRules.Columns(CenterWidth()) != _cols)) BuildCenter();
-            }
-            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
-        }
+            double w = BodyWidth();
+            _hint.Text = LayoutRules.Hint(FeatureFlags.Current?.IsEnabled(Features.CommandBar.CommandBarRules.FeatureId) ?? false);
+            _workspace?.Relayout(w);
+            _system?.Relayout(w);
+            DrawHeader(w);
+        });
 
-        /// <summary>The header's silhouette: the anchored notch's shape (P50), rebuilt on resize and frozen.</summary>
+        /// <summary>The header's silhouette: the anchored notch's shape (P50), through the one shared translator.</summary>
         private void DrawHeader(double windowWidth)
         {
-            double w = Math.Max(240, Math.Min(windowWidth - 2 * LayoutRules.Pad, windowWidth));
+            double w = Math.Max(240, windowWidth - 2 * LayoutRules.Pad);
             double h = LayoutRules.HeaderHeight;
             double r = AnchoredGeometry.Radius(_s.CornerRadius);
             double e = AnchoredGeometry.Ear(_s.CornerRadius, w, windowWidth, h);
-            // The one translator both shapes go through (Features/NotchAnchored/AnchoredShape.cs): the header and the
-            // notch in the screen's edge cannot drift apart, which is exactly what the brief asks of this header.
             _headerShape.Width = w + 2 * Math.Max(0, e);
             _headerShape.Height = h;
             _headerShape.Data = AnchoredShape.Silhouette(w, h, r, e);
@@ -494,20 +352,40 @@ namespace WinNotch.Features.WindowV2
 
         private void OnKey(object sender, KeyEventArgs e)
         {
-            // P51: the pop-up of a hosted page closes first; Esc only closes the window when nothing is open over it
-            if (e.Key == Key.Escape) { if (!_pages.CloseOpenPopup()) Close(); e.Handled = true; }
+            // P51: the pop-up of a page closes first; Esc only closes the window when nothing is open over it
+            if (e.Key == Key.Escape) { if (!CloseOpenPopup()) Close(); e.Handled = true; }
             else if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
-                _search.Focus();
+                _command.Focus();
                 e.Handled = true;
             }
-            else if (e.Key == Key.Enter && _search.IsKeyboardFocusWithin && !string.IsNullOrWhiteSpace(_search.Text))
+            else if (e.Key == Key.Enter && _command.IsKeyboardFocusWithin && !string.IsNullOrWhiteSpace(_command.Text))
             {
-                // the existing Command Bar does the searching: no second system
-                var hit = VisibleActions().FirstOrDefault(a => (a.Title ?? "").Contains(_search.Text, StringComparison.OrdinalIgnoreCase));
-                if (hit != null) Run(hit);
+                RunTyped();
                 e.Handled = true;
             }
         }
+
+        /// <summary>The command field starts an action by name, through the registry — no second way of running things.</summary>
+        private void RunTyped() => Guarded(() =>
+        {
+            var reg = ActionRegistry.Current;
+            if (reg == null) { Say("Acțiunile nu sunt pornite."); return; }
+            string text = _command.Text.Trim();
+            var hit = reg.All.FirstOrDefault(a => (a.AllowedInvokers & ActionInvoker.UI) == ActionInvoker.UI &&
+                                                  (a.Title ?? "").Contains(text, StringComparison.OrdinalIgnoreCase));
+            if (hit == null) { Say("Nu am găsit nicio acțiune pentru „" + text + "”."); return; }
+            bool confirmed = hit.Safety == ActionSafety.Safe ||
+                             MessageBox.Show(this, hit.Title + "?", "WinNotch", MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
+            if (!confirmed) return;
+            var task = reg.InvokeAsync(hit.Id, null, ActionInvoker.UI, default, confirmed);
+            _command.Clear();
+            if (task == null) return;
+            _ = task.ContinueWith(t =>
+            {
+                string msg = t.IsCompletedSuccessfully ? t.Result?.Message : null;
+                if (!string.IsNullOrEmpty(msg)) Dispatcher.InvokeAsync(() => Say(msg));
+            }, System.Threading.Tasks.TaskScheduler.Default);
+        });
     }
 }

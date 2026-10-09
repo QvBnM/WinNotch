@@ -342,8 +342,8 @@ namespace WinNotch
 
         /// <summary>
         /// P52: the WinNotch window, version 2, behind its switch. Returns false with the switch off, and then the old
-        /// window opens exactly as before. Every page of the classic window (settings, themes, news, the widget editor)
-        /// is built inside v2 now, so nothing sends the user back to the old window while the switch is on.
+        /// window opens exactly as before. Everything the classic window does (the pages, the widgets, the themes, the
+        /// settings, the notes) is built inside v2 now, in its own four tabs, so nothing sends the user back.
         /// </summary>
         private bool OpenWindowV2(string pageId, string slotId)
         {
@@ -372,21 +372,21 @@ namespace WinNotch
             }
         }
 
-        /// <summary>P52: the pages editor shown inside the v2 window, so a change in the notch reaches it too.</summary>
-        internal EditorWindow HostedEditor;
+        /// <summary>P52: the workspace of the v2 window, so a change made in the notch reaches it too.</summary>
+        internal Features.WindowV2.WorkspaceView HostedWorkspace;
 
         /// <summary>A page was edited in the notch: the WinNotch window, if open on it, shows the new layout.</summary>
         public void PageChangedInNotch(string pageId)
         {
             _editor?.PageChangedElsewhere(pageId);
-            HostedEditor?.PageChangedElsewhere(pageId);
+            _windowV2?.PageChangedElsewhere(pageId);
         }
 
         /// <summary>Pages were shown, hidden or added in the notch: the WinNotch window's page list follows.</summary>
         public void PagesChangedInNotch()
         {
             _editor?.PagesChangedElsewhere();
-            HostedEditor?.PagesChangedElsewhere();
+            _windowV2?.PagesChangedElsewhere();
         }
 
         public void ToggleNotch() => _notch?.ToggleByHotkey();
