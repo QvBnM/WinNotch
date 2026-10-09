@@ -31,6 +31,7 @@ namespace WinNotch.Features.WindowV2
         private readonly ScrollViewer _bodyScroll;
         private string _section = LayoutRules.Sections[0].Id;
         private int _cols = -1;
+        private double _width = LayoutRules.MinWidth;      // the window's width, as Relayout last saw it
 
         internal SystemView(AppSettings s, NotchWindow notch, Func<Window> owner, Action<string> say)
         {
@@ -63,12 +64,14 @@ namespace WinNotch.Features.WindowV2
         internal void Open(string sectionId, double width)
         {
             _section = LayoutRules.FindSection(sectionId) != null ? sectionId : LayoutRules.Sections[0].Id;
+            _width = width;
             BuildLeft();
             BuildBody(width);
         }
 
         internal void Relayout(double width)
         {
+            _width = width;
             bool left = LayoutRules.ShowLeftPanel(LayoutRules.System, width);
             ColumnDefinitions[0].Width = left ? Ui.Px(LayoutRules.LeftWidth) : new GridLength(0);
             _leftHost.Visibility = left ? Visibility.Visible : Visibility.Collapsed;
@@ -101,12 +104,10 @@ namespace WinNotch.Features.WindowV2
                 };
                 System.Windows.Automation.AutomationProperties.SetName(host, sec.Title);
                 if (on) host.SetResourceReference(Control.BackgroundProperty, "ChipHoverBrush");
-                host.Click += (o, e) => { if (!on) { _section = s.Id; BuildLeft(); BuildBody(HostWidth()); } };
+                host.Click += (o, e) => { if (!on) { _section = s.Id; BuildLeft(); BuildBody(_width); } };
                 _left.Children.Add(host);
             }
         }
-
-        private double HostWidth() => ActualWidth > 0 ? ActualWidth : LayoutRules.MinWidth;
 
         private void BuildBody(double width)
         {
@@ -124,6 +125,7 @@ namespace WinNotch.Features.WindowV2
             line.Margin = new Thickness(0, 4, 0, LayoutRules.Pad);
             _body.Children.Add(line);
 
+            _cols = LayoutRules.Columns(width);
             var actions = VisibleActions()
                 .Where(a => string.Equals(LayoutRules.SectionForAction(a.Category), _section, StringComparison.Ordinal))
                 .ToList();
@@ -132,7 +134,6 @@ namespace WinNotch.Features.WindowV2
                 _body.Children.Add(Ui.T("Nimic aici deocamdată: pornește funcțiile din Setări → funcții noi.", 12.5, "MutedBrush"));
                 return;
             }
-            _cols = LayoutRules.Columns(width);
             var grid = new Grid();
             for (int i = 0; i < _cols; i++) grid.ColumnDefinitions.Add(new ColumnDefinition { Width = Ui.Star() });
             for (int i = 0; i < actions.Count; i++)

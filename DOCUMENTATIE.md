@@ -542,22 +542,28 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   straturi de culoare (deci altă nuanță decât racordările, vizibil pe tema luminoasă) și o îmbinare în colțurile de jos.
   Racordarea e limitată și de înălțimea pastilei, ca pe forma mică să nu depășească începutul colțului de jos. Geometria
   trece printr-un singur traducător (`Features/NotchAnchored/AnchoredShape.cs`), folosit și de antetul ferestrei v2.
-- **Fereastra WinNotch v2 (P52, comutatorul „Fereastra WinNotch v2”, oprit implicit).** Cu el pornit, din notch se deschide
-  fereastra nouă: antetul are silueta notch-ului lipit de ramă (aceeași rază și aceleași racordări), în stânga o coloană cu
-  categorii (Acțiuni, Clipboard, Captură, Sunet, Pagini, Teme, Setări, Noutăți), în centru un câmp de căutare (`Ctrl + K`) și
-  carduri pentru **acțiunile care există** în aplicație — fiecare cu butonul lui, pornit prin registrul de acțiuni, cu
-  confirmare pentru ce nu se poate anula —, iar în dreapta (de la 1100 px lățime în sus) clipboard-ul fixat și starea
-  microfonului și a camerei. Jos, o sugestie și scurtătura. Fereastra ia tema aplicației (buton de schimbare în antet),
-  minimul e 900 × 600, iar sub 900 px totul se așază pe o coloană.
-  **Paginile, temele, setările și noutățile sunt înăuntru**, nu mai trimit la o a doua fereastră: fiecare e construită de
-  exact același cod ca înainte, doar ambalajul e nou — setările sunt conținutul real al paginii de setări
-  (`SettingsWindow.TakeContent`, cu propriul derulaj, ca „Salvează” să rămână vizibil), noutățile se citesc cu
-  `Updater.ParseNotes`, temele folosesc `Core/Ui/ThemeEdits` (o singură bucată de logică, apelată și de fereastra clasică),
-  iar „Pagini” e editorul de widget-uri întreg (lista de pagini, grila vie, inspectorul, galeria), găzduit prin
-  `EditorWindow.TakeContent`; pe pagina asta coloana din dreapta se dă la o parte, fiindcă editorul își aduce propriile trei
-  coloane. `Esc` închide întâi fereastra deschisă peste pagină (mărimile unui widget), apoi fereastra. Deschiderea ferestrei
-  pe pagina pe care e deja nu o reconstruiește, ca să nu se piardă ce e scris în ea.
-  Oprit, se deschide fereastra de azi, neschimbată.
+- **Fereastra WinNotch v2 (P52, comutatorul „Fereastra WinNotch v2”, oprit implicit).** Cu el pornit, din notch se
+  deschide fereastra nouă. Antetul e notch-ul desfăcut: aceeași siluetă ca la „Notch lipit de ramă” (aceeași rază,
+  aceleași racordări, același cod de desenare), ca să recunoști obiectul din marginea ecranului.
+  **Are o singură navigare: patru file în antet** — Workspace, Widgeturi, Teme, Sistem. Coloana din stânga nu e o a
+  doua navigare: aparține filei deschise și se schimbă cu ea.
+  - **Workspace** — pagina pe care o construiești. În stânga, paginile tale și cele standard (cu ochiul care le ascunde
+    din notch și cu duplicarea), iar sub ele iconița paginii pe care ești. În centru, numele paginii, pagina **vie**
+    (aceeași grilă 6×4 pe care o vezi în notch, cu drag, redimensionare și selecție) și managerul de widget-uri. În
+    dreapta, inspectorul widget-ului ales: mărimile lui, opțiunile lui și „Scoate widget-ul”.
+  - **Widgeturi** — catalogul întreg, pe toată înălțimea, cu categoriile lui. Ce alegi se adaugă pe pagina deschisă în
+    Workspace.
+  - **Teme** — modul (întunecat / luminos / ca Windows), temele gata făcute și ale tale, culorile temei folosite,
+    rotunjirea și opacitatea, și salvarea unei teme noi.
+  - **Sistem** — în stânga, secțiunile: Acțiuni, Sistem, Clipboard, Captură, Sunet, Setări, Noutăți. Primele cinci sunt
+    carduri construite din **acțiunile care există** în aplicație (fiecare pornită prin registrul de acțiuni, cu
+    confirmare pentru ce nu se poate anula); ultimele două sunt paginile de dinainte, neschimbate.
+  - **Jos**, câmpul de comandă: scrii numele unei acțiuni și `Enter` o pornește, tot prin registru. `Ctrl + K` duce
+    focusul acolo. Rezultatul acțiunii (sau motivul pentru care a fost refuzată) apare pe rândul de sub el.
+  Fereastra ia tema aplicației (butonul de temă e în antet), minimul e 900 × 600; sub 1120 px se strânge inspectorul,
+  sub 900 px și coloana din stânga. `Esc` închide întâi fereastra deschisă peste pagină (mărimile unui widget), apoi
+  fereastra. Deschiderea ferestrei pe fila și pagina pe care e deja nu o reconstruiește, ca să nu se piardă ce e scris
+  în ea. Oprit, se deschide fereastra de azi, neschimbată.
 - **Poziție.** Stânga, centru sau dreapta, pe lățimea monitorului.
 - **Mărire pe ecrane mari.** Notch-ul deschis și alertele se măresc automat: 120% pe 1440p, 135% pe 4K, 110% pe ecrane intermediare, când Windows e la scalare 100%. Manual, se alege din Setări între 100% și 160%. Pastila mică nu se mărește.
 - **Text.** Randat clar, cu contrast îmbunătățit și minimum 11 px.

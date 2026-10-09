@@ -395,27 +395,30 @@ Comutatorul „Notch lipit de ramă” (`notch-anchored`) e **oprit implicit**: 
 ### P52 — Fereastra WinNotch v2
 
 Comutatorul „Fereastra WinNotch v2” (`window-v2`) e **oprit implicit**: pornește-l din Setări → funcții noi (în fereastra
-clasică), apoi deschide fereastra din notch (Setări sau tray).
+clasică) și apasă „Salvează”, apoi deschide fereastra din notch sau din meniul iconiței.
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
-| P52.1 | Antetul e notch-ul | Deschide fereastra v2 și compară antetul cu notch-ul din marginea ecranului (cu P50 pornit). | Aceeași siluetă: lipit de marginea de sus, rotunjit doar jos, cu aceleași racordări; aceeași rază. |
-| P52.2 | Categoriile | Dă click pe fiecare rând din coloana din stânga. | Se selectează (bară de 3 px în culoarea accent, fundal diferit) și centrul se schimbă; nicio categorie goală fără explicație. |
-| P52.3 | Cardurile sunt reale | Pornește câteva funcții (raft, căști/boxe, clipboard) din Setări → funcții noi și revino. | Apar carduri pentru acțiunile lor; butonul pornește acțiunea (verifică efectul: de ex. „Copiază calea”). Nicio acțiune „în curând”. |
-| P52.4 | Confirmare | Caută un card al unei acțiuni care nu se poate anula (dacă există). | Apare o întrebare înainte; la „Anulare” nu se întâmplă nimic. |
-| P52.5 | Căutarea | Apasă `Ctrl + K`, scrie o parte din numele unei acțiuni și apasă Enter. | Focusul intră în câmp și acțiunea potrivită pornește. |
-| P52.6 | Coloana dreapta | Fixează 1–2 elemente în Clipboard (din notch) și deschide v2 lat (peste 1100 px). | Apar elementele fixate și starea microfonului/camerei. Îngustează sub 1100 px: coloana dispare, nimic nu se taie. |
-| P52.7 | O coloană | Trage fereastra la 900 px lățime, apoi mai jos (cât permite minimul). | La 900 px: 3 carduri pe rând, bara laterală vizibilă; sub 900: bara laterală se strânge, fără bară de derulare orizontală. |
-| P52.8 | Tema | Apasă butonul de temă din antet, de două ori. | Fereastra trece pe luminos și revine; textele rămân lizibile în ambele (fără gri pe gri), iar notch-ul se schimbă la fel. |
-| P52.9 | Setările sunt înăuntru | Deschide „Setări” din coloana din stânga. | Pagina de setări apare **în aceeași fereastră**, nu într-una nouă: toate opțiunile de dinainte, cu derulajul ei și cu „Salvează” vizibil jos. Salvează ceva și verifică în notch că s-a aplicat. |
-| P52.10 | Comutatorul oprit | Oprește „Fereastra WinNotch v2” și deschide fereastra din notch. | Se deschide fereastra clasică, neschimbată (test de non-regresie). |
-| P52.11 | Noutăți | Deschide „Noutăți”. | Notele versiunii apar în fereastră, grupate („Nou”, „Reparat”…), cu jetoanele temei; pe tema luminoasă și pe cea întunecată textul e lizibil. |
-| P52.12 | Teme | Deschide „Teme”: schimbă modul, alege o temă, click pe o culoare, mișcă sliderele, salvează o temă nouă, apoi șterge-o. | Totul se aplică pe loc în notch, exact ca în fereastra clasică; locul derulat se păstrează după fiecare schimbare; după ce miști un slider și închizi fereastra imediat, valoarea e salvată. |
-| P52.13 | Pagini | Deschide „Pagini”: alege o pagină a ta, trage un widget, click pe el (inspectorul din dreapta), schimbă-i mărimea și o opțiune, trage unul nou din galerie, apoi șterge-l. | Editorul complet e în fereastră (lista de pagini, grila vie, inspectorul, galeria) și totul ajunge pe loc în notch. Coloana „Clipboard / Confidențialitate” a v2 se dă la o parte pe pagina asta. |
-| P52.14 | Esc pe Pagini | Pe „Pagini”, click pe un widget din galerie ca să se deschidă fereastra de mărimi, apoi apasă Esc. Apasă Esc din nou. | Prima apăsare închide doar fereastra de mărimi; a doua închide fereastra WinNotch. |
-| P52.15 | Nimic nu trimite „în fereastra clasică” | Umblă prin toate categoriile. | Niciun card „Se deschide în fereastra clasică”; fereastra clasică apare numai cu comutatorul oprit. |
-| P52.16 | Schimbare în notch | Cu „Pagini” deschis pe o pagină a ta, mută un widget din notch (modul editare). | Editorul din fereastră arată noua aranjare. |
-| P52.17 | Redeschidere | Cu „Setări” deschis și ceva scris într-un câmp, deschide fereastra din nou din notch (Setări din notch). | Fereastra vine în față fără să reconstruiască pagina: ce ai scris e încă acolo. |
+| P52.1 | O singură navigare | Deschide fereastra și uită-te la ea întreagă. | Sus, patru file: Workspace · Widgeturi · Teme · Sistem. Nicăieri două coloane de navigare una lângă alta, și niciun rând care să repete o filă (fără „Teme și culori / Setări / Noutăți” în coloana din stânga). |
+| P52.2 | Antetul e notch-ul | Pornește și „Notch lipit de ramă” și compară antetul ferestrei cu notch-ul din marginea ecranului. | Aceeași siluetă: lipit de margine, rotunjit doar jos, cu aceleași racordări și aceeași rază. |
+| P52.3 | Workspace, coloana din stânga | Deschide Workspace. | În stânga: paginile tale, „+ Pagină goală”, apoi paginile standard (cu ochiul și cu duplicarea). Dacă ești pe o pagină de-a ta, dedesubt apare „ICONIȚA PAGINII”; pe una standard, nu. |
+| P52.4 | Pagina vie | Trage un widget în pagină, mută-l, trage-l de colț ca să-l redimensionezi. | Se mișcă exact ca în notch și apare pe loc în notch (deschide-l cu `Win+Alt+N`). |
+| P52.5 | Inspectorul | Click pe un widget din pagină. | În dreapta apar numele, mărimile (cu cea de acum marcată) și opțiunile lui. Schimbă o mărime și o opțiune: se aplică pe loc. „Scoate widget-ul” îl scoate. |
+| P52.6 | Inspector gol | Click în gol, lângă widget-uri. | În dreapta scrie „Niciun widget ales”, plus câte widget-uri și câte rânduri sunt folosite. |
+| P52.7 | Managerul de widget-uri | În Workspace, derulează sub pagină. | „MANAGER WIDGETURI”: categoriile în stânga, cardurile în dreapta. Trage unul pe pagină; click pe unul deschide mărimile lui. |
+| P52.8 | Fila Widgeturi | Deschide Widgeturi. | Catalogul pe toată înălțimea; rândul de sus spune pe ce pagină se adaugă. Alege o mărime: widget-ul apare pe pagina din Workspace, iar jos scrie pe care. |
+| P52.9 | Pagină plină | Umple o pagină și mai adaugă unul. | Jos apare „Pagina e plină: scoate sau micșorează un widget.”, iar pagina nu se strică. |
+| P52.10 | Teme | Deschide Teme: schimbă modul, alege o temă, click pe o culoare, mișcă sliderele, salvează o temă nouă, apoi șterge-o. | Totul se aplică pe loc în notch; locul derulat se păstrează după fiecare schimbare; după ce miști un slider și închizi fereastra imediat, valoarea e salvată. |
+| P52.11 | Sistem, secțiunile | Deschide Sistem și dă click pe fiecare rând din stânga. | Acțiuni / Sistem / Clipboard / Captură / Sunet arată carduri pentru acțiuni reale; Setări arată pagina de setări întreagă, cu „Salvează” vizibil jos; Noutăți arată notele versiunii. |
+| P52.12 | O acțiune pornește | Pe un card, apasă „Pornește”. | Acțiunea chiar se întâmplă; dacă registrul o refuză, motivul apare pe rândul de jos. Pentru una care nu se poate anula, apare întâi o întrebare. |
+| P52.13 | Bara de comandă | Apasă `Ctrl + K`, scrie o parte din numele unei acțiuni, `Enter`. | Focusul intră în câmp, acțiunea pornește, câmpul se golește. Scrie ceva inexistent: jos scrie că nu a găsit nimic. |
+| P52.14 | Esc | În Workspace, click pe un widget din galerie ca să se deschidă mărimile, apoi `Esc`. Apoi `Esc` din nou. | Prima apăsare închide doar fereastra de mărimi; a doua închide fereastra WinNotch. |
+| P52.15 | Lățimea | Trage fereastra de la lat la îngust. | Sub ~1120 px dispare inspectorul; sub 900 px dispare și coloana din stânga. Nimic tăiat, nicio bară de derulare orizontală. |
+| P52.16 | Tema luminoasă și cea întunecată | Apasă butonul de temă din antet, de două ori, pe fiecare filă. | Totul rămâne lizibil în ambele (inclusiv pagina de setări, care își ține cromul deschis); notch-ul se schimbă la fel. |
+| P52.17 | Tastatura | Apasă `Tab` repetat din antet. | Filele, rândurile din coloana din stânga și butoanele primesc focus, cu un contur vizibil; `Enter` și `Space` le apasă. |
+| P52.18 | Schimbare în notch | Cu Workspace deschis pe o pagină de-a ta, mută un widget din notch (modul editare). | Pagina din fereastră arată noua aranjare. |
+| P52.19 | Redeschidere | Cu Sistem → Setări deschis și ceva scris într-un câmp, deschide fereastra din nou din notch. | Vine în față fără să reconstruiască pagina: ce ai scris e încă acolo. |
+| P52.20 | Comutatorul oprit | Oprește „Fereastra WinNotch v2” și deschide fereastra din notch. | Se deschide fereastra clasică, neschimbată (test de non-regresie). |
 
 ### Audit comutatoare — ce vezi când pornești o funcție
 

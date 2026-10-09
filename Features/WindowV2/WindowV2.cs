@@ -231,15 +231,13 @@ namespace WinNotch.Features.WindowV2
                 switch (_tab)
                 {
                     case LayoutRules.Workspace:
-                        if (_workspace == null)
-                        {
-                            _workspace = new WorkspaceView(_s, _notch, () => this, Soon, Flush, Say);
-                            if (Application.Current is App app) app.HostedWorkspace = _workspace;
-                        }
+                        EnsureWorkspace();
                         _workspace.Open(pageId ?? _pageId, _slotId);
                         _bodyHost.Child = _workspace;
                         break;
                     case LayoutRules.Widgets:
+                        // the workspace owns the page the widgets are added to, even if you never opened that tab
+                        if (_workspace == null) { EnsureWorkspace(); _workspace.Open(_pageId, _slotId); }
                         _widgets ??= new WidgetsView(() => _workspace, Say);
                         _widgets.Open();
                         _bodyHost.Child = _widgets;
@@ -262,6 +260,17 @@ namespace WinNotch.Features.WindowV2
                 if (_tab != LayoutRules.System) _system?.Detach();
                 Relayout();
             });
+        }
+
+        /// <summary>
+        /// The workspace is built once and kept: it owns the open page, which the other tabs ask about. Building it
+        /// does not open a page — the caller does that, so a page is never built twice in a row.
+        /// </summary>
+        private void EnsureWorkspace()
+        {
+            if (_workspace != null) return;
+            _workspace = new WorkspaceView(_s, _notch, () => this, Soon, Flush, Say);
+            if (Application.Current is App app) app.HostedWorkspace = _workspace;
         }
 
         /// <summary>Rebuilds the themes page where it is, keeping the place you had scrolled to.</summary>

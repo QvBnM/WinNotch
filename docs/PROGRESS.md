@@ -513,3 +513,46 @@
   Mediu acceptat conștient: FA1 citește toate fișierele `.cs` ale aplicației la rulare (≈100 de fișiere) — e un test, nu
   cod care rulează în aplicație, și e singurul mod de a prinde un comutator rămas fără cititor.
 - **Stare:** ramura `audit-feature-flags`, fără versiune nouă până la testarea pe Windows (verificările FA.1–FA.6).
+
+
+## Regândirea ferestrei WinNotch v2 (cerut de autor pe 0.6.22, cu captură, 9 oct 2026)
+
+- **Raportat:** „As vrea o regandire totala a acelui ecran. Mi se pare ca nu are nici un sens.” Captura arăta fila
+  „Pagini”: **trei coloane de navigare** una lângă alta (categoriile ferestrei, lista de pagini a editorului,
+  inspectorul), iar lista de pagini repeta „Teme și culori / Setări / Noutăți”, care erau deja categorii în coloana din
+  stânga. Carduri albe pe fundal crem, filele din antet fără legătură cu ce era dedesubt, antetul-notch invizibil.
+- **Cauza:** pasul de dinainte (fuziunea) a **găzduit fereastra clasică înăuntrul celei noi** (`EditorWindow.TakeContent`),
+  ca să nu dublăm logica. A mers ca funcție, dar a lipit două aplicații una peste alta: două navigări, două palete.
+  Decizia a fost greșită și e retrasă.
+- **Direcția, după mockup-ul autorului** (confirmată de el: doar 4 file, și nimic desenat care nu există azi):
+  o singură navigare, patru file în antet; coloana din stânga aparține filei, nu ferestrei.
+- **Făcut:**
+  - `LayoutRules` rescris: `Tabs` (workspace, widgeturi, teme, sistem), `Sections` (coloana din stânga a filei Sistem),
+    `HasLeftPanel` / `HasInspector` / `ShowLeftPanel` / `ShowInspector`, `TabFor` / `SectionFor` pentru intrările vechi.
+  - `WorkspaceView` (nou): paginile și iconița paginii în stânga, numele + pagina vie + managerul de widget-uri în
+    centru, inspectorul în dreapta. Pagina e `WidgetPage` — chiar controlul pe care îl arată notch-ul — iar managerul e
+    `Gallery`; amândouă desenau deja cu jetoanele temei.
+  - `WidgetInspector` (nou): mărimile vin din `Gallery.SizePreviews`, opțiunile din `OptionDef`-urile widget-ului, iar
+    fiecare schimbare trece prin `page.Commit()`. Singurul lucru nou sunt controalele, pe jetoanele temei: versiunea din
+    fereastra clasică e desenată în paleta ei fixă deschisă și nu putea fi folosită aici.
+  - `WidgetsView` (nou): catalogul pe toată înălțimea; ce alegi ajunge pe pagina din Workspace.
+  - `SystemView` (nou): secțiunile, cardurile construite din acțiunile înregistrate, plus setările și noutățile
+    (conținutul existent, prin `EmbeddedPages`).
+  - `WindowV2` rescris ca înveliș: antetul-notch cu filele, corpul, bara de comandă de jos (pornește acțiuni prin
+    `ActionRegistry`, nu printr-un al doilea drum).
+  - `EditorWindow` pierde `TakeContent` / `DetachContent` / `CloseOpenPopup` (nu le mai cheamă nimeni) și redevine exact
+    fereastra de dinainte, folosită doar cu comutatorul oprit.
+- **Greșeli prinse la recitire, înainte de CI:** `SetResourceReference(BackgroundProperty, …)` pe un `Border` dintr-o
+  clasă derivată din `Grid` lega `Panel.BackgroundProperty`, pe care `Border` nu-l desenează niciodată — opt fundaluri
+  care n-ar fi apărut, fără nicio eroare; `TextBoxBase` lipsea dintr-un `using`; `WidgetsView` ținea două câmpuri pe care
+  nu le citea (avertisment de build); fila Widgeturi putea spune „fă-ți o pagină” deși aveai pagini, fiindcă Workspace-ul
+  nu era construit încă; `SystemView` amesteca lățimea ferestrei cu lățimea proprie când alegeai o secțiune.
+- **Teste:** WV1–WV26 rescrise. Pe lângă regulile pure, pin-uri pe sursă care păzesc tocmai problema raportată: fereastra
+  nouă nu mai poate găzdui fereastra clasică (WV14), nicio filă nu trimite la ea (WV15), nicio culoare în afara paletei
+  temei (WV16), inspectorul nu rescrie modelul widget-urilor (WV22).
+- **CI:** rularea 91 verde din prima (build + 847 teste C# + 16 + 3 extensie + ambele drumuri de fum).
+- **Rămas spus pe față:** testele de fum rulează cu comutatorul oprit, deci fereastra nouă nu e pornită în CI — verificările
+  P52.1–P52.20 se fac pe Windows. Pagina de setări își păstrează cromul deschis și pe tema întunecată (e conținutul
+  neschimbat al `SettingsWindow`). Din mockup nu am desenat microfonul, avatarul de cont și comutatoarele care nu au
+  funcție în aplicație, la cererea autorului.
+- **Stare:** ramura `p52-redesign`, pornită din `main`.
