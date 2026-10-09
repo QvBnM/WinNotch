@@ -433,6 +433,10 @@ namespace WinNotch
                 var head = new StackPanel { Orientation = Orientation.Horizontal };
                 head.Children.Add(new TextBlock { Text = f.Name, FontWeight = FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center });
                 head.Children.Add(tag);
+                // A feature already on by default has to say so, or ticking its box changes nothing and it looks dead.
+                string note = Core.Flags.FeatureCatalog.RowNote(f);
+                if (note != null)
+                    head.Children.Add(new TextBlock { Text = note, FontSize = 11, Foreground = muted, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) });
                 var cb = new CheckBox { Content = head, IsChecked = _features[id], Margin = new Thickness(0, 6, 0, 0) };
                 cb.Click += (o, e) => _features[id] = cb.IsChecked == true;
                 FeatureRows.Children.Add(cb);

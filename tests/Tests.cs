@@ -344,6 +344,7 @@ namespace WinNotch
             InterruptTests();
             NotchAnchoredTests();
             WindowV2Tests();
+            FeatureAuditTests();
 
             Console.WriteLine(string.Join("\n", lines));
             Console.WriteLine($"\nTOTAL {pass + fail}: {pass} PASS, {fail} FAIL");
