@@ -64,10 +64,54 @@ namespace WinNotch
                   LayoutRules.CategoryForAction("ceva nou") == "actiuni" && LayoutRules.CategoryForAction(null) == "actiuni" &&
                   LayoutRules.CategoryForAction("clipboard") == "clipboard" /* fără majuscule */);
 
-            Check("WV9", "Paginile, temele, setările și noutățile se deschid în fereastra clasică (conținutul nu e dublat)",
-                  LayoutRules.IsClassicContent("pagini") && LayoutRules.IsClassicContent("teme") &&
-                  LayoutRules.IsClassicContent("setari") && LayoutRules.IsClassicContent("noutati") &&
-                  !LayoutRules.IsClassicContent("actiuni") && !LayoutRules.IsClassicContent("clipboard"));
+            Check("WV9", "Paginile, temele, setările și noutățile sunt pagini întregi, nu carduri",
+                  LayoutRules.IsPageContent("pagini") && LayoutRules.IsPageContent("teme") &&
+                  LayoutRules.IsPageContent("setari") && LayoutRules.IsPageContent("noutati") &&
+                  !LayoutRules.IsPageContent("actiuni") && !LayoutRules.IsPageContent("clipboard"));
+
+            // Fuziunea cerută de autor: v2 nu mai arată un card „se deschide în fereastra clasică” pentru Setări.
+            Check("WV24", "Setările sunt în fereastra nouă, nu un card care trimite la cea clasică",
+                  LayoutRules.IsEmbeddedContent("setari") && !LayoutRules.IsClassicContent("setari") &&
+                  !LayoutRules.IsEmbeddedContent("actiuni") && !LayoutRules.IsEmbeddedContent("clipboard"));
+
+            string emb = Src("Features/WindowV2/EmbeddedPages.cs");
+            Check("WV25", "Pagina de setări e cea existentă (TakeContent), legată la ScrollViewer-ul centrului, și se desprinde (Detach)",
+                  emb.Contains("new SettingsWindow(s)") && emb.Contains("_settings.TakeContent()") &&
+                  emb.Contains("new Binding(\"ViewportHeight\") { Source = host }") &&
+                  emb.Contains("ScrollBarVisibility.Disabled") && emb.Contains("_settings?.Detach();") &&
+                  // niciun control de setări rescris aici: pagina vine întreagă din SettingsWindow
+                  !emb.Contains("CheckBox") && !emb.Contains("_s.Standby") && !emb.Contains("AppSettings.Widgets"));
+
+            string v2 = Src("Features/WindowV2/WindowV2.cs");
+            Check("WV26", "Fereastra desprinde pagina la schimbarea categoriei și la închidere, și nu o reconstruiește la redimensionare",
+                  Count(Norm(v2), "_pages.Detach();") == 2 &&
+                  Norm(v2).Contains("!LayoutRules.IsPageContent(_category) && LayoutRules.Columns(CenterWidth()) != _cols"));
+
+            Check("WV28", "Noutățile sunt în fereastra nouă, citite cu codul existent, cu jetoanele temei",
+                  LayoutRules.IsEmbeddedContent("noutati") && !LayoutRules.IsClassicContent("noutati") &&
+                  emb.Contains("Services.Updater.ParseNotes(Services.Updater.OwnNotes())") &&
+                  !System.Text.RegularExpressions.Regex.IsMatch(emb, @"Color\.From|Brushes\.(?!Transparent)") &&
+                  // singurele culori: cele ale paletei desenate în previzualizarea temei
+                  Count(emb, "new SolidColorBrush") == Count(emb, "new SolidColorBrush(ThemeManager.Parse"));
+
+            string edits = Src("Core/Ui/ThemeEdits.cs"), ed = Src("EditorWindow.cs");
+            Check("WV29", "Temele sunt în fereastra nouă; ce schimbă pagina trece printr-o singură bucată de cod, folosită de ambele ferestre",
+                  LayoutRules.IsEmbeddedContent("teme") && !LayoutRules.IsClassicContent("teme") &&
+                  emb.Contains("internal FrameworkElement Themes(") &&
+                  new[] { "SetOverride", "ResetOverride", "ResetAll", "IsChanged", "Choose", "SaveAs", "Delete", "PickColor" }
+                      .All(m => edits.Contains("internal static") && edits.Contains(m + "(") &&
+                                emb.Contains("Core.Ui.ThemeEdits." + m + "(") && ed.Contains("Core.Ui.ThemeEdits." + m + "(")) &&
+                  edits.Contains("ValidHex(") && ed.Contains("Core.Ui.ThemeEdits.ValidHex("),
+                  "lipsește o metodă din ThemeEdits sau un apelant");
+
+            Check("WV30", "Fereastra clasică nu mai ține o a doua copie a regulilor temelor",
+                  !ed.Contains("S.CustomThemes.Add(") && !ed.Contains("S.ThemeOverrides.Remove(") &&
+                  !ed.Contains("System.Windows.Forms.ColorDialog") && !ed.Contains("Uri.IsHexDigit"));
+
+            // Pe tema întunecată, cardurile albe ale setărilor cu text alb erau ilizibile: pagina își duce cromul cu ea.
+            string sw = Src("SettingsWindow.xaml.cs");
+            Check("WV27", "Conținutul setărilor își duce fundalul și cerneala proprii oriunde e găzduit",
+                  sw.Contains("content.SetValue(TextBlock.ForegroundProperty") && sw.Contains("sheet.Background = new SolidColorBrush"));
 
             Check("WV10", "Comutatorul din catalog are id-ul regulilor, e Experimental și oprit implicit",
                   LayoutRules.FeatureId == FeatureCatalog.WindowV2 &&
@@ -76,7 +120,7 @@ namespace WinNotch
 
             string app = Src("App.xaml.cs"), win = Src("Features/WindowV2/WindowV2.cs");
             Check("WV11", "Non-regresie: cu comutatorul oprit se deschide fereastra veche, iar o eroare în v2 cade pe ea",
-                  app.Contains("if (OpenWindowV2(pageId)) return;") &&
+                  app.Contains("if (OpenWindowV2(pageId, slotId)) return;") &&
                   app.Contains("if (!(Core.Flags.FeatureFlags.Current?.IsEnabled(Features.WindowV2.LayoutRules.FeatureId) ?? false)) return false;") &&
                   app.Contains("ReportError(Features.WindowV2.LayoutRules.FeatureId, ex)"));
 
@@ -103,7 +147,7 @@ namespace WinNotch
 
             Check("WV18", "Tastatura: rândurile din bara laterală sunt butoane (Tab, Enter, Space), au nume pentru accesibilitate, iar Esc închide fereastra",
                   win.Contains("new Button") && win.Contains("AutomationProperties.SetName(host, c.Title)") &&
-                  win.Contains("if (e.Key == Key.Escape) { Close(); e.Handled = true; }"));
+                  win.Contains("if (e.Key == Key.Escape) {") && win.Contains("Close(); e.Handled = true; }"));
 
             Check("WV19", "Rezultatul unei acțiuni se arată (nu se înghite), iar ceasul nu bate când fereastra e minimizată",
                   win.Contains("_hint.Text = msg") && win.Contains("if (!IsVisible || WindowState == WindowState.Minimized) return;") &&
@@ -139,6 +183,31 @@ namespace WinNotch
             var dup = keys.GroupBy(k => k, StringComparer.Ordinal).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
             Check("WV23", "Theme.xaml nu are două resurse cu aceeași cheie (WPF aruncă la pornire, înainte de orice fereastră)",
                   dup.Count == 0, string.Join(", ", dup));
+
+            // Fuziunea cerută de autor: nicio categorie nu mai trimite la fereastra clasică.
+            Check("WV31", "Toate cele patru pagini (pagini, teme, setări, noutăți) sunt în fereastra nouă",
+                  LayoutRules.Categories.Where(c => LayoutRules.IsPageContent(c.Id)).Count() == 4 &&
+                  LayoutRules.Categories.Where(c => LayoutRules.IsPageContent(c.Id)).All(c => LayoutRules.IsEmbeddedContent(c.Id)) &&
+                  !LayoutRules.IsClassicContent("pagini") && !LayoutRules.IsClassicContent("teme") &&
+                  !win.Contains("Se deschide în fereastra clasică") && !win.Contains("OpenClassicEditor") &&
+                  !app.Contains("OpenClassicEditor"));
+
+            Check("WV32", "Editorul de pagini e cel existent, găzduit (EditorWindow.TakeContent), nu o a doua copie",
+                  emb.Contains("new EditorWindow(s, notch)") && emb.Contains("_editor.TakeContent(owner)") &&
+                  emb.Contains("_editor.DetachContent();") && !emb.Contains("new WidgetPage(") && !emb.Contains("new Gallery(") &&
+                  ed.Contains("internal FrameworkElement TakeContent(Window host)") &&
+                  ed.Contains("internal void DetachContent()") && ed.Contains("_tick.Start();"));
+
+            Check("WV33", "Găzduit: dialogurile de fișiere au fereastra gazdă, Esc închide întâi fereastra de mărimi, iar schimbările din notch ajung și la editorul găzduit",
+                  ed.Contains("_dialogOwner ?? this") && !System.Text.RegularExpressions.Regex.IsMatch(ed, @"ShowDialog\(this\)") &&
+                  ed.Contains("internal bool CloseOpenPopup()") &&
+                  win.Contains("if (!_pages.CloseOpenPopup()) Close();") &&
+                  app.Contains("HostedEditor?.PageChangedElsewhere(pageId);") &&
+                  app.Contains("HostedEditor?.PagesChangedElsewhere();"));
+
+            Check("WV34", "Editorul de pagini primește tot centrul: coloana din dreapta se dă la o parte",
+                  LayoutRules.WideContent("pagini") && !LayoutRules.WideContent("actiuni") && !LayoutRules.WideContent("setari") &&
+                  win.Contains("LayoutRules.ShowRightColumn(w) && !LayoutRules.WideContent(_category)"));
 
             Check("WV15", "Nimic „în curând”: cardurile vin din acțiunile înregistrate, nu dintr-o listă scrisă de mână",
                   win.Contains("reg.All.Where(") && !win.Contains("în curând") && !win.Contains("Focus Mode") &&

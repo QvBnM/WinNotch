@@ -38,9 +38,17 @@ namespace WinNotch.Features.WindowV2
         private readonly TextBlock _clock = Ui.T("--:--", 12, "MutedBrush", false, true);
         private readonly System.Windows.Threading.DispatcherTimer _tick =
             new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
+        /// <summary>Debounce for the sliders of the themes page (nothing is saved while one is still moving).</summary>
+        private readonly System.Windows.Threading.DispatcherTimer _soon =
+            new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        private Action _pending;
         private readonly StackPanel _cards = new StackPanel();
         private UIElement _searchCard;
+        private ScrollViewer _centerScroll;
+        private readonly EmbeddedPages _pages = new EmbeddedPages();
         private string _category = LayoutRules.DefaultCategory;
+        /// <summary>What Open() was asked for, so the pages editor opens on the right page and widget.</summary>
+        private string _pageId, _slotId;
         private Grid _body;
         private int _cols = -1;
         private Action<string> _flagHandler;
@@ -72,11 +80,23 @@ namespace WinNotch.Features.WindowV2
             SizeChanged += (o, e) => Relayout();
             PreviewKeyDown += OnKey;
             _tick.Tick += (o, e) => OnTick();
+            _soon.Tick += (o, e) =>
+            {
+                _soon.Stop();
+                var a = _pending; _pending = null;
+                try { a?.Invoke(); }
+                catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
+            };
             Loaded += (o, e) => { OnTick(); _tick.Start(); Relayout(); };
             StateChanged += (o, e) => { if (WindowState == WindowState.Minimized) _tick.Stop(); else { OnTick(); _tick.Start(); } };
             Closed += (o, e) =>
             {
                 _tick.Stop();
+                _soon.Stop();
+                var last = _pending; _pending = null;
+                try { last?.Invoke(); }               // a slider still pending is saved, not lost
+                catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
+                _pages.Detach();
                 if (_flagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _flagHandler;
                 _flagHandler = null;
             };
@@ -90,15 +110,35 @@ namespace WinNotch.Features.WindowV2
         }
 
         /// <summary>Opens the window on a category; the old window's ids ("themes", "settings", "news") and page ids still work.</summary>
-        public void Open(string pageId = null)
+        public void Open(string pageId = null, string slotId = null)
         {
             try
             {
-                _category = LayoutRules.CategoryFor(pageId);
+                string category = LayoutRules.CategoryFor(pageId);
+                string wanted = category == "pagini" ? pageId : null;
+                // Opening the window again on the page it already shows must not rebuild it: a hosted page (the settings
+                // form, the widget editor) would lose what is typed or selected in it.
+                bool same = category == _category && wanted == _pageId && (wanted == null || slotId == _slotId) &&
+                            _cards.Children.Count > 0;
+                _category = category;
+                _pageId = wanted;
+                _slotId = wanted != null ? slotId : null;
                 BuildSidebar();
-                BuildCenter();
+                if (!same) BuildCenter();
                 BuildRight();
                 Relayout();
+            }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
+        }
+
+        /// <summary>P14 ("settings.*" actions): the settings page, scrolled to one option and focused — as in the classic window.</summary>
+        internal void RevealSetting(string target)
+        {
+            try
+            {
+                if (!LayoutRules.IsEmbeddedContent("setari")) return;
+                Select("setari");
+                _pages.Reveal(target);
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
         }
@@ -127,7 +167,8 @@ namespace WinNotch.Features.WindowV2
             var sideHost = new Border { Child = _sidebar, CornerRadius = new CornerRadius(0, LayoutRules.CardRadius, LayoutRules.CardRadius, 0) };
             sideHost.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
             _body.Put(sideHost);
-            _body.Put(new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _center, Padding = new Thickness(LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad) }, 1);
+            _centerScroll = new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _center, Padding = new Thickness(LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad) };
+            _body.Put(_centerScroll, 1);
             _body.Put(_rightHost, 2);
             root.Put(_body, 0, 1);
 
@@ -257,8 +298,11 @@ namespace WinNotch.Features.WindowV2
                 _center.Children.Add(_cards);
             }
             _cards.Children.Clear();
+            _pages.Detach();                      // whatever page was hosted lets go before another one is built
             _cols = LayoutRules.Columns(CenterWidth());
-            if (LayoutRules.IsClassicContent(_category)) { _cards.Children.Add(ClassicCard()); return; }
+            // A page of its own fills the centre: the search field looks for actions, which is not what it offers.
+            _searchCard.Visibility = LayoutRules.IsPageContent(_category) ? Visibility.Collapsed : Visibility.Visible;
+            if (LayoutRules.IsPageContent(_category) && EmbeddedPage() is UIElement page) { _cards.Children.Add(page); return; }
             var cat = LayoutRules.Find(_category);
             var actions = VisibleActions().Where(a => string.Equals(LayoutRules.CategoryForAction(a.Category), _category, StringComparison.Ordinal)).ToList();
             _cards.Children.Add(Group(cat?.Title ?? "Acțiuni", actions));
@@ -279,22 +323,30 @@ namespace WinNotch.Features.WindowV2
             return card;
         }
 
-        private UIElement ClassicCard()
+        /// <summary>Rebuilds the open page where it is, keeping the place you had scrolled to.</summary>
+        private void ReloadPage()
         {
-            var cat = LayoutRules.Find(_category);
-            var text = Ui.V(4, Ui.T(cat?.Title ?? "", 15, "InkBrush", true),
-                            Ui.T("Se deschide în fereastra clasică, neschimbată.", 12, "MutedBrush"));
-            var open = Ui.PillBtn("Deschide", () => ((App)Application.Current).OpenClassicEditor(ClassicPageId()), true);
-            open.HorizontalAlignment = HorizontalAlignment.Left;
-            open.Margin = new Thickness(0, LayoutRules.Gap, 0, 0);
-            return Ui.Card(Ui.V(0, text, open), 16, 14, LayoutRules.CardRadius);
+            double off = _centerScroll?.VerticalOffset ?? 0;
+            BuildCenter();
+            if (_centerScroll != null) Dispatcher.InvokeAsync(() => _centerScroll.ScrollToVerticalOffset(off), System.Windows.Threading.DispatcherPriority.Loaded);
         }
 
-        private string ClassicPageId() => _category switch
+        /// <summary>Runs the last asked-for change shortly after the slider stops moving (one timer, not one per row).</summary>
+        private void Soon(Action a)
         {
-            "teme" => "themes",
-            "setari" => "settings",
-            "noutati" => "news",
+            _pending = a;
+            _soon.Stop();
+            _soon.Start();
+        }
+
+        /// <summary>The body of a page that now lives here: built by the same code the classic window uses.</summary>
+        private UIElement EmbeddedPage() => _category switch
+        {
+            "setari" => _pages.Settings(_s, _notch, _centerScroll, () => { if (_category == "setari") BuildCenter(); }),
+            "noutati" => _pages.News(),
+            "teme" => _pages.Themes(_s, _notch, ReloadPage, Soon),
+            "pagini" => _pages.Pages(_s, _notch, this, _centerScroll, _pageId, _slotId),
+            // Every page of the old window lives here now; a category with no page of its own shows its cards.
             _ => null,
         };
 
@@ -414,11 +466,14 @@ namespace WinNotch.Features.WindowV2
             {
                 double w = ActualWidth > 0 ? ActualWidth : Width;
                 _body.ColumnDefinitions[0].Width = LayoutRules.SingleColumn(w) ? new GridLength(0) : Ui.Px(LayoutRules.SidebarWidth);
-                _rightHost.Visibility = LayoutRules.ShowRightColumn(w) ? Visibility.Visible : Visibility.Collapsed;
+                _rightHost.Visibility = LayoutRules.ShowRightColumn(w) && !LayoutRules.WideContent(_category)
+                                        ? Visibility.Visible : Visibility.Collapsed;
                 _hint.Text = LayoutRules.Hint(FeatureFlags.Current?.IsEnabled(Features.CommandBar.CommandBarRules.FeatureId) ?? false);
                 DrawHeader(w);
                 // The cards are rebuilt only when the number of columns really changes, not on every frame of a resize.
-                if (_cards.Children.Count == 0 || LayoutRules.Columns(CenterWidth()) != _cols) BuildCenter();
+                // A hosted page (settings) is never rebuilt by a resize: that would throw away what is typed in it.
+                if (_cards.Children.Count == 0 ||
+                    (!LayoutRules.IsPageContent(_category) && LayoutRules.Columns(CenterWidth()) != _cols)) BuildCenter();
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(LayoutRules.FeatureId, ex); }
         }
@@ -439,7 +494,8 @@ namespace WinNotch.Features.WindowV2
 
         private void OnKey(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Escape) { Close(); e.Handled = true; }
+            // P51: the pop-up of a hosted page closes first; Esc only closes the window when nothing is open over it
+            if (e.Key == Key.Escape) { if (!_pages.CloseOpenPopup()) Close(); e.Handled = true; }
             else if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
                 _search.Focus();

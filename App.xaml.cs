@@ -310,6 +310,7 @@ namespace WinNotch
         {
             OpenEditor("settings");
             _editor?.RevealSetting(target);
+            _windowV2?.RevealSetting(target);        // P52: the settings page lives in v2 too
         }
 
         /// <summary>
@@ -319,7 +320,7 @@ namespace WinNotch
         public void OpenEditor(string pageId = null, string slotId = null)
         {
             if (_notch == null) return;
-            if (OpenWindowV2(pageId)) return;        // P52 hook (Features/WindowV2): the new window; false with the switch off
+            if (OpenWindowV2(pageId, slotId)) return;    // P52 hook (Features/WindowV2): the new window; false with the switch off
             if (_editor == null)
             {
                 _editor = new EditorWindow(Settings, _notch);
@@ -341,12 +342,12 @@ namespace WinNotch
 
         /// <summary>
         /// P52: the WinNotch window, version 2, behind its switch. Returns false with the switch off, and then the old
-        /// window opens exactly as before. The classic window is still used from inside v2 for pages, themes and settings.
+        /// window opens exactly as before. Every page of the classic window (settings, themes, news, the widget editor)
+        /// is built inside v2 now, so nothing sends the user back to the old window while the switch is on.
         /// </summary>
-        private bool OpenWindowV2(string pageId)
+        private bool OpenWindowV2(string pageId, string slotId)
         {
             if (!(Core.Flags.FeatureFlags.Current?.IsEnabled(Features.WindowV2.LayoutRules.FeatureId) ?? false)) return false;
-            if (_v2Opening) return false;           // v2 asked for the classic window: let it through
             try
             {
                 if (_editor != null && _editor.IsVisible) _editor.Hide();      // one window at a time: they share the same settings
@@ -354,10 +355,10 @@ namespace WinNotch
                 {
                     _windowV2 = new Features.WindowV2.WindowV2(Settings, _notch);
                     _windowV2.Closed += (s, e) => _windowV2 = null;
-                    _windowV2.Open(pageId);
+                    _windowV2.Open(pageId, slotId);
                     _windowV2.Show();
                 }
-                else _windowV2.Open(pageId);
+                else _windowV2.Open(pageId, slotId);
                 if (!_windowV2.IsVisible) _windowV2.Show();
                 if (_windowV2.WindowState == WindowState.Minimized) _windowV2.WindowState = WindowState.Normal;
                 Services.Native.ForceForeground(new System.Windows.Interop.WindowInteropHelper(_windowV2).Handle);
@@ -371,21 +372,22 @@ namespace WinNotch
             }
         }
 
-        private bool _v2Opening;
-
-        /// <summary>Called by v2 when it wants a section that still lives in the classic window (pages, themes, settings, news).</summary>
-        internal void OpenClassicEditor(string pageId)
-        {
-            _v2Opening = true;
-            try { _windowV2?.Hide(); OpenEditor(pageId); }
-            finally { _v2Opening = false; }
-        }
+        /// <summary>P52: the pages editor shown inside the v2 window, so a change in the notch reaches it too.</summary>
+        internal EditorWindow HostedEditor;
 
         /// <summary>A page was edited in the notch: the WinNotch window, if open on it, shows the new layout.</summary>
-        public void PageChangedInNotch(string pageId) => _editor?.PageChangedElsewhere(pageId);
+        public void PageChangedInNotch(string pageId)
+        {
+            _editor?.PageChangedElsewhere(pageId);
+            HostedEditor?.PageChangedElsewhere(pageId);
+        }
 
         /// <summary>Pages were shown, hidden or added in the notch: the WinNotch window's page list follows.</summary>
-        public void PagesChangedInNotch() => _editor?.PagesChangedElsewhere();
+        public void PagesChangedInNotch()
+        {
+            _editor?.PagesChangedElsewhere();
+            HostedEditor?.PagesChangedElsewhere();
+        }
 
         public void ToggleNotch() => _notch?.ToggleByHotkey();
 

@@ -138,7 +138,8 @@ namespace WinNotch
             Check("B7", "Maximum 60 de tab-uri dintr-un mesaj", got.Count == 60, "count=" + got.Count);
             var t1 = got.FirstOrDefault(t => t.Id == 1);
             Check("B8", "Starea media din pagină e citită (playing, titlu, durată)", t1 != null && t1.HasMedia && t1.Playing && t1.MediaTitle == "Melodie" && Math.Abs(t1.Duration - 200.5) < 0.01);
-            Check("B9", "Tab pe pauză raportat de pagină nu e „se aude”", got.First(t => t.Id == 2).IsPlaying == false);
+            // FirstOrDefault, nu First: un tab lipsă (socket lent pe runner) trebuie să picheze testul, nu să oprească rularea
+            Check("B9", "Tab pe pauză raportat de pagină nu e „se aude”", got.FirstOrDefault(t => t.Id == 2)?.IsPlaying == false);
             Check("B10", "Numele site-ului: YouTube", t1?.Site == "YouTube", t1?.Site);
             Check("B11", "ConnectedBrowsers include chrome", bridge.ConnectedBrowsers().Contains("chrome"));
 

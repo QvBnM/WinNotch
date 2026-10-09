@@ -548,8 +548,16 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   carduri pentru **acțiunile care există** în aplicație — fiecare cu butonul lui, pornit prin registrul de acțiuni, cu
   confirmare pentru ce nu se poate anula —, iar în dreapta (de la 1100 px lățime în sus) clipboard-ul fixat și starea
   microfonului și a camerei. Jos, o sugestie și scurtătura. Fereastra ia tema aplicației (buton de schimbare în antet),
-  minimul e 900 × 600, iar sub 900 px totul se așază pe o coloană. Paginile, temele, setările și noutățile se deschid în
-  fereastra clasică, neschimbate. Oprit, se deschide fereastra de azi.
+  minimul e 900 × 600, iar sub 900 px totul se așază pe o coloană.
+  **Paginile, temele, setările și noutățile sunt înăuntru**, nu mai trimit la o a doua fereastră: fiecare e construită de
+  exact același cod ca înainte, doar ambalajul e nou — setările sunt conținutul real al paginii de setări
+  (`SettingsWindow.TakeContent`, cu propriul derulaj, ca „Salvează” să rămână vizibil), noutățile se citesc cu
+  `Updater.ParseNotes`, temele folosesc `Core/Ui/ThemeEdits` (o singură bucată de logică, apelată și de fereastra clasică),
+  iar „Pagini” e editorul de widget-uri întreg (lista de pagini, grila vie, inspectorul, galeria), găzduit prin
+  `EditorWindow.TakeContent`; pe pagina asta coloana din dreapta se dă la o parte, fiindcă editorul își aduce propriile trei
+  coloane. `Esc` închide întâi fereastra deschisă peste pagină (mărimile unui widget), apoi fereastra. Deschiderea ferestrei
+  pe pagina pe care e deja nu o reconstruiește, ca să nu se piardă ce e scris în ea.
+  Oprit, se deschide fereastra de azi, neschimbată.
 - **Poziție.** Stânga, centru sau dreapta, pe lățimea monitorului.
 - **Mărire pe ecrane mari.** Notch-ul deschis și alertele se măresc automat: 120% pe 1440p, 135% pe 4K, 110% pe ecrane intermediare, când Windows e la scalare 100%. Manual, se alege din Setări între 100% și 160%. Pastila mică nu se mărește.
 - **Text.** Randat clar, cu contrast îmbunătățit și minimum 11 px.
