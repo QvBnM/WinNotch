@@ -45,9 +45,23 @@ namespace WinNotch.Features.NotchAnchored
         /// The ear's radius: three quarters of the bottom radius, within 10–22, and reduced when the pill plus both ears
         /// would not fit the window (the window is 820 wide, the pill at most 720, so normally there is room).
         /// </summary>
-        public static double Ear(double radius, double pillWidth, double windowWidth)
+        public static double Ear(double radius, double pillWidth, double windowWidth) =>
+            Ear(radius, pillWidth, windowWidth, double.PositiveInfinity);
+
+        /// <summary>
+        /// The same, also limited by the pill's height: the ear ends at y = E and the bottom corner starts at y = H − R,
+        /// so an ear taller than H − R would send the left side backwards and fold the outline over itself (a visible
+        /// kink). The small form (22 px tall) is exactly where that happens.
+        /// </summary>
+        public static double Ear(double radius, double pillWidth, double windowWidth, double pillHeight)
         {
-            double e = Math.Clamp(Radius(radius) * 0.75, 10, 22);
+            double r = Radius(radius);
+            double e = Math.Clamp(r * 0.75, 10, 22);
+            if (pillHeight > 0 && !double.IsInfinity(pillHeight))
+            {
+                double side = pillHeight - Math.Min(r, Math.Min(pillWidth > 0 ? pillWidth / 2 : r, pillHeight / 2));
+                e = Math.Min(e, Math.Max(0, side));
+            }
             if (windowWidth <= 0 || pillWidth <= 0) return e;
             double room = (windowWidth - pillWidth) / 2;
             return room >= e ? e : Math.Max(0, room);

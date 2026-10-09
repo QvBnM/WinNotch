@@ -84,8 +84,9 @@ namespace WinNotch
                   !System.Text.RegularExpressions.Regex.IsMatch(win, @"Color\.From|#[0-9A-Fa-f]{6}|new SolidColorBrush|Brushes\.(?!Transparent)") &&
                   win.Contains("SetResourceReference") && win.Contains("Ui.Icon(") && !win.Contains(".png"));
 
-            Check("WV13", "Antetul refolosește geometria notch-ului ancorat (P50), nu una nouă, și e înghețat",
-                  win.Contains("AnchoredGeometry.Radius(") && win.Contains("AnchoredGeometry.Ear(") && win.Contains("g.Freeze();"));
+            Check("WV13", "Antetul refolosește geometria notch-ului ancorat (P50) prin același traducător, nu una nouă",
+                  win.Contains("AnchoredGeometry.Radius(") && win.Contains("AnchoredGeometry.Ear(") &&
+                  win.Contains("AnchoredShape.Silhouette(") && !win.Contains("new StreamGeometry()"));
 
             Check("WV14", "Acțiunile pornesc doar prin registru, cu confirmare pentru ce nu e sigur; nimic nou nu se inventează",
                   win.Contains("ActionRegistry.Current?.InvokeAsync(") && win.Contains("ActionInvoker.UI, default, confirmed") &&

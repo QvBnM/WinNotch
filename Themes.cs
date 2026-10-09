@@ -99,7 +99,10 @@ namespace WinNotch
         public static bool Apply(AppSettings s)
         {
             var p = Current(s);
-            string sig = string.Join(";", p.Colors.OrderBy(k => k.Key).Select(k => k.Key + "=" + k.Value)) + "|" + s.BgOpacity;
+            // P50: the anchored look raises the notch's minimum opacity, so it belongs in the signature — otherwise
+            // turning the switch on or off left the brushes exactly as they were until the next settings change.
+            bool anchored = Core.Flags.FeatureFlags.Current?.IsEnabled(Features.NotchAnchored.AnchoredGeometry.FeatureId) ?? false;
+            string sig = string.Join(";", p.Colors.OrderBy(k => k.Key).Select(k => k.Key + "=" + k.Value)) + "|" + s.BgOpacity + "|" + anchored;
             if (sig == LastApplied) return false;
             LastApplied = sig;
             var res = Application.Current.Resources;
@@ -107,8 +110,7 @@ namespace WinNotch
             {
                 var c = Parse(p.Colors.TryGetValue(key, out var hex) ? hex : null, Presets[0].Colors[key]);
                 // P50: while anchored the background is never see-through enough to break the illusion (at least 0.92)
-                if (key == "Notch") c.A = (byte)Math.Round(Features.NotchAnchored.AnchoredGeometry.BgOpacity(
-                    s.BgOpacity, Core.Flags.FeatureFlags.Current?.IsEnabled(Features.NotchAnchored.AnchoredGeometry.FeatureId) ?? false) * 255);
+                if (key == "Notch") c.A = (byte)Math.Round(Features.NotchAnchored.AnchoredGeometry.BgOpacity(s.BgOpacity, anchored) * 255);
                 var b = new SolidColorBrush(c);
                 b.Freeze();
                 res[key + "Brush"] = b;

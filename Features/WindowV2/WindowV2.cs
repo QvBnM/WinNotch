@@ -150,6 +150,8 @@ namespace WinNotch.Features.WindowV2
             _headerShape.SetResourceReference(Shape.FillProperty, "NotchBrush");
             _headerShape.HorizontalAlignment = HorizontalAlignment.Center;
             _headerShape.VerticalAlignment = VerticalAlignment.Top;
+            _headerShape.UseLayoutRounding = false;
+            _headerShape.SnapsToDevicePixels = false;
             host.Children.Add(_headerShape);
 
             var row = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto);
@@ -427,23 +429,12 @@ namespace WinNotch.Features.WindowV2
             double w = Math.Max(240, Math.Min(windowWidth - 2 * LayoutRules.Pad, windowWidth));
             double h = LayoutRules.HeaderHeight;
             double r = AnchoredGeometry.Radius(_s.CornerRadius);
-            double e = AnchoredGeometry.Ear(_s.CornerRadius, w, windowWidth);
-            var g = new StreamGeometry();
-            using (var c = g.Open())
-            {
-                c.BeginFigure(new Point(0, 0), true, true);
-                if (e > 0) c.ArcTo(new Point(e, e), new Size(e, e), 0, false, SweepDirection.Clockwise, false, false);
-                c.LineTo(new Point(e, h - r), false, false);
-                if (r > 0) c.ArcTo(new Point(e + r, h), new Size(r, r), 0, false, SweepDirection.Counterclockwise, false, false);
-                c.LineTo(new Point(e + w - r, h), false, false);
-                if (r > 0) c.ArcTo(new Point(e + w, h - r), new Size(r, r), 0, false, SweepDirection.Counterclockwise, false, false);
-                c.LineTo(new Point(e + w, e), false, false);
-                if (e > 0) c.ArcTo(new Point(e + w + e, 0), new Size(e, e), 0, false, SweepDirection.Clockwise, false, false);
-            }
-            g.Freeze();
-            _headerShape.Width = w + 2 * e;
+            double e = AnchoredGeometry.Ear(_s.CornerRadius, w, windowWidth, h);
+            // The one translator both shapes go through (Features/NotchAnchored/AnchoredShape.cs): the header and the
+            // notch in the screen's edge cannot drift apart, which is exactly what the brief asks of this header.
+            _headerShape.Width = w + 2 * Math.Max(0, e);
             _headerShape.Height = h;
-            _headerShape.Data = g;
+            _headerShape.Data = AnchoredShape.Silhouette(w, h, r, e);
         }
 
         private void OnKey(object sender, KeyEventArgs e)

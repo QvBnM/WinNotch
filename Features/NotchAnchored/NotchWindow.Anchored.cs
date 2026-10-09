@@ -5,7 +5,6 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using WinNotch.Core.Flags;
-using System.Collections.Generic;
 using WinNotch.Features.NotchAnchored;
 
 namespace WinNotch
@@ -19,8 +18,13 @@ namespace WinNotch
     {
         private bool _anchoredOn;
         private Action<string> _anchoredFlagHandler;
-        /// <summary>The two concave fillets, drawn behind the pill in the window's root grid (null while the switch is off).</summary>
-        private Path _anchoredEars;
+        /// <summary>
+        /// The whole anchored silhouette (pill plus both fillets), one <see cref="Path"/> in the window's root grid.
+        /// It is the <b>only</b> thing painted while anchored: the pill's own background is switched off, otherwise the
+        /// two surfaces stack and the body comes out a shade darker than the fillets (plainly visible on a light theme)
+        /// with a seam where the bottom corners of the two shapes meet. Null while the switch is off.
+        /// </summary>
+        private Path _anchoredShape;
         private Effect _anchoredOldShadow;
 
         private static bool AnchoredEnabled() => FeatureFlags.Current?.IsEnabled(AnchoredGeometry.FeatureId) ?? false;
@@ -51,33 +55,46 @@ namespace WinNotch
             try
             {
                 bool on = AnchoredEnabled();
-                if (on == _anchoredOn && (_anchoredEars != null) == on) return;
+                if (on == _anchoredOn && (_anchoredShape != null) == on) return;
                 _anchoredOn = on;
                 if (on)
                 {
                     _anchoredOldShadow ??= Pill.Effect;
-                    Pill.Effect = new DropShadowEffect
+                    // The pill paints nothing while anchored, so its shadow would fall from its content (the text), not
+                    // from the silhouette: the shadow moves to the shape, which is the silhouette.
+                    Pill.Effect = null;
+                    Pill.Background = Brushes.Transparent;
+                    if (_anchoredShape == null && Pill.Parent is Panel root)
                     {
-                        Direction = AnchoredGeometry.ShadowDirection, ShadowDepth = AnchoredGeometry.ShadowDepth,
-                        BlurRadius = AnchoredGeometry.ShadowBlur, Opacity = AnchoredGeometry.ShadowOpacity,
-                        Color = Colors.Black, RenderingBias = RenderingBias.Performance,
-                    };
-                    if (_anchoredEars == null && Pill.Parent is Panel root)
-                    {
-                        _anchoredEars = new Path { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
-                        _anchoredEars.SetResourceReference(Shape.FillProperty, "NotchBrush");
-                        // the fillets follow the pill: same shift (hidden over a fullscreen app) and same opacity (hover, dodge)
-                        _anchoredEars.RenderTransform = PillShift;
-                        // No shadow of its own: the shape it draws contains the pill, so a second shadow would double
-                        // the one under the pill's bottom edge. The fillets sit against the bezel, where no shadow shows.
-                        _anchoredEars.SetBinding(OpacityProperty, new System.Windows.Data.Binding("Opacity") { Source = Pill });
-                        root.Children.Insert(Math.Max(0, root.Children.IndexOf(Pill)), _anchoredEars);
+                        _anchoredShape = new Path
+                        {
+                            HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top,
+                            IsHitTestVisible = false,
+                            // not snapped to the pixel grid: the shape must stay centred on the same axis as the pill,
+                            // and a rounded width would move its own centre half a pixel off the pill's
+                            UseLayoutRounding = false, SnapsToDevicePixels = false,
+                            Effect = new DropShadowEffect
+                            {
+                                Direction = AnchoredGeometry.ShadowDirection, ShadowDepth = AnchoredGeometry.ShadowDepth,
+                                BlurRadius = AnchoredGeometry.ShadowBlur, Opacity = AnchoredGeometry.ShadowOpacity,
+                                Color = Colors.Black, RenderingBias = RenderingBias.Performance,
+                            },
+                        };
+                        _anchoredShape.SetResourceReference(Shape.FillProperty, "NotchBrush");
+                        // the shape follows the pill: same shift (hidden over a fullscreen app), same opacity (hover,
+                        // dodge), same top margin (animated from 8 to 0 when the switch goes on) and same visibility
+                        _anchoredShape.RenderTransform = PillShift;
+                        _anchoredShape.SetBinding(OpacityProperty, new System.Windows.Data.Binding("Opacity") { Source = Pill });
+                        _anchoredShape.SetBinding(MarginProperty, new System.Windows.Data.Binding("Margin") { Source = Pill });
+                        _anchoredShape.SetBinding(VisibilityProperty, new System.Windows.Data.Binding("Visibility") { Source = Pill });
+                        root.Children.Insert(Math.Max(0, root.Children.IndexOf(Pill)), _anchoredShape);
                     }
                 }
                 else
                 {
                     Pill.Effect = _anchoredOldShadow;
-                    if (_anchoredEars != null && Pill.Parent is Panel root) { root.Children.Remove(_anchoredEars); _anchoredEars = null; }
+                    Pill.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
+                    if (_anchoredShape != null && Pill.Parent is Panel root) { root.Children.Remove(_anchoredShape); _anchoredShape = null; }
                 }
                 _shapeW = _shapeH = _shapeR = _shapeE = -1;      // the shape is rebuilt whatever its size
                 ThemeManager.Apply(S);                            // the minimum opacity lives in the brushes
@@ -107,7 +124,7 @@ namespace WinNotch
         /// same shape, so a coloured cover inside it is cut correctly. Both the clip and the fillets are built from the
         /// pure outline (<see cref="AnchoredGeometry"/>), and only when something actually changed — not per frame.
         /// </summary>
-        private bool AnchoredShape()
+        private bool ApplyAnchoredShape()
         {
             if (!_anchoredOn) return false;
             double w = Pill.ActualWidth, h = Pill.ActualHeight;
@@ -115,49 +132,29 @@ namespace WinNotch
             // Radius is the animated value (already scaled), so the shape follows the animation instead of jumping.
             double scale = Math.Max(0.01, UiScale);
             double r = Math.Min(Radius, Math.Min(w / 2, h / 2));
-            double e = AnchoredGeometry.Ear(Radius / scale, w / scale, Width / scale) * scale;
+            double e = AnchoredGeometry.Ear(Radius / scale, w / scale, Width / scale, h / scale) * scale;
             if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE)) return true;
             _shapeW = w; _shapeH = h; _shapeR = r; _shapeE = e;
 
             Pill.CornerRadius = new CornerRadius(0, 0, r, r);
             var pill = AnchoredGeometry.PillOnly(w, h, r);
-            Inner.Clip = Build(pill.Start, pill.Segments, 0);
-            AnchoredDrawEars(w, h, r, e);
+            Inner.Clip = AnchoredShape.Build(pill.Start, pill.Segments, 0);     // the same outline that is painted
+            AnchoredDrawShape(w, h, r, e);
             return true;
         }
 
         private static bool Near(double a, double b) => Math.Abs(a - b) < 0.25;
 
-        /// <summary>Turns the pure outline into a frozen <see cref="StreamGeometry"/> (one translator, one shape).</summary>
-        private static StreamGeometry Build(Pt start, IReadOnlyList<Seg> segments, double shiftX)
+        /// <summary>
+        /// The whole silhouette — one painted shape, the pill included. Without ears (a window too narrow for them) it
+        /// is the pill's own outline, never nothing: the pill itself no longer paints a background while anchored.
+        /// </summary>
+        private void AnchoredDrawShape(double w, double h, double r, double e)
         {
-            var g = new StreamGeometry();
-            using (var c = g.Open())
-            {
-                c.BeginFigure(new Point(start.X + shiftX, start.Y), true, true);
-                foreach (var seg in segments)
-                {
-                    var to = new Point(seg.To.X + shiftX, seg.To.Y);
-                    if (seg.IsArc && seg.Radius > 0)
-                        c.ArcTo(to, new Size(seg.Radius, seg.Radius), 0, false,
-                                seg.Clockwise ? SweepDirection.Clockwise : SweepDirection.Counterclockwise, false, false);
-                    else c.LineTo(to, false, false);
-                }
-            }
-            g.Freeze();
-            return g;
-        }
-
-        /// <summary>The whole silhouette (pill plus both fillets) behind the pill: the fillets show beside it, seamlessly.</summary>
-        private void AnchoredDrawEars(double w, double h, double r, double e)
-        {
-            if (_anchoredEars == null) return;
-            if (e <= 0) { _anchoredEars.Data = null; return; }
-            var (start, segs) = AnchoredGeometry.Outline(w, h, r, e);
-            _anchoredEars.Width = w + 2 * e;
-            _anchoredEars.Height = h;
-            _anchoredEars.Data = Build(start, segs, e);          // shifted so the left ear starts at x = 0
-            _anchoredEars.Visibility = Pill.Visibility;
+            if (_anchoredShape == null) return;
+            _anchoredShape.Width = w + 2 * Math.Max(0, e);
+            _anchoredShape.Height = h;
+            _anchoredShape.Data = AnchoredShape.Silhouette(w, h, r, e);
         }
     }
 }

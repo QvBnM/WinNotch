@@ -51,6 +51,17 @@ namespace WinNotch
             var tiny = Outline(20, 10, 28, 10);
             Check("NA5", "Raza nu depășește jumătatea pastilei, nici înălțimea (o pastilă foarte mică nu se strâmbă)",
                   tiny[1].To.Near(0, 5) && tiny[2].To.Near(5, 10) && tiny.Last().To.Near(30, 0));
+
+            // Raportat de autor: „racordările nu se continuă lin în colțurile de jos; se vede o îmbinare”.
+            // Pe o pastilă joasă (forma mică, 22 px) urechea de 21 px ajungea mai jos decât începutul colțului de jos
+            // (H − R = 11), deci latura verticală mergea înapoi și conturul se îndoia peste el însuși.
+            double eLow = AnchoredGeometry.Ear(28, 300, 820, 22);
+            var low = Outline(300, 22, 28, eLow);
+            Check("NA18", "Urechea e limitată și de înălțime: latura nu mai merge înapoi, racordarea se continuă lin în colțul de jos",
+                  eLow == 11 && low[0].To.Y <= low[1].To.Y && Math.Abs(low[0].To.Y - low[1].To.Y) < 0.001 &&
+                  AnchoredGeometry.Ear(17, 300, 820, 34) == AnchoredGeometry.Ear(17, 300, 820) &&
+                  AnchoredGeometry.Ear(17, 720, 820, 360) == AnchoredGeometry.Ear(17, 720, 820),
+                  "urechea = " + eLow);
         }
 
         /// <summary>Convenience: the segments of an outline, for the short assertions above.</summary>
@@ -95,15 +106,20 @@ namespace WinNotch
             Check("NA11", "Legăturile sunt câte un rând: marginea și raza din ApplyMode, lățimea în standby, forma din ApplyRadius și UpdateClip, pornire și oprire",
                   notch.Contains("top = AnchoredTop(top);") &&
                   notch.Contains("w = AnchoredIdleWidth(IdleWidth());") && notch.Contains("AnchoredRadius(r, mini || _mode == Mode.Live)") &&
-                  notch.Contains("if (AnchoredShape()) return;") && notch.Contains("StartAnchored();") && notch.Contains("StopAnchored();"));
+                  notch.Contains("if (ApplyAnchoredShape()) return;") && notch.Contains("StartAnchored();") && notch.Contains("StopAnchored();"));
 
             Check("NA12", "Zona de hover rămâne dreptunghiul pastilei: racordările nu primesc mouse-ul",
                   part.Contains("IsHitTestVisible = false") && !part.Contains("PillScreenRect"));
 
-            Check("NA16", "Forma desenată vine din geometria pură (un singur traducător), nu scrisă a doua oară de mână",
-                  part.Contains("AnchoredGeometry.PillOnly(") && part.Contains("AnchoredGeometry.Outline(") &&
-                  part.Contains("private static StreamGeometry Build(") &&
-                  System.Text.RegularExpressions.Regex.Matches(part, @"new StreamGeometry\(\)").Count == 1);
+            string shape = Src("Features/NotchAnchored/AnchoredShape.cs"), v2 = Src("Features/WindowV2/WindowV2.cs");
+            Check("NA16", "Forma desenată vine din geometria pură printr-un singur traducător, folosit și de notch și de antetul ferestrei",
+                  shape.Contains("AnchoredGeometry.PillOnly(") && shape.Contains("AnchoredGeometry.Outline(") &&
+                  shape.Contains("internal static StreamGeometry Build(") && shape.Contains("g.Freeze();") &&
+                  part.Contains("AnchoredShape.Build(") && part.Contains("AnchoredShape.Silhouette(") &&
+                  v2.Contains("AnchoredShape.Silhouette(") &&
+                  // nicio a doua copie scrisă de mână: un singur loc deschide un StreamGeometry
+                  System.Text.RegularExpressions.Regex.Matches(shape, @"new StreamGeometry\(\)").Count == 1 &&
+                  !part.Contains("new StreamGeometry()") && !v2.Contains("new StreamGeometry()") && !v2.Contains("c.ArcTo("));
 
             Check("NA17", "Forma se reconstruiește doar când s-a schimbat ceva (nu la fiecare cadru al animației)",
                   part.Contains("if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE)) return true;") &&
@@ -112,8 +128,30 @@ namespace WinNotch
             Check("NA13", "Fundalul citește comutatorul prin regula pură (nicio limită scrisă de două ori)",
                   themes.Contains("AnchoredGeometry.BgOpacity("));
 
-            Check("NA14", "Geometria se reconstruiește la schimbarea mărimii și e înghețată; fără culori scrise în cod; fără cronometre noi",
-                  part.Contains("g.Freeze();") &&
+            // Raportat de autor pe 0.6.21: pe tema luminoasă forma notch-ului și ce e desenat peste ea aveau nuanțe
+            // diferite, iar racordările se vedeau îmbinate. Cauza: pastila (Border) și silueta (Path) pictau amândouă
+            // NotchBrush, deci corpul primea două straturi de 0,92 (≈0,994) iar racordările unul, plus două contururi
+            // antialiasate suprapuse exact în colțurile de jos.
+            Check("NA19", "O singură suprafață pictată: cât e ancorat, pastila nu-și mai desenează fundalul, iar umbra e pe siluetă",
+                  part.Contains("Pill.Background = Brushes.Transparent;") &&
+                  part.Contains("Pill.Effect = null;") &&
+                  part.Contains("Pill.SetResourceReference(Border.BackgroundProperty, \"NotchBrush\");") &&
+                  System.Text.RegularExpressions.Regex.IsMatch(part, @"_anchoredShape = new Path[\s\S]{0,900}?new DropShadowEffect"),
+                  "pastila încă pictează fundalul sub siluetă");
+
+            Check("NA20", "Silueta urmează pastila (margine, vizibilitate, opacitate, deplasare) și nu e lipită la grila de pixeli",
+                  part.Contains("new System.Windows.Data.Binding(\"Margin\") { Source = Pill }") &&
+                  part.Contains("new System.Windows.Data.Binding(\"Visibility\") { Source = Pill }") &&
+                  part.Contains("new System.Windows.Data.Binding(\"Opacity\") { Source = Pill }") &&
+                  part.Contains("_anchoredShape.RenderTransform = PillShift;") &&
+                  part.Contains("UseLayoutRounding = false, SnapsToDevicePixels = false,") &&
+                  // fără urechi nu se mai desenează „nimic”: pastila nu mai are fundal propriu
+                  !part.Contains("Data = null"));
+
+            Check("NA21", "Pensulele se reconstruiesc la pornirea și la oprirea comutatorului (opacitatea minimă nu mai aștepta o salvare de setări)",
+                  themes.Contains("+ \"|\" + anchored") && themes.Contains("bool anchored = Core.Flags.FeatureFlags.Current?.IsEnabled("));
+
+            Check("NA14", "Fără culori scrise în cod; fără cronometre noi",
                   part.Contains("SetResourceReference(Shape.FillProperty, \"NotchBrush\")") &&
                   !part.Contains("DispatcherTimer") && !part.Contains("CompositionTarget.Rendering") &&
                   !System.Text.RegularExpressions.Regex.IsMatch(part, @"Color\.From|#[0-9A-Fa-f]{6}|new SolidColorBrush"));

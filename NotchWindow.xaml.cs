@@ -563,7 +563,7 @@ namespace WinNotch
 
         private void ApplyRadius()
         {
-            if (AnchoredShape()) return;        // P50 hook (Features/NotchAnchored): bottom corners only, plus the fillets
+            if (ApplyAnchoredShape()) return;        // P50 hook (Features/NotchAnchored): bottom corners only, plus the fillets
             double r = Radius;
             Pill.CornerRadius = _slimApplied ? new CornerRadius(0, 0, r, r) : new CornerRadius(r);
             UpdateClip();
@@ -571,7 +571,7 @@ namespace WinNotch
 
         private void UpdateClip()
         {
-            if (AnchoredShape()) return;        // P50 hook (Features/NotchAnchored)
+            if (ApplyAnchoredShape()) return;        // P50 hook (Features/NotchAnchored)
             double w = Pill.ActualWidth, h = Pill.ActualHeight;
             if (w <= 0 || h <= 0) return;
             double r = Math.Min(Radius, Math.Min(w, h) / 2);
