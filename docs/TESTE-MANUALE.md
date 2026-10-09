@@ -384,6 +384,13 @@ Comutatorul „Notch lipit de ramă” (`notch-anchored`) e **oprit implicit**: 
 | P50.9 | Scalare și monitoare | Repetă P50.1 și P50.2 pe fiecare monitor și la 100 %, 125 % și 150 % scalare Windows. | Lipit de margine și racordat corect la fiecare. |
 | P50.10 | Raza din Setări | Setări → mărimea/raza colțurilor: pune minimul și maximul. | Raza de jos se schimbă între 12 și 28; sus rămâne drept. |
 | P50.11 | Comutatorul oprit | Oprește comutatorul. | Pastila plutitoare de azi: margine de 8 px, colțuri complete, umbra de azi, lățimea de azi. |
+| P50.12 | Îmbinarea racordărilor | Pe tema luminoasă, cu notch-ul în standby, uită-te de aproape la cele două colțuri de jos, unde racordarea intră în colțul rotunjit. | O singură curbă continuă: nicio linie, nicio treaptă și nicio schimbare de nuanță între racordare și corpul notch-ului. |
+| P50.13 | Nuanța pe toate temele | Trece pe rând prin toate cele 6 teme (Noapte, Grafit, Nord, Contrast mare, Luminos, Hârtie), pe un fundal deschis. | Forma notch-ului are o singură nuanță pe toată suprafața, la fiecare temă. |
+| P50.14 | Opacitatea la pornirea comutatorului | Pune în Setări → Teme opacitatea fundalului pe 60 %, salvează, apoi pornește comutatorul „Notch lipit de ramă” și uită-te la notch **fără** să mai salvezi nimic. | Fundalul devine imediat aproape opac (minim 92 %); nu mai e nevoie de o a doua salvare. |
+| P50.15 | Umbra | Pe un fundal deschis, uită-te deasupra și dedesubtul notch-ului. | Umbra cade doar în jos; deasupra, pe marginea ecranului, nu e nicio linie și nicio umbră. Textul din notch nu are umbră proprie. |
+| P50.16 | Forma mică, racordări | Lasă notch-ul să treacă în forma mică (22 px). | Racordările sunt mai mici, dar continuă lin în colțurile de jos; forma nu are nicio îndoitură. |
+| P50.17 | Ascuns peste fullscreen | Cu „Ascuns pe tot ecranul” pornit, pornește un video pe tot ecranul. | Forma dispare complet împreună cu pastila (nu rămâne o siluetă pe margine). |
+| P50.18 | Antetul ferestrei | Pornește și „Fereastra WinNotch v2” și compară antetul ferestrei cu notch-ul. | Aceeași rază și aceleași racordări, desenate la fel (același cod). |
 
 ### P52 — Fereastra WinNotch v2
 

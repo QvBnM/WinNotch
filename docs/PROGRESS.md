@@ -388,3 +388,50 @@
   drumuri de fum.
 - **Publicare:** 0.6.21, la cererea autorului.
 
+
+
+## Reparație P50 — geometria și culorile notch-ului ancorat (raportat de autor pe 0.6.21, 9 oct 2026)
+
+- **Raportat:** cu „Notch lipit de ramă” pornit, racordările concave din stânga-sus și dreapta-sus nu se continuau lin
+  în colțurile de jos (se vedea o îmbinare), iar pe tema luminoasă forma notch-ului avea altă nuanță decât ce e desenat
+  peste ea. Autorul bănuia o pensulă fixă, un jeton greșit sau opacitatea minimă de 0,92 aplicată peste un fundal deja
+  opac.
+- **Verificat punct cu punct, față de brief → P50 → „Geometria (exact)”:** conturul pur era corect — start `(-E,0)`,
+  racordare concavă spre `(0,E)` în sens orar, latura verticală, colț convex spre `(R,H)` în sens antiorar, baza, colț
+  convex spre `(W,H-R)`, latura, racordare concavă spre `(W+E,0)`, închis pe `y = 0`. Tangenta e verticală în ambele
+  capete ale fiecărei racordări, deci racordarea **este** G1-continuă; `E` se reducea corect când `W + 2E` depășea
+  fereastra; `Inner.Clip` folosea deja exact aceeași geometrie (`PillOnly`). Niciuna dintre cauzele bănuite de autor nu
+  era pensula: `NotchBrush` e același jeton în ambele locuri.
+- **Cauza adevărată:** se desenau **două** suprafețe cu aceeași pensulă — pastila (`Border`, colțuri doar jos) și
+  silueta (`Path`, pastilă + racordări, dedesubt). `NotchBrush` are alfa din opacitatea fundalului (minim 0,92 cât e
+  ancorat), deci corpul primea două straturi (0,92 peste 0,92 ≈ 0,994) iar racordările unul singur — exact „nuanțe
+  diferite” —, iar cele două contururi antialiasate se suprapuneau în colțurile de jos: îmbinarea.
+  Abaterea notată la livrarea P50 („pastila rămâne un `Border` plus un `Path`, în loc să devină un singur `Path`”) era
+  deci chiar cauza.
+- **Reparat:**
+  - cât e ancorat, pastila nu-și mai desenează fundalul (`Brushes.Transparent`): silueta e singura suprafață pictată,
+    adică exact ce cere brief-ul; umbra se mută pe siluetă, altfel ar cădea din textul pastilei. La oprirea
+    comutatorului fundalul se leagă din nou la jetonul temei.
+  - silueta urmează pastila prin legături (marginea animată, vizibilitatea, opacitatea, deplasarea), nu prin valori
+    copiate, și nu mai e lipită la grila de pixeli (rotunjirea lățimii îi mișca centrul cu o jumătate de pixel față de
+    pastilă);
+  - fără racordări (fereastră prea îngustă) se desenează conturul pastilei, nu „nimic” — altfel notch-ul ar fi devenit
+    invizibil, fiindcă pastila nu mai pictează;
+  - racordarea e limitată și de înălțime: pe forma mică (22 px) o racordare de 21 px trecea sub începutul colțului de
+    jos, deci latura mergea înapoi și conturul se îndoia peste el însuși;
+  - un singur traducător geometrie→WPF (`Features/NotchAnchored/AnchoredShape.cs`), folosit și de antetul ferestrei v2,
+    care avea o copie scrisă de mână a arcelor;
+  - `ThemeManager.Apply` ținea minte semnătura temei **fără** comutator, deci pornirea sau oprirea lui nu reconstruia
+    pensulele: opacitatea minimă de 0,92 aștepta până la următoarea salvare de setări.
+- **Teste:** NA18–NA21 (pică înainte de reparație: racordarea limitată de înălțime, o singură suprafață pictată,
+  legăturile siluetei, semnătura pensulelor); NA11, NA14, NA16 și WV13 urmăresc structura nouă.
+- **Revizia R1 (pe `git diff main...p50-geometry-fix`):** fără Critic sau Major. Verificat: nicio culoare scrisă în cod,
+  nicio pensulă fixă, nicio dezabonare lipsă (legăturile mor cu `Path`-ul, scos din arbore la oprirea comutatorului),
+  nicio redesenare pe cadru (forma se reconstruiește doar când s-au schimbat lățimea, înălțimea, raza sau racordarea),
+  niciun cronometru nou, nimic sensibil în log. Minor rămas: la pornirea comutatorului în timpul rulării marginea
+  pastilei se animă 300 ms, iar silueta o urmează prin legătură, deci coboară împreună cu ea — comportamentul vechi era
+  ca racordările „plutească” singure în acel interval.
+- **Atenție la merge:** ramura atinge și `Features/WindowV2/WindowV2.cs` (antetul folosește traducătorul comun) și
+  `tests/WindowV2Tests.cs` (WV13), deci se va ciocni cu `p52-settings-fusion`; se intră una după alta.
+- **Stare:** ramura `p50-geometry-fix`, pornită din `main`, fără versiune nouă până la testarea pe Windows
+  (verificările P50.12–P50.18, plus P50.1–P50.11 de dinainte).

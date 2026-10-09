@@ -537,6 +537,11 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   Setări), umbra cade doar în jos, iar la deschidere crește de sus în jos, fără saltul de câțiva pixeli de azi. În standby,
   lățimea e ținută între 240 și 520 de pixeli („vizibil, dar nu încurcă”); forma mică rămâne neschimbată. Racordările nu
   primesc mouse-ul: notch-ul se deschide doar de pe pastilă, ca până acum. Oprit, totul arată exact ca înainte.
+  Silueta e **o singură suprafață pictată**: cât e ancorat, pastila nu-și mai desenează fundalul, ci doar taie conținutul
+  după același contur, iar umbra stă pe siluetă. Două suprafețe cu aceeași pensulă semitransparentă dădeau corpului două
+  straturi de culoare (deci altă nuanță decât racordările, vizibil pe tema luminoasă) și o îmbinare în colțurile de jos.
+  Racordarea e limitată și de înălțimea pastilei, ca pe forma mică să nu depășească începutul colțului de jos. Geometria
+  trece printr-un singur traducător (`Features/NotchAnchored/AnchoredShape.cs`), folosit și de antetul ferestrei v2.
 - **Fereastra WinNotch v2 (P52, comutatorul „Fereastra WinNotch v2”, oprit implicit).** Cu el pornit, din notch se deschide
   fereastra nouă: antetul are silueta notch-ului lipit de ramă (aceeași rază și aceleași racordări), în stânga o coloană cu
   categorii (Acțiuni, Clipboard, Captură, Sunet, Pagini, Teme, Setări, Noutăți), în centru un câmp de căutare (`Ctrl + K`) și
