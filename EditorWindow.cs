@@ -43,6 +43,49 @@ namespace WinNotch
         /// <summary>P51: the open pop-up (a widget's sizes), so Esc closes it too — here the window has real focus.</summary>
         private (Action Hide, Action Close) _edPopup;
         private SettingsWindow _settings;          // its content is shown on the "Setări" page
+        /// <summary>P52: the window that owns the file dialogs — this one normally, the host when the content is embedded.</summary>
+        private Window _dialogOwner;
+
+        /// <summary>
+        /// P52: the pages editor, shown inside the new WinNotch window instead of a window of its own — the same move
+        /// <see cref="SettingsWindow.TakeContent"/> already makes for the settings. One editor, two windows: nothing is
+        /// rewritten, this window is simply never shown. <see cref="DetachContent"/> gives it up again.
+        /// </summary>
+        internal FrameworkElement TakeContent(Window host)
+        {
+            _dialogOwner = host ?? this;
+            var content = (FrameworkElement)Content;
+            Content = null;
+            // The window's own chrome does not travel with the content: a host on a dark theme would leave white cards
+            // with white text, exactly as it did for the settings page.
+            if (content is Panel sheet && sheet.Background == null) sheet.Background = Bg;
+            content.SetValue(TextBlock.ForegroundProperty, Ink);
+            _tick.Start();                           // Loaded never fires on a window that is not shown
+            return content;
+        }
+
+        /// <summary>
+        /// P51, embedded: the host window owns the keyboard, so Esc is offered here first — it closes the open pop-up
+        /// (a widget's sizes) and nothing else. True when something was closed.
+        /// </summary>
+        internal bool CloseOpenPopup()
+        {
+            if (_edPopup.Close == null) return false;
+            if (!(Core.Flags.FeatureFlags.Current?.IsEnabled(Core.Ui.OverlayStack.FeatureId) ?? false)) return false;
+            _edPopup.Close();
+            return true;
+        }
+
+        /// <summary>Gives up the embedded content: the timers stop, what is pending is saved, this window is released.</summary>
+        internal void DetachContent()
+        {
+            _tick.Stop();
+            _themeSoon.Stop();
+            FlushPending();
+            _settings?.Detach();
+            S.Save();
+            try { Close(); } catch { }               // never shown: closing just releases it
+        }
 
         public EditorWindow(AppSettings s, NotchWindow n)
         {
@@ -658,7 +701,7 @@ namespace WinNotch
                     btns.Children.Add(Btn(multi ? "+ Aplicație sau fișier…" : "Alege fișierul…", () =>
                     {
                         var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Alege", Filter = multi ? "Toate fișierele|*.*|Aplicații|*.exe;*.lnk" : "Programe și scripturi|*.exe;*.bat;*.cmd;*.ps1;*.lnk|Toate fișierele|*.*" };
-                        if (dlg.ShowDialog(this) == true)
+                        if (dlg.ShowDialog(_dialogOwner ?? this) == true)
                             Append(multi ? System.IO.Path.GetFileNameWithoutExtension(dlg.FileName) + " = " + dlg.FileName : dlg.FileName);
                     }).Also(b => b.Margin = new Thickness(0, 0, 6, 6)));
                     if (multi)
@@ -666,7 +709,7 @@ namespace WinNotch
                         btns.Children.Add(Btn("+ Folder…", () =>
                         {
                             var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "Alege folderul" };
-                            if (dlg.ShowDialog(this) == true)
+                            if (dlg.ShowDialog(_dialogOwner ?? this) == true)
                                 Append(System.IO.Path.GetFileName(dlg.FolderName.TrimEnd('\\')) + " = " + dlg.FolderName);
                         }).Also(b => b.Margin = new Thickness(0, 0, 6, 6)));
                         btns.Children.Add(Btn("+ Link web", () => Append("https://")).Also(b => b.Margin = new Thickness(0, 0, 6, 6)));

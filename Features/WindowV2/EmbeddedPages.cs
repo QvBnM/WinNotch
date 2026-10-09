@@ -17,6 +17,7 @@ namespace WinNotch.Features.WindowV2
     internal sealed class EmbeddedPages
     {
         private SettingsWindow _settings;
+        private EditorWindow _editor;
         private ScrollViewer _host;
         private ScrollBarVisibility _hostScroll = ScrollBarVisibility.Auto;
 
@@ -31,11 +32,40 @@ namespace WinNotch.Features.WindowV2
             _settings = new SettingsWindow(s);
             _settings.Saved += () => notch?.ApplySettings();
             _settings.Reverted += reload;
-            var content = _settings.TakeContent();
+            return Fill(host, _settings.TakeContent(), 640);
+        }
+
+        /// <summary>
+        /// The pages editor (the widget grid, the inspector, the gallery), shown inside the new window: the same editor
+        /// the classic window is, simply never shown as a window of its own (<c>EditorWindow.TakeContent</c>). Nothing
+        /// about editing a page is written twice.
+        /// </summary>
+        internal FrameworkElement Pages(AppSettings s, NotchWindow notch, Window owner, ScrollViewer host, string pageId, string slotId)
+        {
+            Detach();
+            _editor = new EditorWindow(s, notch);
+            _editor.Open(pageId, slotId);
+            var content = _editor.TakeContent(owner);
+            if (Application.Current is App app) app.HostedEditor = _editor;
+            return Fill(host, content, double.PositiveInfinity);
+        }
+
+        /// <summary>P51: Esc closes the pop-up of the hosted editor (a widget's sizes) before anything else.</summary>
+        internal bool CloseOpenPopup() => _editor?.CloseOpenPopup() ?? false;
+
+        /// <summary>
+        /// A page that manages its own scrolling fills the centre instead of growing inside it: the host's scrolling is
+        /// switched off and the page is bound to the host's viewport height — what the classic window does for the
+        /// settings; the editor's own grid needs the same, or its lists would be given an endless height.
+        /// </summary>
+        private FrameworkElement Fill(ScrollViewer host, FrameworkElement content, double maxWidth)
+        {
+            var box = new Border { Child = content };
+            if (double.IsPositiveInfinity(maxWidth)) box.HorizontalAlignment = HorizontalAlignment.Stretch;
+            else { box.MaxWidth = maxWidth; box.HorizontalAlignment = HorizontalAlignment.Left; }
             _host = host;
             _hostScroll = host.VerticalScrollBarVisibility;
             host.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-            var box = new Border { Child = content, MaxWidth = 640, HorizontalAlignment = HorizontalAlignment.Left };
             box.SetBinding(FrameworkElement.HeightProperty, new Binding("ViewportHeight") { Source = host });
             return box;
         }
@@ -274,6 +304,12 @@ namespace WinNotch.Features.WindowV2
         {
             _settings?.Detach();
             _settings = null;
+            if (_editor != null)
+            {
+                if (Application.Current is App app && ReferenceEquals(app.HostedEditor, _editor)) app.HostedEditor = null;
+                _editor.DetachContent();
+                _editor = null;
+            }
             if (_host != null) { _host.VerticalScrollBarVisibility = _hostScroll; _host = null; }
         }
     }

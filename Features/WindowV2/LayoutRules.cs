@@ -94,15 +94,19 @@ namespace WinNotch.Features.WindowV2
             categoryId is "pagini" or "teme" or "setari" or "noutati";
 
         /// <summary>
-        /// The pages whose content now lives in this window, built by the same code the classic window uses. The list
-        /// grows one page at a time (settings first, as the brief asks); the rest still open the classic window.
+        /// Every page of the classic window (settings, news, themes, pages) is now built inside this window, with the
+        /// same code — there is no category left that sends the user back to the old window.
         /// </summary>
-        public static bool IsEmbeddedContent(string categoryId) =>
-            categoryId is "setari" or "noutati" or "teme";
+        public static bool IsEmbeddedContent(string categoryId) => IsPageContent(categoryId);
 
-        /// <summary>Categories that still show the old window's own pages (until their content moves here too).</summary>
-        public static bool IsClassicContent(string categoryId) =>
-            IsPageContent(categoryId) && !IsEmbeddedContent(categoryId);
+        /// <summary>Nothing opens the classic window any more: it is the old look, behind the switch being off.</summary>
+        public static bool IsClassicContent(string categoryId) => false;
+
+        /// <summary>
+        /// Pages that need the whole centre (the widget editor brings its own three columns): the window's own right
+        /// column steps aside for them, whatever the width.
+        /// </summary>
+        public static bool WideContent(string categoryId) => categoryId is "pagini";
 
         /// <summary>Geometry of the header-notch and of the cards (the brief's scale: 4 / 8 / 12 / 16 / 24 / 32).</summary>
         public const double HeaderHeight = 52, CardRadius = 18, ChipRadius = 12, Gap = 12, Pad = 24;

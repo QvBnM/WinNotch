@@ -47,6 +47,8 @@ namespace WinNotch.Features.WindowV2
         private ScrollViewer _centerScroll;
         private readonly EmbeddedPages _pages = new EmbeddedPages();
         private string _category = LayoutRules.DefaultCategory;
+        /// <summary>What Open() was asked for, so the pages editor opens on the right page and widget.</summary>
+        private string _pageId, _slotId;
         private Grid _body;
         private int _cols = -1;
         private Action<string> _flagHandler;
@@ -108,11 +110,13 @@ namespace WinNotch.Features.WindowV2
         }
 
         /// <summary>Opens the window on a category; the old window's ids ("themes", "settings", "news") and page ids still work.</summary>
-        public void Open(string pageId = null)
+        public void Open(string pageId = null, string slotId = null)
         {
             try
             {
                 _category = LayoutRules.CategoryFor(pageId);
+                _pageId = LayoutRules.IsPageContent(_category) && _category == "pagini" ? pageId : null;
+                _slotId = _pageId != null ? slotId : null;
                 BuildSidebar();
                 BuildCenter();
                 BuildRight();
@@ -290,8 +294,7 @@ namespace WinNotch.Features.WindowV2
             _cols = LayoutRules.Columns(CenterWidth());
             // A page of its own fills the centre: the search field looks for actions, which is not what it offers.
             _searchCard.Visibility = LayoutRules.IsPageContent(_category) ? Visibility.Collapsed : Visibility.Visible;
-            if (LayoutRules.IsEmbeddedContent(_category)) { _cards.Children.Add(EmbeddedPage()); return; }
-            if (LayoutRules.IsClassicContent(_category)) { _cards.Children.Add(ClassicCard()); return; }
+            if (LayoutRules.IsPageContent(_category) && EmbeddedPage() is UIElement page) { _cards.Children.Add(page); return; }
             var cat = LayoutRules.Find(_category);
             var actions = VisibleActions().Where(a => string.Equals(LayoutRules.CategoryForAction(a.Category), _category, StringComparison.Ordinal)).ToList();
             _cards.Children.Add(Group(cat?.Title ?? "Acțiuni", actions));
@@ -334,25 +337,8 @@ namespace WinNotch.Features.WindowV2
             "setari" => _pages.Settings(_s, _notch, _centerScroll, () => { if (_category == "setari") BuildCenter(); }),
             "noutati" => _pages.News(),
             "teme" => _pages.Themes(_s, _notch, ReloadPage, Soon),
-            _ => ClassicCard(),
-        };
-
-        private UIElement ClassicCard()
-        {
-            var cat = LayoutRules.Find(_category);
-            var text = Ui.V(4, Ui.T(cat?.Title ?? "", 15, "InkBrush", true),
-                            Ui.T("Se deschide în fereastra clasică, neschimbată.", 12, "MutedBrush"));
-            var open = Ui.PillBtn("Deschide", () => ((App)Application.Current).OpenClassicEditor(ClassicPageId()), true);
-            open.HorizontalAlignment = HorizontalAlignment.Left;
-            open.Margin = new Thickness(0, LayoutRules.Gap, 0, 0);
-            return Ui.Card(Ui.V(0, text, open), 16, 14, LayoutRules.CardRadius);
-        }
-
-        private string ClassicPageId() => _category switch
-        {
-            "teme" => "themes",
-            "setari" => "settings",
-            "noutati" => "news",
+            "pagini" => _pages.Pages(_s, _notch, this, _centerScroll, _pageId, _slotId),
+            // Every page of the old window lives here now; a category with no page of its own shows its cards.
             _ => null,
         };
 
@@ -472,7 +458,8 @@ namespace WinNotch.Features.WindowV2
             {
                 double w = ActualWidth > 0 ? ActualWidth : Width;
                 _body.ColumnDefinitions[0].Width = LayoutRules.SingleColumn(w) ? new GridLength(0) : Ui.Px(LayoutRules.SidebarWidth);
-                _rightHost.Visibility = LayoutRules.ShowRightColumn(w) ? Visibility.Visible : Visibility.Collapsed;
+                _rightHost.Visibility = LayoutRules.ShowRightColumn(w) && !LayoutRules.WideContent(_category)
+                                        ? Visibility.Visible : Visibility.Collapsed;
                 _hint.Text = LayoutRules.Hint(FeatureFlags.Current?.IsEnabled(Features.CommandBar.CommandBarRules.FeatureId) ?? false);
                 DrawHeader(w);
                 // The cards are rebuilt only when the number of columns really changes, not on every frame of a resize.
@@ -510,7 +497,8 @@ namespace WinNotch.Features.WindowV2
 
         private void OnKey(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Escape) { Close(); e.Handled = true; }
+            // P51: the pop-up of a hosted page closes first; Esc only closes the window when nothing is open over it
+            if (e.Key == Key.Escape) { if (!_pages.CloseOpenPopup()) Close(); e.Handled = true; }
             else if (e.Key == Key.K && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
             {
                 _search.Focus();
