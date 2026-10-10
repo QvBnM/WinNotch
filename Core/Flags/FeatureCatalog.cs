@@ -118,7 +118,7 @@ namespace WinNotch.Core.Flags
             new FeatureInfo(AlertInterrupt, "Alertele nu stau în cale", "O alertă se dă la o parte imediat ce faci ceva: tragi fișiere peste notch, apeși scurtătura sau deschizi Command Bar-ul. Pornită implicit; se vede doar cât e o alertă pe ecran.",
                             FeatureStage.Beta, true),
             // P50: off by default until it is announced; off = the floating pill exactly as before (margin 8, full corners)
-            new FeatureInfo(NotchAnchored, "Notch lipit de ramă", "Notch-ul crește din marginea de sus: lipit de ea, rotunjit doar jos, cu racordări în stânga și dreapta, ca o prelungire a ramei monitorului. Se vede în standby și cu notch-ul deschis; peste o fereastră maximizată pastila trece oricum la forma mică.",
+            new FeatureInfo(NotchAnchored, "Notch lipit de ramă", "Notch-ul crește din marginea de sus: lipit de ea, rotunjit doar jos, cu umeri drepți și o dungă subțire de lumină pe muchie — un sertar agățat de ramă. Se vede în standby și cu notch-ul deschis; peste o fereastră maximizată pastila trece oricum la forma mică.",
                             FeatureStage.Experimental, false),
             // P52: off by default until it is finished; off = the window you know opens, untouched
             new FeatureInfo(WindowV2, "Fereastra WinNotch v2", "Fereastra nouă: antetul e notch-ul desfăcut, o coloană cu categorii, carduri pentru acțiunile care există și o coloană cu clipboard și confidențialitate. Se vede la următoarea deschidere a ferestrei WinNotch (din notch sau din meniul iconiței).",

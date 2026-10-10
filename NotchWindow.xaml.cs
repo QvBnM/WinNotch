@@ -525,6 +525,7 @@ namespace WinNotch
             // P50 hook (Features/NotchAnchored): stuck to the top edge, bottom radius from the setting; unchanged with the switch off
             top = AnchoredTop(top);
             r = AnchoredRadius(r, mini || _mode == Mode.Live);     // the small form and the alerts keep their own radius
+            h = AnchoredHeight(h, _mode == Mode.Idle && !mini);    // standby loses the 8 px of screen above it, so it is shorter
             _slimApplied = mini;
             _miniApplied = mini;
 

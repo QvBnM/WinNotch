@@ -15,7 +15,34 @@ namespace WinNotch
         {
             AnchoredOutline();
             AnchoredLimits();
+            AnchoredDrawer();
             AnchoredSourcePins();
+        }
+
+        /// <summary>
+        /// 0.6.27: the fillets are gone. They imitate a hole in the panel, which a Windows screen does not have, so the
+        /// shape read as sitting unnaturally on the edge (reported by the author). What is drawn is a drawer: square
+        /// shoulders, rounded only at the bottom, a hairline along the top edge, and 4 px shorter in standby.
+        /// </summary>
+        static void AnchoredDrawer()
+        {
+            Check("NA22", "Racordările nu se mai desenează, dar geometria lor rămâne întreagă și testată",
+                  !AnchoredGeometry.DrawEars && AnchoredGeometry.Ear(17, 300, 820) > 0 &&
+                  AnchoredGeometry.Outline(300, 34, 17, 0).Segments.Count == 7);
+
+            Check("NA23", "Lipită de ramă, pastila de standby e mai scundă cu 4 px: pierde golul de deasupra",
+                  AnchoredGeometry.StandbyHeight(34, true, true, 1) == 30 &&
+                  Math.Abs(AnchoredGeometry.StandbyHeight(34 * 1.35, true, true, 1.35) - (34 * 1.35 - 5.4)) < 0.001);
+
+            Check("NA24", "Nimic altceva nu se scurtează: nici plutitoare, nici forma mică, nici alertele sau panoul",
+                  AnchoredGeometry.StandbyHeight(34, false, true, 1) == 34 &&
+                  AnchoredGeometry.StandbyHeight(22, true, false, 1) == 22 &&
+                  AnchoredGeometry.StandbyHeight(310, true, false, 1) == 310 &&
+                  AnchoredGeometry.StandbyHeight(23, true, true, 1) == 22);     // niciodată sub forma mică
+
+            Check("NA25", "Dunga de pe muchia de sus e o linie subțire și discretă, nu un contur",
+                  AnchoredGeometry.SeamThickness == 1 &&
+                  AnchoredGeometry.SeamOpacity > 0.05 && AnchoredGeometry.SeamOpacity < 0.3);
         }
 
         static void AnchoredOutline()
@@ -122,7 +149,7 @@ namespace WinNotch
                   !part.Contains("new StreamGeometry()") && !v2.Contains("new StreamGeometry()") && !v2.Contains("c.ArcTo("));
 
             Check("NA17", "Forma se reconstruiește doar când s-a schimbat ceva (nu la fiecare cadru al animației)",
-                  part.Contains("if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE)) return true;") &&
+                  part.Contains("if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE) && smooth == _shapeSmooth) return true;") &&
                   part.Contains("ThemeManager.Apply(S);"));
 
             Check("NA13", "Fundalul citește comutatorul prin regula pură (nicio limită scrisă de două ori)",
@@ -155,6 +182,14 @@ namespace WinNotch
                   part.Contains("SetResourceReference(Shape.FillProperty, \"NotchBrush\")") &&
                   !part.Contains("DispatcherTimer") && !part.Contains("CompositionTarget.Rendering") &&
                   !System.Text.RegularExpressions.Regex.IsMatch(part, @"Color\.From|#[0-9A-Fa-f]{6}|new SolidColorBrush"));
+
+            Check("NA26", "Sertarul: urechile nu se mai desenează nici în notch, nici în antetul ferestrei v2, iar înălțimea e un singur rând în ApplyMode",
+                  part.Contains("AnchoredGeometry.DrawEars") && Src("Features/WindowV2/WindowV2.cs").Contains("AnchoredGeometry.DrawEars") &&
+                  notch.Contains("h = AnchoredHeight(h, _mode == Mode.Idle && !mini);"));
+
+            Check("NA27", "Dunga stă în conținutul pastilei (deci o taie decupajul ei, fără legături noi) și se scoate la oprire",
+                  part.Contains("Inner.Children.Add(_anchoredSeam)") && part.Contains("Inner.Children.Remove(_anchoredSeam)") &&
+                  part.Contains("SetResourceReference(Shape.FillProperty, \"InkBrush\")"));
 
             Check("NA15", "Protocolul comutatorului: citit la pornire, abonare la Changed cu Dispatcher și dezabonare, erorile prin ReportError",
                   part.Contains("FeatureFlags.Current.Changed += _anchoredFlagHandler;") &&

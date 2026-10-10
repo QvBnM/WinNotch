@@ -532,3 +532,13 @@ colțuri le desenează Windows ca arce.
 | P70.6 | Conținutul e tăiat cu aceeași formă | Pune o piesă cu copertă colorată și uită-te la colțurile de jos ale pastilei. | Fundalul colorat se oprește exact pe contur; nu iese în colț și nu lasă o felie de culoare în afara siluetei. |
 | P70.7 | Antetul ferestrei v2 | Pornește și „Fereastra WinNotch v2”, deschide fereastra. | Antetul are exact aceleași colțuri ca notch-ul din marginea ecranului — recunoști același obiect. |
 | P70.8 | Mod sigur | Pornește cu `--safe-mode`. | Colțurile sunt arce (funcția e Experimental, deci oprită în mod sigur). |
+
+### P50 revizuit — sertarul (0.6.27)
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P50.20 | Umeri drepți | Pornește „Notch lipit de ramă”. Uită-te la locul unde pastila întâlnește marginea de sus. | Marginile din stânga și dreapta urcă drept în ramă. Nicio racordare concavă, nicio scobitură. |
+| P50.21 | Dunga de sus | Apropie-te de muchia de sus a pastilei, pe temă întunecată și apoi pe una luminoasă. | O linie de un pixel, discretă, în culoarea textului temei: deschisă pe temă întunecată, închisă pe cea luminoasă. Nu e un contur: apare doar sus. |
+| P50.22 | Mai scundă cu 4 px | Compară pastila de standby lipită cu cea plutitoare (oprește și pornește comutatorul). | Lipită e vizibil mai scundă, dar textul și iconițele încap la fel. Nu se taie nimic. |
+| P50.23 | Doar standby-ul se scurtează | Lasă să treacă la forma mică, apoi declanșează o alertă (schimbă volumul), apoi deschide notch-ul. | Forma mică, alerta și panoul deschis au exact înălțimile de dinainte. |
+| P50.24 | Dunga dispare la oprire | Debifează „Notch lipit de ramă”. | Pastila plutește din nou, fără dungă pe muchie, exact ca înainte. |

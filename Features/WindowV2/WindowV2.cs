@@ -375,7 +375,8 @@ namespace WinNotch.Features.WindowV2
             double w = Math.Max(240, windowWidth - 2 * LayoutRules.Pad);
             double h = LayoutRules.HeaderHeight;
             double r = AnchoredGeometry.Radius(_s.CornerRadius);
-            double e = AnchoredGeometry.Ear(_s.CornerRadius, w, windowWidth, h);
+            // 0.6.27: square shoulders, like the notch in the screen's edge (AnchoredGeometry.DrawEars)
+            double e = AnchoredGeometry.DrawEars ? AnchoredGeometry.Ear(_s.CornerRadius, w, windowWidth, h) : 0;
             _headerShape.Width = w + 2 * Math.Max(0, e);
             _headerShape.Height = h;
             // the header is the notch unfolded, so it follows the same corner switch

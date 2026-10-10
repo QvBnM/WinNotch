@@ -135,6 +135,37 @@ namespace WinNotch.Features.NotchAnchored
             return Math.Abs(start.Y) < 0.001 && Math.Abs(last.Y) < 0.001 && last.X > start.X;
         }
 
+        /// <summary>
+        /// Whether the concave fillets are drawn. False since 0.6.27: on a MacBook the image really does flow around a
+        /// hole in the panel, which is what a fillet promises — Windows has no such hole, so the promise is false and
+        /// the shape reads as sitting unnaturally on the edge (the author's words). What is drawn instead is a drawer:
+        /// square shoulders, rounded only at the bottom, with a hairline of light along the top edge, so it reads as an
+        /// object hanging from the bezel rather than a cut into it. The outline keeps supporting ears (<see cref="Ear"/>
+        /// and <see cref="Outline"/> are unchanged and still tested) in case the shape is ever wanted back.
+        /// </summary>
+        public const bool DrawEars = false;
+
+        /// <summary>The hairline along the top edge: white at this opacity, one pixel, inside the pill's own clip.</summary>
+        public const double SeamOpacity = 0.14, SeamThickness = 1;
+
+        /// <summary>
+        /// How much shorter the standby pill is while anchored. Floating, it reads as 34 px plus the 8 px of screen
+        /// above it; stuck to the edge that gap is gone, so the same 34 px look heavier than before. The small form
+        /// (22 px), the alerts and the open panel keep their heights.
+        /// </summary>
+        public const double StandbyDrop = 4;
+
+        /// <summary>The standby pill's height: shorter while anchored, untouched otherwise and in every other mode.</summary>
+        public static double StandbyHeight(double height, bool anchored, bool standby, double scale)
+        {
+            if (!anchored || !standby) return height;
+            double drop = StandbyDrop * (scale > 0 ? scale : 1);
+            return Math.Max(MiniHeight, height - drop);
+        }
+
+        /// <summary>The standby pill never shrinks under the small form's height, whatever the scale.</summary>
+        private const double MiniHeight = 22;
+
         /// <summary>In the anchored look the background is never see-through enough to break the illusion.</summary>
         public const double MinOpacity = 0.92;
 

@@ -533,16 +533,19 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
 - **Ferestre maximizate.** Peste o fereastră maximizată se face mic (opțional) și **se dă la o parte**: cât timp mouse-ul e peste el, dispare complet și click-ul ajunge la fereastra de dedesubt (de exemplu butonul „+” tab nou din browser). Se deschide doar dacă împingi mouse-ul de tot sus, în marginea ecranului.
 - **Click prin notch.** Dacă dai click cât mouse-ul stă pe pastilă, click-ul era pentru fereastra de sub ea: notch-ul nu se mai deschide până nu ieși cu mouse-ul de pe el.
 - **Notch lipit de ramă (P50, comutatorul „Notch lipit de ramă”, oprit implicit).** Cu el pornit, notch-ul nu mai plutește:
-  atinge marginea de sus a ecranului, e rotunjit doar jos (raza din Setări, între 12 și 28) și are câte o racordare concavă în
-  stânga și în dreapta sus, ca o prelungire a ramei monitorului. Fundalul devine aproape opac (minimum 92 %, oricât ai pus în
-  Setări), umbra cade doar în jos, iar la deschidere crește de sus în jos, fără saltul de câțiva pixeli de azi. În standby,
-  lățimea e ținută între 240 și 520 de pixeli („vizibil, dar nu încurcă”); forma mică rămâne neschimbată. Racordările nu
-  primesc mouse-ul: notch-ul se deschide doar de pe pastilă, ca până acum. Oprit, totul arată exact ca înainte.
+  atinge marginea de sus a ecranului și e rotunjit doar jos (raza din Setări, între 12 și 28) — un **sertar** agățat de ramă,
+  cu umeri drepți și o dungă subțire de lumină pe muchia de sus. Din 0.6.27 **nu mai are racordări concave**: pe un MacBook
+  imaginea chiar curge în jurul unui decupaj din panou, iar racordarea îl anunță; un ecran de Windows n-are niciun decupaj,
+  deci racordarea promitea o tăietură care nu există și forma se citea nefiresc așezată pe margine. Geometria lor rămâne
+  întreagă și testată, doar că nu se mai desenează. Lipită de ramă, pastila de standby e cu 4 px mai scundă: plutitoare se
+  citește ca înălțimea ei plus cei 8 px de ecran de deasupra, iar lipită golul acela dispare. Fundalul devine aproape opac
+  (minimum 92 %, oricât ai pus în Setări), umbra cade doar în jos, iar la deschidere crește de sus în jos, fără saltul de
+  câțiva pixeli de azi. În standby, lățimea e ținută între 240 și 520 de pixeli („vizibil, dar nu încurcă”); forma mică,
+  alertele și panoul deschis își păstrează înălțimile. Oprit, totul arată exact ca înainte.
   Silueta e **o singură suprafață pictată**: cât e ancorat, pastila nu-și mai desenează fundalul, ci doar taie conținutul
   după același contur, iar umbra stă pe siluetă. Două suprafețe cu aceeași pensulă semitransparentă dădeau corpului două
   straturi de culoare (deci altă nuanță decât racordările, vizibil pe tema luminoasă) și o îmbinare în colțurile de jos.
-  Racordarea e limitată și de înălțimea pastilei, ca pe forma mică să nu depășească începutul colțului de jos. Geometria
-  trece printr-un singur traducător (`Features/NotchAnchored/AnchoredShape.cs`), folosit și de antetul ferestrei v2.
+  Geometria trece printr-un singur traducător (`Features/NotchAnchored/AnchoredShape.cs`), folosit și de antetul ferestrei v2.
 - **Colțuri continue (P70, comutatorul „Colțuri continue”, oprit implicit).** Colțurile de jos ale siluetei nu mai intră
   dintr-odată în arc de cerc: curba pleacă mai devreme de pe laterală (de la 1,6 ori raza) și iese mai departe pe muchia
   de jos, deci curbura crește treptat și nu se mai vede punctul în care începe rotunjirea — forma pictogramelor de pe
@@ -554,7 +557,7 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   reface doar când se schimbă mărimea sau comutatorul, nu la fiecare cadru.
 - **Fereastra WinNotch v2 (P52, comutatorul „Fereastra WinNotch v2”, oprit implicit).** Cu el pornit, din notch se
   deschide fereastra nouă. Antetul e notch-ul desfăcut: aceeași siluetă ca la „Notch lipit de ramă” (aceeași rază,
-  aceleași racordări, același cod de desenare), ca să recunoști obiectul din marginea ecranului.
+  aceiași umeri drepți, același cod de desenare), ca să recunoști obiectul din marginea ecranului.
   **Are o singură navigare: patru file în antet** — Workspace, Widgeturi, Teme, Sistem. Coloana din stânga nu e o a
   doua navigare: aparține filei deschise și se schimbă cu ea.
   - **Workspace** — pagina pe care o construiești. În stânga, paginile tale și cele standard (cu ochiul care le ascunde

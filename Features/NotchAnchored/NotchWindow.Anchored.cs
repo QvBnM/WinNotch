@@ -26,6 +26,12 @@ namespace WinNotch
         /// with a seam where the bottom corners of the two shapes meet. Null while the switch is off.
         /// </summary>
         private Path _anchoredShape;
+        /// <summary>
+        /// The hairline of light along the top edge (0.6.27): it makes the drawer read as an object hanging from the
+        /// bezel instead of a hole cut into it, now that the concave fillets are gone. It lives inside the pill's
+        /// content, so the pill's own clip, width, height, margin, opacity and shift carry it — no bindings of its own.
+        /// </summary>
+        private Rectangle _anchoredSeam;
         private Effect _anchoredOldShadow;
 
         private static bool AnchoredEnabled() => FeatureFlags.Current?.IsEnabled(AnchoredGeometry.FeatureId) ?? false;
@@ -106,12 +112,25 @@ namespace WinNotch
                         _anchoredShape.SetBinding(VisibilityProperty, new System.Windows.Data.Binding("Visibility") { Source = Pill });
                         root.Children.Insert(Math.Max(0, root.Children.IndexOf(Pill)), _anchoredShape);
                     }
+                    if (_anchoredSeam == null)
+                    {
+                        _anchoredSeam = new Rectangle
+                        {
+                            Height = AnchoredGeometry.SeamThickness, VerticalAlignment = VerticalAlignment.Top,
+                            HorizontalAlignment = HorizontalAlignment.Stretch, IsHitTestVisible = false,
+                            Opacity = AnchoredGeometry.SeamOpacity,
+                        };
+                        _anchoredSeam.SetResourceReference(Shape.FillProperty, "InkBrush");   // follows the theme
+                        Panel.SetZIndex(_anchoredSeam, 30);
+                        Inner.Children.Add(_anchoredSeam);
+                    }
                 }
                 else
                 {
                     Pill.Effect = _anchoredOldShadow;
                     Pill.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
                     if (_anchoredShape != null && Pill.Parent is Panel root) { root.Children.Remove(_anchoredShape); _anchoredShape = null; }
+                    if (_anchoredSeam != null) { Inner.Children.Remove(_anchoredSeam); _anchoredSeam = null; }
                 }
                 _shapeW = _shapeH = _shapeR = _shapeE = -1;      // the shape is rebuilt whatever its size
                 ThemeManager.Apply(S);                            // the minimum opacity lives in the brushes
@@ -134,6 +153,13 @@ namespace WinNotch
         /// <summary>Standby width while anchored: 240–520. The small form keeps its own width.</summary>
         private double AnchoredIdleWidth(double w) => AnchoredGeometry.IdleWidth(w, _anchoredOn);
 
+        /// <summary>
+        /// The standby pill is shorter while anchored: floating it reads as its height plus the 8 px of screen above
+        /// it, and stuck to the edge that gap is gone. Every other mode keeps its height.
+        /// </summary>
+        private double AnchoredHeight(double h, bool standby) =>
+            AnchoredGeometry.StandbyHeight(h, _anchoredOn, standby, UiScale);
+
         private double _shapeW = -1, _shapeH = -1, _shapeR = -1, _shapeE = -1;
         private bool _shapeSmooth;
 
@@ -150,7 +176,10 @@ namespace WinNotch
             // Radius is the animated value (already scaled), so the shape follows the animation instead of jumping.
             double scale = Math.Max(0.01, UiScale);
             double r = Math.Min(Radius, Math.Min(w / 2, h / 2));
-            double e = AnchoredGeometry.Ear(Radius / scale, w / scale, Width / scale, h / scale) * scale;
+            // 0.6.27: the drawer has square shoulders (AnchoredGeometry.DrawEars), so the ears are not drawn any more.
+            double e = AnchoredGeometry.DrawEars
+                ? AnchoredGeometry.Ear(Radius / scale, w / scale, Width / scale, h / scale) * scale
+                : 0;
             bool smooth = SmoothEnabled();
             if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE) && smooth == _shapeSmooth) return true;
             _shapeW = w; _shapeH = h; _shapeR = r; _shapeE = e; _shapeSmooth = smooth;

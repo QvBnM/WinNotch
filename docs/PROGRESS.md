@@ -836,3 +836,21 @@ Colțul de arc are aceeași problemă la altă scară — curbura sare de la zer
 - Limită asumată și scrisă în documentație: pastila plutitoare e un `Border`, ale cărui colțuri le desenează Windows ca
   arce, deci funcția se vede doar cu `notch-anchored` pornită. Ca să prindă și forma plutitoare, pastila ar trebui să-și
   deseneze fundalul ca `Path` — pas separat, dacă se cere.
+
+### P50 revizuit — sertarul (0.6.27)
+
+Autorul, pe planșele de design: „mi se pare nenatural cum se lipește de marginea de sus a ecranului”. Cauza nu era
+mărimea (prima ipoteză, corectată), ci racordările concave: ele sunt idiomul MacBook, unde imaginea chiar curge în jurul
+unui decupaj din panou. Pe Windows nu există decupaj, deci forma promitea o tăietură inexistentă — și contrazicea chiar
+teza propunerii („nu e o gaură, e un instrument”).
+
+- **Fără comutator nou:** `notch-anchored` e experimental și oprit implicit, iar silueta lui e tocmai ce a fost respins
+  în revizie, deci se schimbă la fața locului. Un al treilea comutator doar ca să vezi o formă ar fi fost exact
+  non-evenimentul pe care auditul FA1–FA6 există să-l prevină.
+- **Nimic aruncat:** `Ear` și `Outline` cu urechi rămân întregi și testate (NA1–NA5, NA18); doar cele două locuri care
+  desenează citesc `AnchoredGeometry.DrawEars`.
+- **Dunga** stă în conținutul pastilei, nu lângă siluetă: o taie decupajul ei și o duc lățimea, înălțimea, marginea,
+  opacitatea și deplasarea pastilei — zero legături noi de întreținut. Culoarea e `InkBrush`, deci merge pe orice temă.
+- **Înălțimea** e un singur rând în `ApplyMode`, ca celelalte legături P50.
+- **Teste:** NA22–NA27 (6), plus NA17 actualizat (fixa linia de cache, schimbată de P70 — exact de-asta există ancorele).
+  **Nerulate:** containerul nu are .NET SDK.

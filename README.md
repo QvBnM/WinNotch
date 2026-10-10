@@ -18,6 +18,7 @@ Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-
 
 ## Noutăți în 0.6.27
 
+- **„Notch lipit de ramă” e acum un sertar** (experimentală, oprită): umeri drepți și o dungă de lumină pe muchia de sus, fără racordările concave — ecranul tău n-are niciun decupaj în jurul căruia să curgă imaginea.
 - **Colțuri continue** (experimentală, oprită): colțurile de jos ale notch-ului se rotunjesc treptat, ca pictogramele de pe telefon. Se vede doar cu „Notch lipit de ramă” pornită, fiindcă doar acolo forma e desenată de noi.
 
 ## Noutăți în 0.6.26
