@@ -98,5 +98,6 @@
     <Compile Include="..\Features\NotchAnchored\AnchoredGeometry.cs" />
     <!-- P52: only the pure layout rules (the window itself stays out) -->
     <Compile Include="..\Features\WindowV2\LayoutRules.cs" />
+    <Compile Include="..\Features\WindowV2\SettingsMap.cs" />
   </ItemGroup>
 </Project>

@@ -42,7 +42,7 @@ namespace WinNotch.Features.WindowV2
 
         private WorkspaceView _workspace;
         private WidgetsView _widgets;
-        private SystemView _system;
+        private SettingsView _settings;
         private ScrollViewer _themesHost;
         private readonly EmbeddedPages _themes = new EmbeddedPages();
 
@@ -86,7 +86,7 @@ namespace WinNotch.Features.WindowV2
                 _soonTimer.Stop();
                 Flush();                                   // a name or a slider still pending is saved, not lost
                 _themes.Detach();
-                _system?.Detach();
+                _settings?.Detach();
                 if (Application.Current is App app && ReferenceEquals(app.HostedWorkspace, _workspace)) app.HostedWorkspace = null;
                 if (_flagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _flagHandler;
                 _flagHandler = null;
@@ -121,14 +121,14 @@ namespace WinNotch.Features.WindowV2
             });
         }
 
-        /// <summary>True when the Sistem tab already shows the section this request asks for.</summary>
-        private bool ShowsSection(string pageId) => _tab != LayoutRules.System || _system == null || pageId == null;
+        /// <summary>True when the Setări tab already shows what this request asks for.</summary>
+        private bool ShowsSection(string pageId) => _tab != LayoutRules.Settings || _settings == null || pageId != "news";
 
         /// <summary>P14 ("settings.*" actions): the settings page, scrolled to one option and focused.</summary>
         internal void RevealSetting(string target) => Guarded(() =>
         {
             Open("settings");
-            _system?.Reveal(target);
+            _settings?.Reveal(target);
         });
 
         /// <summary>A page was edited in the notch: the workspace, if open on it, shows the new layout.</summary>
@@ -252,12 +252,12 @@ namespace WinNotch.Features.WindowV2
                         _bodyHost.Child = _themesHost;
                         break;
                     default:
-                        _system ??= new SystemView(_s, _notch, () => this, Say);
-                        _system.Open(LayoutRules.SectionFor(pageId), BodyWidth());
-                        _bodyHost.Child = _system;
+                        _settings ??= new SettingsView(_s, _notch, () => this, Soon, Say);
+                        _settings.Open(LayoutRules.SectionFor(pageId), BodyWidth());
+                        _bodyHost.Child = _settings;
                         break;
                 }
-                if (_tab != LayoutRules.System) _system?.Detach();
+                if (_tab != LayoutRules.Settings) _settings?.Detach();
                 Relayout();
             });
         }
@@ -343,7 +343,7 @@ namespace WinNotch.Features.WindowV2
             double w = BodyWidth();
             _hint.Text = LayoutRules.Hint(FeatureFlags.Current?.IsEnabled(Features.CommandBar.CommandBarRules.FeatureId) ?? false);
             _workspace?.Relayout(w);
-            _system?.Relayout(w);
+            _settings?.Relayout(w);
             DrawHeader(w);
         });
 

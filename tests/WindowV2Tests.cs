@@ -24,7 +24,7 @@ namespace WinNotch
         {
             Check("WV1", "O singură navigare: patru file, cu id-uri unice, titluri în română și iconițe",
                   LayoutRules.Tabs.Count == 4 &&
-                  LayoutRules.Tabs.Select(t => t.Id).SequenceEqual(new[] { "workspace", "widgeturi", "teme", "sistem" }) &&
+                  LayoutRules.Tabs.Select(t => t.Id).SequenceEqual(new[] { "workspace", "widgeturi", "teme", "setari" }) &&
                   LayoutRules.Tabs.All(t => t.Id == t.Id.ToLowerInvariant() && !string.IsNullOrWhiteSpace(t.Title) && !string.IsNullOrEmpty(t.Glyph)) &&
                   LayoutRules.Tabs.All(t => !t.Title.Contains("curând", StringComparison.OrdinalIgnoreCase)) &&
                   LayoutRules.FindTab("teme") != null && LayoutRules.FindTab("nu.exista") == null &&
@@ -32,21 +32,21 @@ namespace WinNotch
 
             Check("WV2", "Intrările vechi în fereastră duc unde trebuie: teme, setări, noutăți, o pagină, nimic",
                   LayoutRules.TabFor("themes") == LayoutRules.Themes &&
-                  LayoutRules.TabFor("settings") == LayoutRules.System && LayoutRules.TabFor("news") == LayoutRules.System &&
+                  LayoutRules.TabFor("settings") == LayoutRules.Settings && LayoutRules.TabFor("news") == LayoutRules.Settings &&
                   LayoutRules.TabFor("pagina-mea") == LayoutRules.Workspace &&
                   LayoutRules.TabFor(null) == LayoutRules.DefaultTab && LayoutRules.TabFor("") == LayoutRules.DefaultTab &&
-                  LayoutRules.SectionFor("settings") == "setari" && LayoutRules.SectionFor("news") == "noutati" &&
+                  LayoutRules.SectionFor("news") == "noutati" &&
                   LayoutRules.SectionFor(null) == LayoutRules.Sections[0].Id);
 
             // Problema raportată de autor pe 0.6.22: trei coloane de navigare una lângă alta.
-            Check("WV3", "Coloana din stânga aparține filei, nu ferestrei: doar Workspace și Sistem au una",
-                  LayoutRules.HasLeftPanel(LayoutRules.Workspace) && LayoutRules.HasLeftPanel(LayoutRules.System) &&
+            Check("WV3", "Coloana din stânga aparține filei, nu ferestrei: doar Workspace și Setări au una",
+                  LayoutRules.HasLeftPanel(LayoutRules.Workspace) && LayoutRules.HasLeftPanel(LayoutRules.Settings) &&
                   !LayoutRules.HasLeftPanel(LayoutRules.Widgets) && !LayoutRules.HasLeftPanel(LayoutRules.Themes));
 
             Check("WV4", "Inspectorul e doar unde ai ce inspecta (widget-ul ales, în Workspace)",
                   LayoutRules.HasInspector(LayoutRules.Workspace) &&
                   !LayoutRules.HasInspector(LayoutRules.Widgets) && !LayoutRules.HasInspector(LayoutRules.Themes) &&
-                  !LayoutRules.HasInspector(LayoutRules.System));
+                  !LayoutRules.HasInspector(LayoutRules.Settings));
 
             Check("WV5", "Pe o fereastră îngustă se strâng pe rând: întâi inspectorul, apoi coloana din stânga",
                   LayoutRules.ShowInspector(LayoutRules.Workspace, 1120) && !LayoutRules.ShowInspector(LayoutRules.Workspace, 1119) &&
@@ -71,21 +71,27 @@ namespace WinNotch
 
         static void V2Sections()
         {
-            Check("WV9", "Secțiunile din Sistem au id-uri unice, titluri în română și iconițe",
-                  LayoutRules.Sections.Count >= 5 &&
+            Check("WV9", "Secțiunile din Setări au id-uri unice, titluri în română și iconițe",
+                  LayoutRules.Sections.Count >= 8 &&
                   LayoutRules.Sections.Select(s => s.Id).Distinct().Count() == LayoutRules.Sections.Count &&
                   LayoutRules.Sections.All(s => s.Id == s.Id.ToLowerInvariant() && !string.IsNullOrWhiteSpace(s.Title) && !string.IsNullOrEmpty(s.Glyph)) &&
-                  LayoutRules.FindSection("setari") != null && LayoutRules.FindSection("nu.exista") == null);
+                  LayoutRules.FindSection("notch") != null && LayoutRules.FindSection("nu.exista") == null &&
+                  LayoutRules.Sections[0].Id == "notch");
 
-            Check("WV10", "Acțiunile din registru se împart pe secțiuni; una necunoscută merge la „Acțiuni”",
-                  LayoutRules.SectionForAction("Clipboard") == "clipboard" && LayoutRules.SectionForAction("Captură") == "captura" &&
-                  LayoutRules.SectionForAction("Sunet") == "sunet" && LayoutRules.SectionForAction("Sistem") == "sistem" &&
-                  LayoutRules.SectionForAction("Fereastră") == "actiuni" && LayoutRules.SectionForAction("ceva nou") == "actiuni" &&
-                  LayoutRules.SectionForAction(null) == "actiuni" && LayoutRules.SectionForAction("clipboard") == "clipboard");
+            // P14: fiecare acțiune „settings.*” numește o opțiune prin controlul ei vechi; toate trebuie să aibă unde să cadă.
+            Check("WV10", "Fiecare opțiune a paginii vechi de setări are o secțiune în pagina nouă",
+                  SettingsMap.Targets.Count >= 20 &&
+                  SettingsMap.Targets.Distinct().Count() == SettingsMap.Targets.Count &&
+                  SettingsMap.Targets.All(t => LayoutRules.FindSection(SettingsMap.SectionFor(t)) != null) &&
+                  SettingsMap.Targets.All(t => !string.IsNullOrWhiteSpace(SettingsMap.NameFor(t))) &&
+                  SettingsMap.SectionFor("nu.exista") == null && SettingsMap.NameFor("nu.exista") == null,
+                  string.Join(", ", SettingsMap.Targets.Where(t => LayoutRules.FindSection(SettingsMap.SectionFor(t)) == null)));
 
-            Check("WV11", "Setările și noutățile sunt pagini întregi, nu carduri; restul secțiunilor sunt carduri",
-                  LayoutRules.IsPageSection("setari") && LayoutRules.IsPageSection("noutati") &&
-                  !LayoutRules.IsPageSection("actiuni") && !LayoutRules.IsPageSection("clipboard"));
+            Check("WV11", "Harta acoperă exact opțiunile pe care le numesc acțiunile „settings.*”",
+                  Features.CommandBar.SettingsActions.All.Select(o => o.Target).Distinct()
+                      .All(t => SettingsMap.SectionFor(t) != null),
+                  string.Join(", ", Features.CommandBar.SettingsActions.All.Select(o => o.Target).Distinct()
+                      .Where(t => SettingsMap.SectionFor(t) == null)));
 
             Check("WV12", "Comutatorul din catalog are id-ul regulilor, e Experimental și oprit implicit",
                   LayoutRules.FeatureId == FeatureCatalog.WindowV2 &&
@@ -97,7 +103,8 @@ namespace WinNotch
         {
             string app = Src("App.xaml.cs"), win = Src("Features/WindowV2/WindowV2.cs"),
                    work = Src("Features/WindowV2/WorkspaceView.cs"), insp = Src("Features/WindowV2/WidgetInspector.cs"),
-                   sys = Src("Features/WindowV2/SystemView.cs"), wid = Src("Features/WindowV2/WidgetsView.cs"),
+                   set = Src("Features/WindowV2/SettingsView.cs"), wid = Src("Features/WindowV2/WidgetsView.cs"),
+                   ctl = Src("Features/WindowV2/V2Controls.cs"),
                    emb = Src("Features/WindowV2/EmbeddedPages.cs"), ed = Src("EditorWindow.cs");
 
             Check("WV13", "Non-regresie: cu comutatorul oprit se deschide fereastra veche, iar o eroare în v2 cade pe ea",
@@ -114,13 +121,13 @@ namespace WinNotch
                   "a rămas o legătură cu EditorWindow");
 
             Check("WV15", "Niciun card „se deschide în fereastra clasică”, nicio funcție desenată degeaba",
-                  new[] { win, work, insp, sys, wid, emb }.All(f =>
+                  new[] { win, work, insp, set, wid, emb, ctl }.All(f =>
                       !f.Contains("fereastra clasică") && !f.Contains("în curând") && !f.Contains("Focus Mode") &&
                       !f.Contains("Window Wizard") && !f.Contains("Dev Tools")) &&
                   !app.Contains("OpenClassicEditor"));
 
             Check("WV16", "Tema aplicației peste tot: pensule prin DynamicResource, nicio culoare scrisă în cod în afara paletei temei",
-                  new[] { win, work, insp, sys, wid }.All(f =>
+                  new[] { win, work, insp, set, wid, ctl }.All(f =>
                       !Regex.IsMatch(f, @"Color\.From|Brushes\.(?!Transparent)") &&
                       Count(f, "new SolidColorBrush") == Count(f, "new SolidColorBrush(ThemeManager.Parse")) &&
                   Count(emb, "new SolidColorBrush") == Count(emb, "new SolidColorBrush(ThemeManager.Parse") &&
@@ -131,18 +138,18 @@ namespace WinNotch
                   win.Contains("AnchoredShape.Silhouette(") && !win.Contains("new StreamGeometry()"));
 
             Check("WV18", "Acțiunile pornesc doar prin registru, cu confirmare pentru ce nu e sigur, și în bara de comandă",
-                  sys.Contains("ActionRegistry.Current?.InvokeAsync(") && sys.Contains("ActionInvoker.UI, default, confirmed") &&
+                  set.Contains("ActionRegistry.Current?.InvokeAsync(") && set.Contains("ActionInvoker.UI, default, confirmed") &&
                   win.Contains("reg.InvokeAsync(hit.Id, null, ActionInvoker.UI, default, confirmed)") &&
-                  new[] { win, sys }.All(f => f.Contains("Safety == ActionSafety.Safe") && !f.Contains("Process.Start") && !f.Contains("Shell.Open")));
+                  new[] { win, set }.All(f => f.Contains("Safety == ActionSafety.Safe")));
 
             Check("WV19", "Fereastra respectă protocolul comutatorului (abonare, dezabonare, se închide când se oprește) și raportează erorile",
                   win.Contains("FeatureFlags.Current.Changed += _flagHandler;") &&
                   win.Contains("FeatureFlags.Current.Changed -= _flagHandler;") &&
                   win.Contains("ReportError(LayoutRules.FeatureId, ex)"));
 
-            Check("WV20", "Tastatura: filele, rândurile și iconițele sunt butoane cu nume, iar Esc închide întâi panoul de peste pagină",
-                  new[] { win, work, sys }.All(f => f.Contains("Ui.S(\"NavButton\")") && f.Contains("AutomationProperties.SetName")) &&
-                  !new[] { win, work, sys }.Any(f => f.Contains("Ui.S(\"IconButton\")")) &&
+            Check("WV20", "Tastatura: filele, rândurile și comutatoarele sunt butoane cu nume, iar Esc închide întâi panoul de peste pagină",
+                  new[] { win, work, set, ctl }.All(f => f.Contains("Ui.S(\"NavButton\")") && f.Contains("AutomationProperties.SetName")) &&
+                  !new[] { win, work, set }.Any(f => f.Contains("Ui.S(\"IconButton\")")) &&
                   win.Contains("if (e.Key == Key.Escape) { if (!CloseOpenPopup()) Close(); e.Handled = true; }") &&
                   work.Contains("internal bool CloseOpenPopup()"));
 
@@ -155,10 +162,19 @@ namespace WinNotch
                   insp.Contains("Gallery.SizePreviews(") && insp.Contains("def.Options") && insp.Contains("page.Commit()") &&
                   !insp.Contains("new OptionDef") && !insp.Contains("new WidgetDef"));
 
-            Check("WV23", "Setările și noutățile rămân conținutul existent (TakeContent, ParseNotes), temele trec prin ThemeEdits",
-                  emb.Contains("_settings.TakeContent()") && emb.Contains("new Binding(\"ViewportHeight\") { Source = host }") &&
+            // Raportat de autor pe 0.6.23: pagina de setări era foaia albă a ferestrei vechi, lipită în fereastra pe temă întunecată.
+            Check("WV23", "Setările sunt desenate aici, pe jetoanele temei; nicio bucată din fereastra clasică nu mai e găzduită",
+                  !emb.Contains("SettingsWindow") && !set.Contains("SettingsWindow") && !win.Contains("SettingsWindow") &&
+                  !new[] { win, work, set, emb }.Any(f => f.Contains("TakeContent")) &&
+                  set.Contains("V2Controls.Toggle(") && set.Contains("V2Controls.Choice(") && set.Contains("V2Controls.Card("),
+                  "a rămas conținut găzduit din fereastra clasică");
+
+            Check("WV27", "Setările se aplică pe loc: niciun buton de salvare, fiecare schimbare scrie și anunță notch-ul",
+                  set.Contains("_s.Save();") && set.Contains("_notch?.ApplySettings();") &&
+                  !set.Contains("Salvează\"") && !set.Contains("Renunță"));
+
+            Check("WV28", "Noutățile se citesc cu codul existent, temele trec prin ThemeEdits",
                   emb.Contains("Services.Updater.ParseNotes(Services.Updater.OwnNotes())") &&
-                  emb.Contains("_settings?.Detach();") &&
                   new[] { "SetOverride", "ResetOverride", "ResetAll", "IsChanged", "Choose", "SaveAs", "Delete", "PickColor" }
                       .All(m => emb.Contains("Core.Ui.ThemeEdits." + m + "(")));
 

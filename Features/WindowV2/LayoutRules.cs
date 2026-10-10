@@ -20,27 +20,25 @@ namespace WinNotch.Features.WindowV2
         public string Glyph { get; }
     }
 
-    /// <summary>One entry of the contextual panel on the left (only inside the tab that owns it).</summary>
+    /// <summary>One section of the Setări tab: a group of options, listed in that tab's own column on the left.</summary>
     public sealed class V2Section
     {
-        public V2Section(string id, string title, string glyph, params string[] actionCategories)
+        public V2Section(string id, string title, string glyph)
         {
-            Id = id; Title = title; Glyph = glyph; ActionCategories = actionCategories ?? Array.Empty<string>();
+            Id = id; Title = title; Glyph = glyph;
         }
 
         public string Id { get; }
         public string Title { get; }
         public string Glyph { get; }
-        /// <summary>Which action categories (from the registry) belong here; empty: the section is not built from actions.</summary>
-        public IReadOnlyList<string> ActionCategories { get; }
     }
 
     /// <summary>
     /// P52: the layout of the WinNotch window — pure rules only (no WPF).
-    /// <para>The window has <b>one</b> navigation: four tabs in the header (Workspace, Widgeturi, Teme, Sistem). The
+    /// <para>The window has <b>one</b> navigation: four tabs in the header (Workspace, Widgeturi, Teme, Setări). The
     /// column on the left is not a second navigation: it belongs to the open tab and changes with it (the pages and the
-    /// icon in Workspace, the sections in Sistem, nothing in the other two). The column on the right is the inspector of
-    /// whatever is selected, and only Workspace has one. That is the whole structure.</para>
+    /// icon in Workspace, the groups of options in Setări, nothing in the other two). The column on the right is the
+    /// inspector of whatever is selected, and only Workspace has one. That is the whole structure.</para>
     /// The window itself is in <c>Features/WindowV2/</c>; with the switch off the old window opens.
     /// </summary>
     public static class LayoutRules
@@ -50,7 +48,7 @@ namespace WinNotch.Features.WindowV2
 
         public const double LeftWidth = 212, InspectorWidth = 300, MinWidth = 900, MinHeight = 600;
 
-        public const string Workspace = "workspace", Widgets = "widgeturi", Themes = "teme", System = "sistem";
+        public const string Workspace = "workspace", Widgets = "widgeturi", Themes = "teme", Settings = "setari";
 
         /// <summary>The header's tabs, in order. Four areas; nothing else navigates.</summary>
         public static readonly IReadOnlyList<V2Tab> Tabs = new[]
@@ -58,7 +56,7 @@ namespace WinNotch.Features.WindowV2
             new V2Tab(Workspace, "Workspace", ""),
             new V2Tab(Widgets, "Widgeturi", ""),
             new V2Tab(Themes, "Teme", ""),
-            new V2Tab(System, "Sistem", ""),
+            new V2Tab(Settings, "Setări", ""),
         };
 
         public static V2Tab FindTab(string id) => Tabs.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.Ordinal));
@@ -74,45 +72,39 @@ namespace WinNotch.Features.WindowV2
         {
             null or "" => DefaultTab,
             "themes" => Themes,
-            "settings" or "news" => System,
+            "settings" or "news" => Settings,
             _ => Workspace,
         };
 
-        /// <summary>Inside Sistem, the section a request opens (the settings and the news keep their own entry points).</summary>
+        /// <summary>Inside Setări, the section a request opens (the news keeps its own entry point).</summary>
         public static string SectionFor(string pageId) => pageId switch
         {
-            "settings" => "setari",
             "news" => "noutati",
             _ => Sections[0].Id,
         };
 
-        /// <summary>The contextual panel of the Sistem tab. Only groups that exist today.</summary>
+        /// <summary>
+        /// The contextual panel of the Setări tab: the groups the options are split into, in the order they matter.
+        /// They are sections of one page, not a second navigation of the window.
+        /// </summary>
         public static readonly IReadOnlyList<V2Section> Sections = new[]
         {
-            new V2Section("actiuni", "Acțiuni", "", "Acțiuni", "Fereastră"),
-            new V2Section("sistem", "Sistem", "", "Sistem"),
-            new V2Section("clipboard", "Clipboard", "", "Clipboard"),
-            new V2Section("captura", "Captură", "", "Captură"),
-            new V2Section("sunet", "Sunet", "", "Sunet"),
-            new V2Section("setari", "Setări", ""),
+            new V2Section("notch", "Notch", ""),
+            new V2Section("standby", "Standby", ""),
+            new V2Section("acasa", "Acasă și sănătate", ""),
+            new V2Section("browser", "Browser", ""),
+            new V2Section("sistem", "Sistem", ""),
+            new V2Section("spatii", "Spații de lucru", ""),
+            new V2Section("context", "Pagina după context", ""),
+            new V2Section("functii", "Funcții noi", ""),
+            new V2Section("actiuni", "Acțiuni", ""),
             new V2Section("noutati", "Noutăți", ""),
         };
 
         public static V2Section FindSection(string id) => Sections.FirstOrDefault(s => string.Equals(s.Id, id, StringComparison.Ordinal));
 
-        /// <summary>Which section an action from the registry belongs to; an unknown one goes to „Acțiuni”.</summary>
-        public static string SectionForAction(string actionCategory)
-        {
-            if (string.IsNullOrEmpty(actionCategory)) return "actiuni";
-            var hit = Sections.FirstOrDefault(s => s.ActionCategories.Any(a => string.Equals(a, actionCategory, StringComparison.OrdinalIgnoreCase)));
-            return hit?.Id ?? "actiuni";
-        }
-
-        /// <summary>Sections that are a page of their own (built by the same code the classic window uses).</summary>
-        public static bool IsPageSection(string sectionId) => sectionId is "setari" or "noutati";
-
-        /// <summary>The tab's own column on the left: the pages in Workspace, the sections in Sistem, nothing elsewhere.</summary>
-        public static bool HasLeftPanel(string tabId) => tabId == Workspace || tabId == System;
+        /// <summary>The tab's own column on the left: the pages in Workspace, the sections in Setări, nothing elsewhere.</summary>
+        public static bool HasLeftPanel(string tabId) => tabId == Workspace || tabId == Settings;
 
         /// <summary>Only the workspace has something to inspect (the selected widget).</summary>
         public static bool HasInspector(string tabId) => tabId == Workspace;
@@ -123,7 +115,7 @@ namespace WinNotch.Features.WindowV2
         /// <summary>The inspector needs the width of the panel plus a usable page beside it.</summary>
         public static bool ShowInspector(string tabId, double width) => HasInspector(tabId) && width >= 1120;
 
-        /// <summary>Cards per row in the Sistem tab: 3 over 1280, 2 over 900, 1 below.</summary>
+        /// <summary>Cards per row in the Acțiuni section: 3 over 1280, 2 over 900, 1 below.</summary>
         public static int Columns(double width)
         {
             if (width >= 1280) return 3;
@@ -137,6 +129,6 @@ namespace WinNotch.Features.WindowV2
         /// <summary>The line in the bottom bar, beside the command field.</summary>
         public static string Hint(bool commandBarOn) => commandBarOn
             ? "Scrie ce vrei să faci, de exemplu „volum 30” sau „captură”."
-            : "Pornește Command Bar-ul din Sistem → Setări → funcții noi ca să scrii ce vrei să faci.";
+            : "Pornește Command Bar-ul din Setări → Funcții noi ca să scrii ce vrei să faci.";
     }
 }

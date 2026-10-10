@@ -2,41 +2,18 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
 
 namespace WinNotch.Features.WindowV2
 {
     /// <summary>
-    /// P52: the two pages that are shown here exactly as the classic window builds them — the settings (the real
-    /// <see cref="SettingsWindow"/> content, through <c>TakeContent</c>) and the release notes — plus the themes page,
-    /// which is the same logic (<see cref="Core.Ui.ThemeEdits"/>, used by both windows) in this window's wrapping.
-    /// Nothing about them is written twice; this class only hosts them and takes them apart again.
+    /// P52: the two pages this window builds from existing code rather than from controls of its own — the release
+    /// notes (read with <c>Updater.ParseNotes</c>) and the themes page, whose every change goes through
+    /// <see cref="Core.Ui.ThemeEdits"/>, the one piece of logic shared with the classic window. Nothing of the classic
+    /// window's own chrome is hosted here: it is a fixed light sheet and never belonged on a dark theme.
     /// </summary>
     internal sealed class EmbeddedPages
     {
-        private SettingsWindow _settings;
-        private ScrollViewer _host;
-        private ScrollBarVisibility _hostScroll = ScrollBarVisibility.Auto;
-
-        /// <summary>
-        /// The settings page, moved in as it is. It scrolls itself (so the Save row stays visible), which means the
-        /// host's own scrolling is switched off and the page is bound to the host's viewport height.
-        /// </summary>
-        internal FrameworkElement Settings(AppSettings s, NotchWindow notch, ScrollViewer host, Action reload)
-        {
-            Detach();
-            _settings = new SettingsWindow(s);
-            _settings.Saved += () => notch?.ApplySettings();
-            _settings.Reverted += reload;
-            var box = new Border { Child = _settings.TakeContent(), MaxWidth = 660, HorizontalAlignment = HorizontalAlignment.Left };
-            _host = host;
-            _hostScroll = host.VerticalScrollBarVisibility;
-            host.VerticalScrollBarVisibility = ScrollBarVisibility.Disabled;
-            box.SetBinding(FrameworkElement.HeightProperty, new Binding("ViewportHeight") { Source = host });
-            return box;
-        }
-
         /// <summary>
         /// What this version brought: the same notes the classic window shows, read with the same code
         /// (<c>Updater.ParseNotes(Updater.OwnNotes())</c>). Only the wrapping is new — the theme's own tokens.
@@ -261,15 +238,7 @@ namespace WinNotch.Features.WindowV2
             return g;
         }
 
-        /// <summary>P14 ("settings.*" actions): the hosted settings page, scrolled to one option and focused.</summary>
-        internal void Reveal(string target) => _settings?.Reveal(target);
-
-        /// <summary>Lets go of whatever page was hosted; calling it twice is harmless.</summary>
-        internal void Detach()
-        {
-            _settings?.Detach();
-            _settings = null;
-            if (_host != null) { _host.VerticalScrollBarVisibility = _hostScroll; _host = null; }
-        }
+        /// <summary>Nothing of the classic window is hosted any more; kept so callers need not care.</summary>
+        internal void Detach() { }
     }
 }
