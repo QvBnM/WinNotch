@@ -63,10 +63,11 @@ namespace WinNotch.Core.Perf
             try
             {
                 if (!File.Exists(Path) || new FileInfo(Path).Length > MaxFile) return list;
-                foreach (string line in File.ReadAllLines(Path).Reverse())
+                var lines = File.ReadAllLines(Path);
+                // Walked backwards by index: newest first, and nothing is allocated to reverse it.
+                for (int i = lines.Length - 1; i >= 0 && list.Count < Math.Max(1, count); i--)
                 {
-                    if (list.Count >= Math.Max(1, count)) break;
-                    var row = Parse(line);
+                    var row = Parse(lines[i]);
                     if (row != null) list.Add(row);
                 }
             }
