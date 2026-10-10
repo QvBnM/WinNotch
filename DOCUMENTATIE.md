@@ -548,9 +548,12 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   **Are o singură navigare: patru file în antet** — Workspace, Widgeturi, Teme, Sistem. Coloana din stânga nu e o a
   doua navigare: aparține filei deschise și se schimbă cu ea.
   - **Workspace** — pagina pe care o construiești. În stânga, paginile tale și cele standard (cu ochiul care le ascunde
-    din notch și cu duplicarea), iar sub ele iconița paginii pe care ești. În centru, numele paginii, pagina **vie**
-    (aceeași grilă 6×4 pe care o vezi în notch, cu drag, redimensionare și selecție) și managerul de widget-uri. În
-    dreapta, inspectorul widget-ului ales: mărimile lui, opțiunile lui și „Scoate widget-ul”.
+    din notch și cu duplicarea), iar sub ele iconița paginii pe care ești. În dreapta, inspectorul widget-ului ales:
+    mărimile lui, opțiunile lui și „Scoate widget-ul”. **Mijlocul e împărțit în două**, cu un separator pe care îl poți
+    trage: sus pagina **vie** (aceeași grilă 6×4 pe care o vezi în notch, cu drag, redimensionare și selecție), care
+    crește până la 1,7× ca să umple jumătatea ei pe un ecran lat; jos biblioteca de widget-uri — categoriile ca jetoane
+    pe orizontală și widget-urile într-un rând care se derulează lateral (și cu rotița). O pagină standard nu are
+    bibliotecă: nu se editează.
   - **Widgeturi** — catalogul întreg, pe toată înălțimea, cu categoriile lui. Ce alegi se adaugă pe pagina deschisă în
     Workspace.
   - **Teme** — modul (întunecat / luminos / ca Windows), temele gata făcute și ale tale, culorile temei folosite,
@@ -570,7 +573,7 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   fereastra. Deschiderea ferestrei pe fila și pagina pe care e deja nu o reconstruiește, ca să nu se piardă ce e scris
   în ea. Oprit, se deschide fereastra de azi, neschimbată.
 - **Poziție.** Stânga, centru sau dreapta, pe lățimea monitorului.
-- **Mărire pe ecrane mari.** Notch-ul deschis și alertele se măresc automat: 120% pe 1440p, 135% pe 4K, 110% pe ecrane intermediare, când Windows e la scalare 100%. Manual, se alege din Setări între 100% și 160%. Pastila mică nu se mărește.
+- **Mărire pe ecrane mari.** **Tot** notch-ul se mărește automat — pastila de standby, forma mică, notch-ul deschis și alertele: 120% pe 1440p, 135% pe 4K, 110% pe ecrane intermediare, când Windows e la scalare 100%. Manual, se alege din Setări între 100% și 160%. Până la 0.6.25 pastila de standby era singura care rămânea la mărimea ei (34 px, text de 11 px), așa că pe un monitor 2K ora și data abia se vedeau; regula e acum într-un singur loc, `Core/Ui/PillSize.cs`.
 - **Text.** Randat clar, cu contrast îmbunătățit și minimum 11 px.
 - **Performanță.** Fereastra transparentă e cât de mică se poate (Windows o redesenează toată la fiecare cadru de animație); crește doar cât e deschisă galeria în editare și revine după închidere. Închis, nu face aproape nimic: nu desenează la fiecare cadru, nu scanează sunetul pe aplicații, iar animațiile ascunse sunt oprite.
 

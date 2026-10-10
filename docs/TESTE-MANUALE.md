@@ -405,7 +405,10 @@ clasică) și apasă „Salvează”, apoi deschide fereastra din notch sau din 
 | P52.4 | Pagina vie | Trage un widget în pagină, mută-l, trage-l de colț ca să-l redimensionezi. | Se mișcă exact ca în notch și apare pe loc în notch (deschide-l cu `Win+Alt+N`). |
 | P52.5 | Inspectorul | Click pe un widget din pagină. | În dreapta apar numele, mărimile (cu cea de acum marcată) și opțiunile lui. Schimbă o mărime și o opțiune: se aplică pe loc. „Scoate widget-ul” îl scoate. |
 | P52.6 | Inspector gol | Click în gol, lângă widget-uri. | În dreapta scrie „Niciun widget ales”, plus câte widget-uri și câte rânduri sunt folosite. |
-| P52.7 | Managerul de widget-uri | În Workspace, derulează sub pagină. | „MANAGER WIDGETURI”: categoriile în stânga, cardurile în dreapta. Trage unul pe pagină; click pe unul deschide mărimile lui. |
+| P52.7 | Ecranul împărțit în două | Deschide Workspace pe o pagină de-a ta. | Sus, pagina pe care o aranjezi; jos, banda cu widget-urile pe care le poți adăuga; între ele, o linie pe care o poți trage în sus și în jos ca să dai mai mult loc uneia sau alteia. Nicio bară de derulare lungă care le pune cap la cap. |
+| P52.7b | Biblioteca de jos | În banda de jos: dă click pe categorii, derulează cardurile cu rotița mouse-ului, trage unul pe pagină, apoi dă click pe altul. | Categoriile sunt jetoane pe un rând; cardurile se derulează **lateral**, nu în jos. Tragerea îl pune pe pagină; click-ul deschide toate mărimile lui. |
+| P52.7c | Pagina crește | Lărgește fereastra pe tot ecranul. | Pagina din jumătatea de sus se mărește odată cu ea (până la 1,7×), nu rămâne un dreptunghi mic într-o zonă goală. |
+| P52.7d | Pagină standard | Alege o pagină standard din stânga. | Nu apare biblioteca de jos (pagina nu se editează); textul explică cum s-o duplici. |
 | P52.8 | Fila Widgeturi | Deschide Widgeturi. | Catalogul pe toată înălțimea; rândul de sus spune pe ce pagină se adaugă. Alege o mărime: widget-ul apare pe pagina din Workspace, iar jos scrie pe care. |
 | P52.9 | Pagină plină | Umple o pagină și mai adaugă unul. | Jos apare „Pagina e plină: scoate sau micșorează un widget.”, iar pagina nu se strică. |
 | P52.10 | Teme | Deschide Teme: schimbă modul, alege o temă, click pe o culoare, mișcă sliderele, salvează o temă nouă, apoi șterge-o. | Totul se aplică pe loc în notch; locul derulat se păstrează după fiecare schimbare; după ce miști un slider și închizi fereastra imediat, valoarea e salvată. |
@@ -425,6 +428,16 @@ clasică) și apasă „Salvează”, apoi deschide fereastra din notch sau din 
 | P52.18 | Schimbare în notch | Cu Workspace deschis pe o pagină de-a ta, mută un widget din notch (modul editare). | Pagina din fereastră arată noua aranjare. |
 | P52.19 | Redeschidere | Cu Setări deschis și ceva scris într-un câmp, deschide fereastra din nou din notch. | Vine în față fără să reconstruiască pagina: ce ai scris e încă acolo. |
 | P52.20 | Comutatorul oprit | Oprește „Fereastra WinNotch v2” și deschide fereastra din notch. | Se deschide fereastra clasică, neschimbată (test de non-regresie). |
+
+### Mărimea notch-ului pe ecrane mari
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| PS.1 | Standby pe 1440p sau 4K | Pe monitorul mare, cu Windows la scalare 100%, lasă notch-ul în standby cu ora și data pornite (Setări → Standby). | Pastila e vizibil mai mare decât pe un 1080p, iar ora și data se citesc de la distanță normală. |
+| PS.2 | Forma mică | Așteaptă să treacă în forma mică. | Și ea e mai mare, proporțional; rămâne o capsulă (colțurile complet rotunde). |
+| PS.3 | Mărimea aleasă manual | Setări → Notch → „Mărimea notch-ului deschis”: pune 100%, apoi 160%. | Pastila de standby se schimbă odată cu notch-ul deschis și cu alertele — nu mai rămâne singura la mărimea ei. |
+| PS.4 | Un singur monitor 1080p | Pe un ecran 1080p la scalare 100%, cu mărimea pe „Automat”. | Pastila arată exact ca înainte (34 px): nimic nu s-a schimbat acolo. |
+| PS.5 | Mutarea între monitoare | Trage mouse-ul de pe 1080p pe 1440p și înapoi. | Pastila se redimensionează la trecere, fără să sară și fără să rămână tăiată. |
 
 ### Audit comutatoare — ce vezi când pornești o funcție
 

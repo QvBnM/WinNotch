@@ -593,3 +593,40 @@
   nu pe cod. Acum caută un buton chiar etichetat așa.
 - **CI:** rularea 95 verde (build + 841 teste C# + 16 + 3 extensie + ambele drumuri de fum).
 - **Stare:** ramura `p52-settings-native`, pornită din `main`.
+
+
+## Workspace împărțit în două; pastila de standby crește cu monitorul (raportat de autor pe 0.6.24, 10 oct 2026)
+
+- **Raportat (1):** „As vrea sa fie ecranul impartit in doua. Zona unde editezi, plasezi widgeturile, iar in zona de sub
+  sa fie ce poti sa adaugi. Vreau si chestia asta reimplementata.”
+  Ce era: un singur derulaj lung — pagina lată fix 760 px sus, managerul de widget-uri înghesuit într-o cutie de 340 px
+  dedesubt, cu coloana lui de categorii de 170 px. Pe un ecran lat pagina rămânea mică într-o zonă goală, iar
+  biblioteca arăta mai mult bare de derulare decât widget-uri.
+- **Făcut (1):**
+  - Mijlocul filei Workspace e un `Grid` cu trei rânduri: editorul, un `GridSplitter`, biblioteca. Fiecare jumătate își
+    ține derulajul ei; separatorul se trage.
+  - Pagina stă într-un `Viewbox` cu `StretchDirection.Both`, deci **crește** până la 1,7× ca să umple jumătatea ei.
+  - `Features/WindowV2/WidgetLibrary.cs` (nou): banda de jos e făcută pentru forma pe care o are spațiul — categoriile
+    ca jetoane pe orizontală, widget-urile într-un rând care se derulează lateral (rotița mouse-ului derulează lateral,
+    fiindcă pe verticală nu e nimic de derulat). Galeria notch-ului rămâne neatinsă: e construită pentru un panou
+    îngust și înalt, și acolo e bună.
+  - **Fără duplicare:** previzualizarea e `Gallery.LivePreview`, mărimile sunt `Gallery.SizePreviews`, iar gestul de
+    tragere s-a extras o dată în `Core/Ui/WidgetDrag.cs` — îl folosesc și galeria și biblioteca. `Gallery.DragOrClick`
+    e acum trei rânduri care apelează gestul comun.
+  - O pagină standard nu primește bibliotecă (nu se editează).
+- **Raportat (2):** „La notch, mi se pare ca nu se vede prea ora/data... Eu am monitor 2k.”
+- **Cauza, scrisă chiar în cod:** „The small standby pill is never enlarged.” `ApplyUiScale` dădea scara doar lui
+  `ExpScale` (panoul deschis) și `LiveScale` (alertele); pastila avea `h = 34`, `r = 17` scrise de mână, iar straturile
+  `IdleLayer` și `MiniLayer` n-aveau nicio transformare. Pe 1440p totul creștea la 1,2× în afară de exact lucrul la care
+  se uită omul în standby.
+- **Făcut (2):** `Core/Ui/PillSize.cs` (pur, testat) dă înălțimea, raza și lățimea pastilei la o scară dată; `ApplyMode`
+  le folosește în loc de numere scrise de mână; `IdleScale` și `MiniScale` sunt transformările celor două straturi, puse
+  în `ApplyUiScale` lângă celelalte două. Lățimile se măsoară nescalat (scara e o transformare) și se înmulțesc după.
+  `ApplyUiScale` reaplică acum modul și în standby, altfel pastila rămânea la scara veche.
+- **Teste:** PS1–PS7 (noi) și WV29–WV32. PS7 refuză orice înălțime de pastilă scrisă de mână în `ApplyMode`, adică exact
+  felul în care a apărut problema.
+- **Greșeli prinse la CI:** două pin-uri de-ale mele rămăseseră în urma codului (NA11 și WV14), iar `WidgetLibrary` îi
+  lipsea `using WinNotch.Panes;` — eroare de compilare pe care rularea de dinainte n-a apucat s-o arate, fiindcă
+  testele picaseră înaintea pasului de publicare.
+- **CI:** rularea 100 verde (build + 852 teste C# + 16 + 3 extensie + ambele drumuri de fum).
+- **Stare:** ramura `p52-workspace-split`, pornită din `main`.
