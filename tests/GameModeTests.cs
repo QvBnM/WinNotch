@@ -423,7 +423,7 @@ namespace WinNotch
                   host.Reports.Count == reportsBefore && host.QuietOn == quietOnBefore + 1,
                   "playing=" + watcher.Playing + " rapoarte=+" + (host.Reports.Count - reportsBefore));
 
-            int named = EndSession(rig, watcher, host, reportsBefore);
+            int named = EndSession(rig, watcher, host, reportsBefore, TimeSpan.FromMinutes(10));
             Check("GM35c", "Raportul ei are numele, nu „”, deci se poate compara în timp",
                   named == reportsBefore + 1 && host.Reports[reportsBefore].Process == "rdr2" &&
                   store.For("rdr2").Count == 1 && host.QuietOff == quietOffBefore + 1,
@@ -434,8 +434,7 @@ namespace WinNotch
             rig.Fg.Set(Fg("rdr2", covers: true, exclusive: true));
             rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
             bool shortOpen = watcher.Playing == "rdr2";
-            rig.Clock.Advance(TimeSpan.FromSeconds(20));
-            EndSession(rig, watcher, host, shortBefore);
+            EndSession(rig, watcher, host, shortBefore, TimeSpan.FromSeconds(20));
             Check("GM36", "O sesiune mai scurtă decât minimul nu produce raport (dar se oprește curat)",
                   shortOpen && host.Reports.Count == shortBefore && store.Last().Count == shortFile &&
                   watcher.Playing == "" && monitor.Cadence == PerfCadence.Off && host.QuietOff == shortQuiet + 1,
@@ -475,11 +474,15 @@ namespace WinNotch
             .Count(f => f.IsLiteral && f.FieldType == typeof(string) && f.Name == "FeatureId" && (string)f.GetRawConstantValue() == id) == 1;
 
         /// <summary>
-        /// Leaves the game, lets the grace period run out and gives the watcher the tick that notices — then waits a
-        /// moment for the report, since ending a session is not instant. Returns how many reports exist afterwards.
+        /// Plays for <paramref name="played"/> on the fake clock, then leaves the game, lets the grace period run out
+        /// and gives the watcher the tick that notices. Returns how many reports exist afterwards.
+        /// <para>The played time is a parameter and not something the caller does beforehand, because forgetting it
+        /// is invisible: a session shorter than <see cref="GameDetect.MinSession"/> is correctly not reported, and the
+        /// test then fails for a reason that has nothing to do with what it is checking.</para>
         /// </summary>
-        static int EndSession(Rig rig, GameWatcher watcher, FakeGameHost host, int before)
+        static int EndSession(Rig rig, GameWatcher watcher, FakeGameHost host, int before, TimeSpan played)
         {
+            rig.Clock.Advance(played);                // cât a durat jocul: sub GameDetect.MinSession nu se raportează
             rig.Fg.Set(Fg("discord"));
             rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
             rig.Clock.Advance(GameDetect.Grace + TimeSpan.FromSeconds(5));
