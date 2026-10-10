@@ -29,6 +29,7 @@
     <Compile Include="InterruptTests.cs" />
     <Compile Include="NotchAnchoredTests.cs" />
     <Compile Include="WindowV2Tests.cs" />
+    <Compile Include="PillSizeTests.cs" />
     <Compile Include="FeatureAuditTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
@@ -39,6 +40,7 @@
     <Compile Include="..\Widgets\Model.cs" />
     <Compile Include="..\Core\Flags\FeatureCatalog.cs" />
     <!-- P51: the pure overlay rules (the notch's partial, with the WPF hooks, stays out) -->
+    <Compile Include="..\Core\Ui\PillSize.cs" />
     <Compile Include="..\Core\Ui\OverlayStack.cs" />
     <!-- P51b: the pure interrupt rules (the notch's partial, with the WPF hooks, stays out) -->
     <Compile Include="..\Core\Ui\InterruptRules.cs" />

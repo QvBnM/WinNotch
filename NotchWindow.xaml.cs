@@ -505,8 +505,13 @@ namespace WinNotch
                 case Mode.Expanded: FitWindowHeight(PanelH()); w = 720 * UiScale; h = PanelH() * UiScale; r = Math.Clamp(S.CornerRadius, 8, 40) * UiScale; top = 8; break;
                 case Mode.Live: w = _liveW * UiScale; h = _liveH * UiScale; r = _liveH > 64 ? 26 * UiScale : h / 2; top = 8; break;
                 default:
-                    if (mini) { w = MiniWidth(); h = 22; r = 11; top = 0; }
-                    else { w = AnchoredIdleWidth(IdleWidth()); h = 34; r = 17; top = 8; }     // P50 hook (Features/NotchAnchored): 240–520 while anchored
+                    // The pill follows the window's scale like everything else (Core/Ui/PillSize): on a 1440p or 4K
+                    // monitor it used to stay 34 px tall with 11 px text, which is why the time and the date were
+                    // barely readable there. The widths are measured unscaled, because the scale is a transform.
+                    if (mini) { w = Core.Ui.PillSize.Width(MiniWidth(), UiScale); top = 0; }
+                    else { w = Core.Ui.PillSize.Width(AnchoredIdleWidth(IdleWidth()), UiScale); top = 8; }   // P50 hook: 240–520 while anchored
+                    h = Core.Ui.PillSize.Height(UiScale, mini);
+                    r = Core.Ui.PillSize.Radius(UiScale, mini);
                     break;
             }
             if (_mode == Mode.Idle && !mini) _lastIdleW = w;
@@ -674,8 +679,8 @@ namespace WinNotch
             a.Left == b.Left && a.Top == b.Top && a.Right == b.Right && a.Bottom == b.Bottom;
 
         /// <summary>
-        /// Size of the open panel and the alerts: the user's choice, or automatic: bigger on 1440p+ monitors that run
-        /// at 100% Windows scaling, where 11–12 px text gets tiny. The small standby pill is never enlarged.
+        /// Size of the whole notch — the standby pill, the open panel and the alerts: the user's choice, or automatic:
+        /// bigger on 1440p+ monitors that run at 100% Windows scaling, where 11–12 px text gets tiny.
         /// </summary>
         internal double UiScale { get; private set; } = 1;
 
@@ -683,16 +688,19 @@ namespace WinNotch
         {
             double k = S.UiScale > 0.5 ? S.UiScale : t == null ? 1 : AutoScale(t);
             k = Math.Clamp(k, 1, 1.75);
-            if (Math.Abs(k - UiScale) < 0.001 && Math.Abs(Width - 820 * k) < 1) return;
+            if (Math.Abs(k - UiScale) < 0.001 && Math.Abs(Width - 820 * k) < 1 && Math.Abs(IdleScale.ScaleX - k) < 0.001) return;
             _tallWindow = false;
             UiScale = k;
             ExpScale.ScaleX = ExpScale.ScaleY = k;
             LiveScale.ScaleX = LiveScale.ScaleY = k;
+            // the standby pill scales too, so the time and the date stay readable on a 1440p or 4K monitor
+            IdleScale.ScaleX = IdleScale.ScaleY = k;
+            MiniScale.ScaleX = MiniScale.ScaleY = k;
             Width = 820 * k;
             Height = BaseHeight * k;
             // Display-mode text snaps to pixels: crisper at 100%, but uneven when scaled, so use Ideal then.
             TextOptions.SetTextFormattingMode(this, k > 1.001 ? TextFormattingMode.Ideal : TextFormattingMode.Display);
-            if (_mode != Mode.Idle) ApplyMode();          // an alert or the open panel was sized for the old scale
+            ApplyMode();          // the pill, an alert or the open panel were sized for the old scale
         }
 
         private static double AutoScale(MonitorState t)

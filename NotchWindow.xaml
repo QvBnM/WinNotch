@@ -23,12 +23,18 @@
 
                 <!-- STANDBY: the items picked in Settings -->
                 <Grid x:Name="IdleLayer" Margin="11,0">
+                    <Grid.LayoutTransform>
+                        <ScaleTransform x:Name="IdleScale"/>
+                    </Grid.LayoutTransform>
                     <StackPanel x:Name="IdleLeft" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center"/>
                     <StackPanel x:Name="IdleRight" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                 </Grid>
 
                 <!-- SMALL: time and date, song progress underneath -->
                 <Grid x:Name="MiniLayer" Opacity="0">
+                    <Grid.LayoutTransform>
+                        <ScaleTransform x:Name="MiniScale"/>
+                    </Grid.LayoutTransform>
                     <StackPanel x:Name="MiniRow" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,2">
                         <TextBlock x:Name="MiniTime" Text="--:--" FontFamily="{StaticResource MonoFont}" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" VerticalAlignment="Center"/>
                         <Ellipse Width="3" Height="3" Fill="{DynamicResource DimBrush}" Margin="8,0" VerticalAlignment="Center"/>

@@ -104,7 +104,7 @@ namespace WinNotch
             string app = Src("App.xaml.cs"), win = Src("Features/WindowV2/WindowV2.cs"),
                    work = Src("Features/WindowV2/WorkspaceView.cs"), insp = Src("Features/WindowV2/WidgetInspector.cs"),
                    set = Src("Features/WindowV2/SettingsView.cs"), wid = Src("Features/WindowV2/WidgetsView.cs"),
-                   ctl = Src("Features/WindowV2/V2Controls.cs"),
+                   ctl = Src("Features/WindowV2/V2Controls.cs"), lib = Src("Features/WindowV2/WidgetLibrary.cs"),
                    emb = Src("Features/WindowV2/EmbeddedPages.cs"), ed = Src("EditorWindow.cs");
 
             Check("WV13", "Non-regresie: cu comutatorul oprit se deschide fereastra veche, iar o eroare în v2 cade pe ea",
@@ -121,13 +121,13 @@ namespace WinNotch
                   "a rămas o legătură cu EditorWindow");
 
             Check("WV15", "Niciun card „se deschide în fereastra clasică”, nicio funcție desenată degeaba",
-                  new[] { win, work, insp, set, wid, emb, ctl }.All(f =>
+                  new[] { win, work, insp, set, wid, emb, ctl, lib }.All(f =>
                       !f.Contains("fereastra clasică") && !f.Contains("în curând") && !f.Contains("Focus Mode") &&
                       !f.Contains("Window Wizard") && !f.Contains("Dev Tools")) &&
                   !app.Contains("OpenClassicEditor"));
 
             Check("WV16", "Tema aplicației peste tot: pensule prin DynamicResource, nicio culoare scrisă în cod în afara paletei temei",
-                  new[] { win, work, insp, set, wid, ctl }.All(f =>
+                  new[] { win, work, insp, set, wid, ctl, lib }.All(f =>
                       !Regex.IsMatch(f, @"Color\.From|Brushes\.(?!Transparent)") &&
                       Count(f, "new SolidColorBrush") == Count(f, "new SolidColorBrush(ThemeManager.Parse")) &&
                   Count(emb, "new SolidColorBrush") == Count(emb, "new SolidColorBrush(ThemeManager.Parse") &&
@@ -183,6 +183,31 @@ namespace WinNotch
                   app.Contains("_windowV2?.PageChangedElsewhere(pageId);") &&
                   app.Contains("_windowV2?.PagesChangedElsewhere();") &&
                   win.Contains("if (tab == _tab &&"));
+
+            // Cerut de autor pe 0.6.24: ecranul împărțit în două — sus editezi, jos e ce poți adăuga.
+            Check("WV29", "Workspace e împărțit în două jumătăți cu un separator tras de utilizator, nu un singur derulaj lung",
+                  work.Contains("private void BuildSplit()") && work.Contains("new GridSplitter()") &&
+                  work.Contains("GridResizeDirection.Rows") &&
+                  work.Contains("_editorHost") && work.Contains("_libraryHost") &&
+                  // pagina crește în jumătatea ei, nu mai e un dreptunghi fix
+                  work.Contains("StretchDirection.Both") && work.Contains("PageWidth * MaxZoom"));
+
+            Check("WV30", "Biblioteca de widget-uri e o bandă largă: categoriile pe orizontală, cardurile într-un rând",
+                  lib.Contains("Orientation = Orientation.Horizontal") &&
+                  lib.Contains("HorizontalScrollBarVisibility = ScrollBarVisibility.Auto") &&
+                  lib.Contains("VerticalScrollBarVisibility = ScrollBarVisibility.Disabled") &&
+                  // nimic despre un widget nu e rescris: previzualizarea, mărimile și tragerea sunt cele existente
+                  lib.Contains("Gallery.LivePreview(") && lib.Contains("Gallery.SizePreviews(") &&
+                  lib.Contains("Core.Ui.WidgetDrag.Bind(") && !lib.Contains("DoDragDrop"));
+
+            Check("WV31", "Gestul de tragere e unul singur, folosit și de galerie și de bibliotecă",
+                  Src("Widgets/Gallery.cs").Contains("Core.Ui.WidgetDrag.Bind(") &&
+                  Count(Src("Widgets/Gallery.cs"), "DoDragDrop") == 0 &&
+                  Count(Src("Core/Ui/WidgetDrag.cs"), "DoDragDrop") == 1);
+
+            Check("WV32", "Esc închide întâi fereastra de mărimi a bibliotecii, apoi pe cea a paginii, apoi fereastra",
+                  work.Contains("if (_library != null && _library.CloseOpenPopup()) return true;") &&
+                  lib.Contains("internal bool CloseOpenPopup()"));
 
             // App-wide, learned the hard way: a repeated x:Key makes WPF throw while loading the resources, so the app
             // dies before its first window. Nicio probă unitară nu prindea asta — doar testul de fum, la pornire.

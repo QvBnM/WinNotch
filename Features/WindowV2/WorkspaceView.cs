@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using WinNotch.Panes;
 using WinNotch.Widgets;
@@ -11,11 +12,13 @@ namespace WinNotch.Features.WindowV2
 {
     /// <summary>
     /// P52, the Workspace tab: the page you are building. The column on the left is this tab's own — your pages and,
-    /// under them, the icon of the page you are on; the middle is the live page and the widget manager; the right is
-    /// the inspector of the selected widget. Nothing here is a second navigation.
-    /// <para>The page itself is the real one (<see cref="WidgetPage"/>, the same control the notch shows) and the
-    /// widget manager is the real gallery (<see cref="Gallery"/>) — both already draw in the app's theme, so this view
-    /// only arranges them and writes the changes through the same <c>Commit</c> as before.</para>
+    /// under them, the icon of the page you are on; the right is the inspector of the selected widget. The middle is
+    /// <b>split in two</b>: the page you are arranging above, what you can add below, with a divider you can drag.
+    /// Nothing here is a second navigation.
+    /// <para>The page itself is the real one (<see cref="WidgetPage"/>, the same control the notch shows), and the
+    /// library below is <see cref="WidgetLibrary"/> — the same previews, sizes and drag gesture as the notch's gallery,
+    /// laid out for a wide band instead of a tall panel. This view only arranges them and writes the changes through
+    /// the same <c>Commit</c> as before.</para>
     /// </summary>
     internal sealed class WorkspaceView : Grid
     {
@@ -27,14 +30,18 @@ namespace WinNotch.Features.WindowV2
         private readonly Action<string> _say;                 // a line in the bottom bar
 
         private readonly StackPanel _left = new StackPanel();
-        private readonly StackPanel _centre = new StackPanel();
-        private readonly Border _leftHost, _centreHost;
+        private readonly Border _leftHost;
+        /// <summary>The middle column: the page editor above, the widget library below, a splitter between them.</summary>
+        private readonly Grid _centre = new Grid();
+        private readonly Border _editorHost = new Border();
+        private readonly Border _libraryHost = new Border();
+        private readonly GridSplitter _splitter = new GridSplitter();
         private readonly WidgetInspector _inspector;
         private readonly Grid _overlay = new Grid();          // the size pop-up, over the whole view
 
         private string _sel;                                  // a page id, or "std:<id>"
         private WidgetPage _page;
-        private Gallery _gallery;
+        private WidgetLibrary _library;
         /// <summary>P51: the open pop-up (a widget's sizes), so Esc closes it first.</summary>
         private (Action Hide, Action Close) _popup;
 
@@ -55,12 +62,8 @@ namespace WinNotch.Features.WindowV2
             _leftHost.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
             this.Put(_leftHost);
 
-            _centreHost = new Border
-            {
-                Padding = new Thickness(LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad),
-                Child = new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _centre },
-            };
-            this.Put(_centreHost, 1);
+            BuildSplit();
+            this.Put(_centre, 1);
             this.Put(_inspector, 2);
 
             System.Windows.Controls.Panel.SetZIndex(_overlay, 50);
@@ -68,14 +71,53 @@ namespace WinNotch.Features.WindowV2
             Children.Add(_overlay);
         }
 
+        /// <summary>
+        /// The middle column is split in two, as the author asked: above, the page you are editing; below, what you can
+        /// add. Each half keeps its own room and its own scrolling — the two no longer share one long scroll where the
+        /// page ended up small and the library squeezed under it. The divider can be dragged.
+        /// </summary>
+        private void BuildSplit()
+        {
+            _centre.RowDefinitions.Add(new RowDefinition { Height = Ui.Star(), MinHeight = 220 });
+            _centre.RowDefinitions.Add(new RowDefinition { Height = Ui.Px(SplitterHeight) });
+            _centre.RowDefinitions.Add(new RowDefinition { Height = new GridLength(LibraryShare, GridUnitType.Star), MinHeight = 150 });
+
+            _editorHost.Padding = new Thickness(LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad, 0);
+            _centre.Put(_editorHost);
+
+            _splitter.Height = SplitterHeight;
+            _splitter.HorizontalAlignment = HorizontalAlignment.Stretch;
+            _splitter.VerticalAlignment = VerticalAlignment.Center;
+            _splitter.ResizeDirection = GridResizeDirection.Rows;
+            _splitter.ResizeBehavior = GridResizeBehavior.PreviousAndNext;
+            _splitter.Cursor = Cursors.SizeNS;
+            _splitter.Background = System.Windows.Media.Brushes.Transparent;
+            System.Windows.Automation.AutomationProperties.SetName(_splitter, "Mută linia dintre pagină și widget-uri");
+            var line = new Border { Height = 1, VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false, Margin = new Thickness(LayoutRules.Pad, 0, LayoutRules.Pad, 0) };
+            line.SetResourceReference(Border.BackgroundProperty, "BorderBrush");
+            var splitHost = new Grid();
+            splitHost.Children.Add(line);
+            splitHost.Children.Add(_splitter);
+            _centre.Put(splitHost, 0, 1);
+
+            _libraryHost.Padding = new Thickness(LayoutRules.Pad, LayoutRules.Gap, LayoutRules.Pad, LayoutRules.Gap);
+            _libraryHost.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
+            _centre.Put(_libraryHost, 0, 2);
+        }
+
+        /// <summary>The divider's own height, and how much of the column the library starts with.</summary>
+        private const double SplitterHeight = 7, LibraryShare = 0.52;
+
         /// <summary>The page the user is editing, or null while a standard page is shown.</summary>
         internal WidgetPage Page => _page;
 
         /// <summary>P51: Esc closes the size pop-up before anything else. True when something was closed.</summary>
         internal bool CloseOpenPopup()
         {
+            if (_library != null && _library.CloseOpenPopup()) return true;
             if (_popup.Close == null) return false;
             _popup.Close();
+            _popup = (null, null);
             return true;
         }
 
@@ -216,21 +258,65 @@ namespace WinNotch.Features.WindowV2
         private void BuildCentre(string slotId)
         {
             _page = null;
-            _gallery = null;
-            _centre.Children.Clear();
+            _library = null;
             _popup = (null, null);
             _overlay.Children.Clear();
+            _editorHost.Child = null;
+            _libraryHost.Child = null;
 
-            if (_sel != null && _sel.StartsWith("std:", StringComparison.Ordinal)) { BuildStandard(_sel.Substring(4)); _inspector.Show(null, null); return; }
+            if (_sel != null && _sel.StartsWith("std:", StringComparison.Ordinal))
+            {
+                ShowLibrary(false);
+                _editorHost.Child = new ScrollViewer { Style = Ui.S("SlimScroll"), Content = BuildStandard(_sel.Substring(4)) };
+                _inspector.Show(null, null);
+                return;
+            }
             var pg = _s.Pages.FirstOrDefault(p => p.Id == _sel);
             if (pg == null) { _sel = null; Open(null, null); return; }
 
-            // name and the two actions on it
-            var nameBox = WidgetInspector.Field(pg.Name, double.NaN);
-            nameBox.FontSize = 19;
+            ShowLibrary(true);
+            _editorHost.Child = BuildEditor(pg);
+
+            // the lower half: what you can add, as a wide band (its own control: the notch's gallery is built tall)
+            _library = new WidgetLibrary((type, size) =>
+            {
+                if (_page == null) return;
+                if (_page.Add(type, size)) _library?.Message("");
+                else Full();
+            }, () => _overlay);
+            _libraryHost.Child = _library;
+
+            var sel = slotId != null ? pg.Widgets.FirstOrDefault(w => w.Id == slotId) : null;
+            if (sel != null) _page.Select(sel);
+            _inspector.Show(_page, sel);
+            _page.Refresh();
+        }
+
+        /// <summary>The library and its divider only belong to a page of yours; a standard page is read-only.</summary>
+        private void ShowLibrary(bool show)
+        {
+            _centre.RowDefinitions[1].Height = show ? Ui.Px(SplitterHeight) : new GridLength(0);
+            _centre.RowDefinitions[2].Height = show ? new GridLength(LibraryShare, GridUnitType.Star) : new GridLength(0);
+            _centre.RowDefinitions[2].MinHeight = show ? 150 : 0;
+            _splitter.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            _libraryHost.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+            _editorHost.Padding = new Thickness(LayoutRules.Pad, LayoutRules.Pad, LayoutRules.Pad, show ? 0 : LayoutRules.Pad);
+        }
+
+        /// <summary>
+        /// The upper half: the page's name and its two actions, then the page itself — live, centred, and grown to the
+        /// room the half really has instead of a fixed 760 px. That is the point of the split: on a wide screen the
+        /// page you are arranging is big.
+        /// </summary>
+        private UIElement BuildEditor(UserPage pg)
+        {
+            var rows = Ui.Rows(Ui.Auto, Ui.Star());
+
+            var nameBox = V2Controls.Field(pg.Name);
+            nameBox.FontSize = 18;
             nameBox.FontWeight = FontWeights.SemiBold;
             nameBox.MaxLength = 32;
-            nameBox.MinWidth = 260;
+            nameBox.MinWidth = 240;
             nameBox.HorizontalAlignment = HorizontalAlignment.Left;
             nameBox.ToolTip = "Numele paginii (apare pe tab, în notch)";
             nameBox.TextChanged += (o, e) =>
@@ -243,79 +329,57 @@ namespace WinNotch.Features.WindowV2
             var head = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto);
             head.Put(nameBox);
             head.Put(Ui.H(8, Ui.PillBtn("Duplică", () => NewPage(pg.Widgets, pg.Name + " (copie)", pg.Icon)), DeleteButton(pg)), 2);
-            head.Margin = new Thickness(0, 0, 0, 6);
-            _centre.Children.Add(head);
+            head.Margin = new Thickness(0, 0, 0, LayoutRules.Gap);
+            rows.Put(head);
 
-            var help = Ui.T("Trage un widget ca să-l muți; click pe el ca să-i alegi mărimea și opțiunile în dreapta. " +
-                            "Widget-uri noi: trage-le din managerul de dedesubt. Totul se salvează și apare în notch pe loc.",
-                            12, "MutedBrush");
-            help.TextWrapping = TextWrapping.Wrap;
-            help.MaxWidth = 760;
-            help.HorizontalAlignment = HorizontalAlignment.Left;
-            help.Margin = new Thickness(0, 0, 0, LayoutRules.Pad);
-            _centre.Children.Add(help);
-
-            // the live page, on the notch's own surface
             _page = new WidgetPage(_notch, pg) { Editing = true };
             _page.Changed += () => { _s.Save(); _notch?.PagesChanged(pg.Id); };
             _page.Selected += slot => _inspector.Show(_page, slot);
             _page.Dropped += ok => { if (!ok) Full(); };
             var surface = new Border
             {
-                Width = 760, CornerRadius = new CornerRadius(Math.Clamp(_s.CornerRadius, 12, 28)),
+                Width = PageWidth, CornerRadius = new CornerRadius(Math.Clamp(_s.CornerRadius, 12, 28)),
                 Padding = new Thickness(20, 10, 20, 18), Child = _page,
             };
             surface.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
-            _centre.Children.Add(new Viewbox
+            // Uniform in both directions: it shrinks on a small window and grows on a wide one, up to the cap, so the
+            // page is never a small rectangle floating in an empty half.
+            rows.Put(new Viewbox
             {
-                Child = surface, Stretch = System.Windows.Media.Stretch.Uniform, StretchDirection = StretchDirection.DownOnly,
-                MaxWidth = 760, HorizontalAlignment = HorizontalAlignment.Left,
-            });
-
-            // the widget manager
-            _centre.Children.Add(Ui.Cap("MANAGER WIDGETURI"));
-            _gallery = new Gallery((type, size) => { if (!_page.Add(type, size)) Full(); else _gallery?.Message(""); }, null)
-            {
-                Popup = fe => _popup = Gallery.ShowPopupIn(_overlay, fe, new Thickness(0), 780, onClosed: () => _popup = (null, null)),
-            };
-            var gHost = new Border
-            {
-                Height = 340, CornerRadius = new CornerRadius(LayoutRules.CardRadius), Padding = new Thickness(14),
-                Child = _gallery, MaxWidth = 900, HorizontalAlignment = HorizontalAlignment.Left,
-            };
-            gHost.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
-            _centre.Children.Add(gHost);
-
-            var sel = slotId != null ? pg.Widgets.FirstOrDefault(w => w.Id == slotId) : null;
-            if (sel != null) _page.Select(sel);
-            _inspector.Show(_page, sel);
-            _page.Refresh();
+                Child = surface, Stretch = System.Windows.Media.Stretch.Uniform, StretchDirection = StretchDirection.Both,
+                MaxWidth = PageWidth * MaxZoom, HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, LayoutRules.Gap),
+            }, 0, 1);
+            return rows;
         }
+
+        /// <summary>The page's own width, and how far it may be blown up on a wide screen.</summary>
+        private const double PageWidth = 760, MaxZoom = 1.7;
 
         private void Full()
         {
-            _gallery?.Message("Pagina e plină: scoate sau micșorează un widget.");
+            _library?.Message("Pagina e plină: scoate sau micșorează un widget.");
             _say("Pagina e plină: scoate sau micșorează un widget.");
         }
 
-        private void BuildStandard(string id)
+        /// <summary>A standard page: what it is, how to copy it, and what the copy would contain.</summary>
+        private UIElement BuildStandard(string id)
         {
             var (_, name, icon) = Catalog.Standard.First(x => x.Id == id);
             bool visible = !_s.HiddenPages.Contains(id);
-            _centre.Children.Add(Ui.H(10, Ui.Icon(NotchWindow.PageGlyph(icon), 20), Ui.T(name, 20, "InkBrush", true)));
+            var box = new StackPanel { MaxWidth = 820, HorizontalAlignment = HorizontalAlignment.Left };
+            box.Children.Add(Ui.H(10, Ui.Icon(NotchWindow.PageGlyph(icon), 20), Ui.T(name, 20, "InkBrush", true)));
             var line = Ui.T("Pagină standard: rămâne mereu la fel, ca să ai oricând varianta originală. Ca s-o schimbi, fă-ți o copie; " +
                             "copia are aceleași widget-uri și o poți modifica oricum. Originalul îl poți ascunde din notch.", 13, "MutedBrush");
             line.TextWrapping = TextWrapping.Wrap;
-            line.MaxWidth = 760;
-            line.HorizontalAlignment = HorizontalAlignment.Left;
             line.Margin = new Thickness(0, 10, 0, LayoutRules.Pad);
-            _centre.Children.Add(line);
+            box.Children.Add(line);
             var btns = Ui.H(8, Ui.PillBtn("Duplică și modifică", () => DuplicateStandard(id), true),
                                Ui.PillBtn(visible ? "Ascunde din notch" : "Arată în notch", () => ToggleStandard(id)));
             btns.HorizontalAlignment = HorizontalAlignment.Left;
-            _centre.Children.Add(btns);
+            box.Children.Add(btns);
 
-            _centre.Children.Add(Ui.Cap("CE CONȚINE COPIA"));
+            box.Children.Add(Ui.Cap("CE CONȚINE COPIA"));
             var list = new StackPanel();
             foreach (var w in Catalog.StandardLayout(id))
             {
@@ -329,9 +393,9 @@ namespace WinNotch.Features.WindowV2
                 list.Children.Add(row);
             }
             var card = Ui.Card(list, 18, 14, LayoutRules.CardRadius);
-            card.MaxWidth = 760;
             card.HorizontalAlignment = HorizontalAlignment.Left;
-            _centre.Children.Add(card);
+            box.Children.Add(card);
+            return box;
         }
 
         private Button DeleteButton(UserPage pg)

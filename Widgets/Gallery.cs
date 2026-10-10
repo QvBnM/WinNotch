@@ -100,34 +100,15 @@ namespace WinNotch.Widgets
             b.MouseLeave += (o, e) => b.SetResourceReference(Border.BackgroundProperty, "ChipBrush");
         }
 
-        /// <summary>Press and move: drags the widget out (data = type, or "type|W|H"); press and release: click.</summary>
-        private void DragOrClick(FrameworkElement el, string data, Action click, Action dragStart = null, Action dragEnd = null)
-        {
-            Point? down = null;
-            el.PreviewMouseLeftButtonDown += (o, e) => { down = e.GetPosition(el); };
-            el.MouseLeave += (o, e) => down = null;
-            el.PreviewMouseMove += (o, e) =>
-            {
-                if (down == null || e.LeftButton != MouseButtonState.Pressed) { down = null; return; }
-                var d = e.GetPosition(el) - down.Value;
-                if (Math.Abs(d.X) + Math.Abs(d.Y) < 6) return;
-                down = null;
-                _msg.Text = "";
-                dragStart?.Invoke();
-                DragStarted?.Invoke();
-                try { DragDrop.DoDragDrop(el, new DataObject(WidgetPage.DragFormat, data), DragDropEffects.Copy); }
-                catch (Exception ex) { App.Log("Galerie, tragere: " + ex.Message); }
-                dragEnd?.Invoke();
-                DragEnded?.Invoke();
-            };
-            el.MouseLeftButtonUp += (o, e) =>
-            {
-                if (down == null) return;
-                down = null;
-                e.Handled = true;
-                click();
-            };
-        }
+        /// <summary>
+        /// Press and move: drags the widget out (data = type, or "type|W|H"); press and release: click. The gesture
+        /// itself lives in <see cref="Core.Ui.WidgetDrag"/>, shared with the WinNotch window's widget library; here we
+        /// only add what belongs to the gallery (clearing its message, telling the notch a drag started).
+        /// </summary>
+        private void DragOrClick(FrameworkElement el, string data, Action click, Action dragStart = null, Action dragEnd = null) =>
+            Core.Ui.WidgetDrag.Bind(el, data, click,
+                before: () => { _msg.Text = ""; dragStart?.Invoke(); DragStarted?.Invoke(); },
+                after: () => { dragEnd?.Invoke(); DragEnded?.Invoke(); });
 
         // ------------------------------------------------------------------ size picker
 
@@ -177,7 +158,8 @@ namespace WinNotch.Widgets
         /// is marked "acum" (resizing a placed widget), otherwise the default size is marked. <paramref name="wire"/> can make
         /// each preview draggable; by default a click picks it.
         /// </summary>
-        const double Cell = 114.7, RowStep = WidgetPage.RowH + WidgetPage.Gap;
+        /// <summary>One grid column of the notch page, and one row with its gap: the scale every preview is drawn at.</summary>
+        internal const double Cell = 114.7, RowStep = WidgetPage.RowH + WidgetPage.Gap;
 
         /// <summary>The widget itself at a size, live, scaled (what it will look like on the page).</summary>
         internal static FrameworkElement LivePreview(WidgetDef d, (int W, int H) sz, double scale)
