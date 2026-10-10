@@ -23,6 +23,11 @@ namespace WinNotch
         /// <summary>Accent picked in Settings; empty = the theme's own accent.</summary>
         public string Accent { get; set; } = "";
         public bool Temperatures { get; set; } = true;
+        /// <summary>
+        /// The thin line along the bottom of the small pill that follows the song's position. Reported as distracting
+        /// ("dunga aia"), so it is a plain on/off; on by default, as it has always been.
+        /// </summary>
+        public bool MiniProgress { get; set; } = true;
         public string City { get; set; } = "București";
         public double Lat { get; set; } = 44.4268;
         public double Lon { get; set; } = 26.1025;

@@ -871,7 +871,7 @@ namespace WinNotch
             MiniTime.Text = now.ToString("HH:mm");
             MiniDate.Text = Features.NotchGuard.PillRules.MiniDate(now, Ro);     // never empty: the time alone is a bug (B1)
             var mi = Now.Info;
-            bool prog = mi.HasSession && mi.Playing && mi.Duration > TimeSpan.Zero;
+            bool prog = S.MiniProgress && mi.HasSession && mi.Playing && mi.Duration > TimeSpan.Zero;
             MiniProgress.Visibility = prog ? Visibility.Visible : Visibility.Collapsed;
             if (prog) MiniProgScale.ScaleX = Math.Clamp(mi.LivePosition.TotalSeconds / mi.Duration.TotalSeconds, 0, 1);
             bool micOn = PrivacyService.Microphone().InUse;

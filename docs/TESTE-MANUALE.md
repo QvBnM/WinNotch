@@ -452,7 +452,16 @@ clasică) și apasă „Salvează”, apoi deschide fereastra din notch sau din 
 
 ### P60 — Fila „Performanță”
 
-Întâi pornește din Setări → „Funcții noi” **și** „Fereastra WinNotch v2” **și** „Performanță”, apoi „Salvează”.
+**Cum ajungi la ea** (reparat după un raport: instrucțiunea de mai jos spunea „apoi «Salvează»”, dar în fereastra nouă
+nu există niciun buton de salvare, așa că nu era de găsit):
+
+1. Deschide fereastra WinNotch. Dacă e **fereastra clasică** (fundal deschis, cu „Salvează” și „Anulează” jos), mergi la
+   Setări → „Funcții noi (experimental)”, bifează **„Fereastra WinNotch v2”** și **„Performanță”**, apoi apasă
+   **„Salvează”** — acolo comutatoarele se aplică abia la el.
+2. Închide fereastra și deschide-o din nou: acum vine **fereastra v2**, care **nu are buton de salvare** — fiecare
+   schimbare se aplică pe loc. Fila „Performanță” e a cincea în antet.
+3. Dacă erai deja pe fereastra v2, mergi direct la Setări → „Funcții noi” și pornește „Performanță”: fila apare imediat,
+   fără să salvezi și fără să redeschizi fereastra (P60.18).
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
@@ -474,3 +483,12 @@ clasică) și apasă „Salvează”, apoi deschide fereastra din notch sau din 
 | P60.16 | Mod sigur | Pornește WinNotch cu `--safe-mode`. | Fila „Performanță” nu există (funcția e Experimental), chiar dacă e bifată în setări. |
 | P60.17 | Acțiunea | Din Command Bar (`Win+Alt+Space`) scrie „performanță” și apasă `Enter`. | Fereastra se deschide direct pe fila Performanță. Cu „Fereastra WinNotch v2” oprită, jos scrie că trebuie pornită și ea — nu se deschide fereastra clasică. |
 | P60.18 | Comutatorul pornit cu fereastra deschisă | Cu fereastra deschisă pe Workspace, du-te în Setări → „Funcții noi” și pornește „Performanță”. | Fila a cincea apare în antet pe loc, fără să redeschizi fereastra. |
+
+### Linia de progres a piesei pe pastila mică
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| MP.1 | Pornită (ca până acum) | Pune o piesă și lasă notch-ul să treacă la forma mică. | Jos pe pastilă e o linie subțire care avansează cu piesa. |
+| MP.2 | Oprită | Fereastra v2: Setări → Standby → „Pastila mică” → oprește „Linia de progres a piesei”. Fereastra clasică: Setări → „Linia de progres a piesei pe pastila mică”, apoi „Salvează”. | Linia dispare imediat (nu trebuie să repornești aplicația, nici să schimbi piesa). Pastila mică rămâne cu ora și data, de aceeași înălțime — nu sare și nu se strâmbă. |
+| MP.3 | Rămâne oprită | Repornește WinNotch, pune o piesă. | Linia tot nu apare. |
+| MP.4 | Din Command Bar | `Win+Alt+Space` → „dunga” sau „linia piesei” → `Enter`. | Se deschide Setări exact la opțiunea asta. |

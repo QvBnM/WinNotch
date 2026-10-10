@@ -157,6 +157,7 @@ namespace WinNotch
             BuildAccents();
             LyricsBox.IsChecked = s.Lyrics;
             EyeBox.IsChecked = s.EyeBreak;
+            MiniProgressBox.IsChecked = s.MiniProgress;
             RamAlertBox.IsChecked = s.RamAlert;
             SelectTag(RamPctBox, s.RamAlertPercent.ToString());
             IcsBox.Text = s.CalendarIcs ?? "";
@@ -383,6 +384,7 @@ namespace WinNotch
             _s.Lon = lon;
             _s.Lyrics = LyricsBox.IsChecked == true;
             _s.EyeBreak = EyeBox.IsChecked == true;
+            _s.MiniProgress = MiniProgressBox.IsChecked == true;
             _s.RamAlert = RamAlertBox.IsChecked == true;
             _s.AutoUpdate = UpdateBox.IsChecked == true;
             _s.BetaChannel = BetaBox.IsChecked == true;

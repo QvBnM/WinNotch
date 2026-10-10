@@ -121,6 +121,7 @@
                         </Grid>
                         <TextBlock x:Name="CmdKeyHint" Style="{StaticResource Hint}" Margin="170,4,0,0"/>
                         <CheckBox x:Name="SlimBox" Margin="0,12,0,0" Content="Mic peste ferestre maximizate (tab-uri, bara de titlu)"/>
+                        <CheckBox x:Name="MiniProgressBox" Margin="0,8,0,0" Content="Linia de progres a piesei pe pastila mică"/>
                         <CheckBox x:Name="TempsBox" Margin="0,8,0,0" Content="Citește temperaturile PC-ului"/>
                         <TextBlock x:Name="TempsHint" Style="{StaticResource Hint}" Margin="22,2,0,0"
                                    Text="Pentru temperatura procesorului e nevoie și de driverul gratuit PawnIO (pawnio.eu)."/>

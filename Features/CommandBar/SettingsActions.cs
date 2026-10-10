@@ -57,6 +57,7 @@ namespace WinNotch.Features.CommandBar
             new SettingsOption("settings.size", "Setări: mărimea notch-ului deschis", "ScaleBox", Behaviour, "setări mărime", "scalare", "zoom", "size"),
             new SettingsOption("settings.slim", "Setări: mic peste ferestre maximizate", "SlimBox", Behaviour, "setări maximizat", "slim", "bara de titlu"),
             new SettingsOption("settings.command-bar-key", "Setări: scurtătura Command Bar", "CmdKeyBox", Behaviour, "setări scurtătură", "command bar", "win alt space", "win alt k", "hotkey", "shortcut"),
+            new SettingsOption("settings.mini-progress", "Setări: linia de progres a piesei", "MiniProgressBox", Behaviour, "setări progres", "linia piesei", "dunga", "bara piesei", "song progress"),
             new SettingsOption("settings.temperatures", "Setări: temperaturile PC-ului", "TempsBox", Behaviour, "setări temperatură", "temperaturi", "temperature"),
             new SettingsOption("settings.start-with-windows", "Setări: pornește odată cu Windows", "StartBox", Behaviour, "setări pornire", "pornire automată", "startup", "autostart"),
             new SettingsOption("settings.auto-update", "Setări: actualizări automate", "UpdateBox", Behaviour, "setări actualizări", "versiuni noi", "auto update"),

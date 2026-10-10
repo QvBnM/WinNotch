@@ -235,6 +235,17 @@ namespace WinNotch
                   LayoutRules.TabsFor(true)[4].Id == LayoutRules.Performance &&
                   LayoutRules.TabsFor(true)[4].Title == "Performanță");
 
+            // Raportat de autor: „dacă ascult ceva media pe notch-ul din standby curge un timp. Vreau să fie on sau off.”
+            Check("PF66", "Linia de progres a piesei: comutator pornit implicit, chiar citit de pastilă, cu acțiune și loc în pagina nouă",
+                  Src("AppSettings.cs").Contains("public bool MiniProgress { get; set; } = true;") &&
+                  Src("NotchWindow.xaml.cs").Contains("bool prog = S.MiniProgress &&") &&
+                  Src("SettingsWindow.xaml").Contains("x:Name=\"MiniProgressBox\"") &&
+                  Src("SettingsWindow.xaml.cs").Contains("_s.MiniProgress = MiniProgressBox.IsChecked == true;") &&
+                  Src("Features/WindowV2/SettingsView.cs").Contains("_s.MiniProgress = v;") &&
+                  Features.CommandBar.SettingsActions.All.Any(o => o.Id == "settings.mini-progress" && o.Target == "MiniProgressBox") &&
+                  Features.WindowV2.SettingsMap.SectionFor("MiniProgressBox") == "standby" &&
+                  Features.WindowV2.SettingsMap.NameFor("MiniProgressBox") == "Linia de progres a piesei");
+
             Check("PF37", "Fila se găsește după id și se deschide din cerere, fără coloană sau inspector",
                   LayoutRules.FindTab(LayoutRules.Performance) != null &&
                   LayoutRules.TabFor("performance") == LayoutRules.Performance &&

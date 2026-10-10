@@ -590,7 +590,7 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   - Baterie (cu iconiță de umplere), Volum, Internet.
 - **Forma mică.** După câteva secunde fără activitate pe notch (implicit 10; se poate 5 s, 30 s, 1 min sau niciodată; un hover, o alertă sau închiderea notch-ului readuc standby-ul complet), sau peste o fereastră maximizată (opțional), se strânge într-o pastilă de 196×22 px (regulile, din 0.6.18: secțiunea „Plasa de siguranță a notch-ului”):
   - afișează **ora · data**;
-  - o linie subțire de jos arată progresul piesei;
+  - o linie subțire de jos arată progresul piesei — **se poate opri** („Linia de progres a piesei”, în fereastra v2 la Setări → Standby → „Pastila mică”, în fereastra clasică în secțiunea „Comportament”, sau prin acțiunea `settings.mini-progress`); oprită, pastila mică rămâne doar cu ora și data, la aceeași înălțime;
   - un semn portocaliu **„mic”** apare cât microfonul e folosit.
 - **Ecran ocupat.** Pe un monitor ocupat, pastila se ascunde în sus, cu animație.
 

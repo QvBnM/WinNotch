@@ -24,6 +24,7 @@ namespace WinNotch.Features.WindowV2
             ("SlimBox", "notch", "Mic peste ferestre maximizate"),
             ("CmdKeyBox", "notch", "Scurtătura Command Bar"),
             ("AccentPanel", "notch", "Culoare accent"),
+            ("MiniProgressBox", "standby", "Linia de progres a piesei"),
             ("TempsBox", "sistem", "Citește temperaturile PC-ului"),
             ("StartBox", "sistem", "Pornește odată cu Windows"),
             ("UpdateBox", "sistem", "Caută singur versiuni noi"),

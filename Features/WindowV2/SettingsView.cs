@@ -307,6 +307,10 @@ namespace WinNotch.Features.WindowV2
             box.Children.Add(V2Controls.Card("Ce apare în standby",
                 "Bifează până la " + AppSettings.MaxStandby + ". Ordinea de sus în jos e ordinea de pe notch: prima jumătate stă în stânga camerei, restul în dreapta. " +
                 "Timer-ul Pomodoro se adaugă singur cât rulează.", list));
+
+            box.Children.Add(V2Controls.Card("Pastila mică", null, V2Controls.Stack(
+                V2Controls.Toggle("Linia de progres a piesei", _s.MiniProgress, v => { _s.MiniProgress = v; Save(); },
+                                  "Dunga subțire de jos, care urmărește cât a trecut din piesă. Oprită, pastila mică rămâne doar cu ora și data."))));
         }
 
         private void Move(int index, int delta, Action rebuild)
