@@ -388,11 +388,13 @@ namespace WinNotch
                   monitor.Cadence == PerfCadence.Game && ReferenceEquals(made, first) && first.Disposals == 0);
 
             // Exact regresia prinsă la R1: o schimbare de cadență muta axa de timp și trendul îngheța pentru totdeauna.
+            // Fiecare schimbare de cadență cere o trecere imediată, iar ceasul samplerului fals sare patru minute pe
+            // trecere, deci o oră de urmărire cu o duzină de schimbări de cadență la mijloc trece în câteva zeci de ms.
             var sampler = made;
-            for (int i = 0; i < 60; i++)
+            for (int i = 0; i < 14; i++)
             {
                 int target = sampler.Passes + 1;
-                monitor.SetGame(i % 2 == 0);                 // fiecare schimbare forțează o trecere imediată
+                monitor.SetGame(i % 2 == 0);
                 Await(() => sampler.Passes, n => n >= target, 3000);
             }
 
@@ -481,7 +483,7 @@ namespace WinNotch
             var m = new PerfMonitor(flags, () => s = new FakeSampler { PassMs = 120 });
             m.AddViewer();
             m.SetGame(true);                                   // 1 s cadence over a 120 ms pass
-            for (int i = 0; i < 20; i++) { m.SetGame(i % 2 == 0); }
+            for (int i = 0; i < 10; i++) { m.SetGame(i % 2 == 0); }
             var seen = Await(() => s, x => x != null && x.Passes >= 3, 6000);
             bool ok = seen != null && seen.MaxConcurrent == 1;
             m.Dispose();
@@ -497,8 +499,13 @@ namespace WinNotch
             private int _concurrent;
             public int Passes, Disposals, MaxConcurrent, PassMs;
             public bool Throw;
-            private DateTime _at = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc);
+            private static readonly DateTime Start = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc);
+            private DateTime _at = Start;
 
+            /// <summary>
+            /// Four minutes and 40 MB per pass, and the process list on every pass (the real sampler only fills it
+            /// every fourth one — that rule is tested on its own, in PF5). So a dozen passes are an hour of watching.
+            /// </summary>
             public PerfSample Sample(bool withProcesses)
             {
                 int now = Interlocked.Increment(ref _concurrent);
@@ -508,19 +515,17 @@ namespace WinNotch
                     Passes++;
                     if (PassMs > 0) Thread.Sleep(PassMs);
                     if (Throw) throw new InvalidOperationException("trecere de test");
-                    _at = _at.AddMinutes(1);
-                    double mb = 300 + (_at - new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc)).TotalMinutes * 10;
+                    _at = _at.AddMinutes(4);
+                    double mb = 300 + (_at - Start).TotalMinutes * 10;
                     return new PerfSample
                     {
                         TimeUtc = _at, CpuPercent = 20, RamUsedGb = 16, RamTotalGb = 32,
                         CommitUsedGb = 20, CommitLimitGb = 40, GpuPercent = 30, Gpu3dPercent = 25, VramUsedMb = 2000,
-                        Processes = withProcesses
-                            ? new List<ProcUsage>
-                              {
-                                  new ProcUsage("curge", 5, mb, mb, 0, 0, 1),
-                                  new ProcUsage("linistit", 1, 500, 500, 0, 0, 1),
-                              }
-                            : System.Array.Empty<ProcUsage>(),
+                        Processes = new List<ProcUsage>
+                        {
+                            new ProcUsage("curge", 5, mb, mb, 0, 0, 1),
+                            new ProcUsage("linistit", 1, 500, 500, 0, 0, 1),
+                        },
                     };
                 }
                 finally { Interlocked.Decrement(ref _concurrent); }

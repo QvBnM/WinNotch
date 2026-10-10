@@ -368,6 +368,11 @@ namespace WinNotch
 
             Console.WriteLine(string.Join("\n", lines));
             Console.WriteLine($"\nTOTAL {pass + fail}: {pass} PASS, {fail} FAIL");
+            // In CI, each failed check also goes out as a GitHub annotation: the step's log is not always reachable
+            // (an organisation can block the log host), and an annotation shows up on the run's page either way.
+            if (fail > 0 && Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true")
+                foreach (string line in lines.Where(l => l.StartsWith("FAIL", StringComparison.Ordinal)))
+                    Console.WriteLine("::error::" + line.Replace('\r', ' ').Replace('\n', ' '));
             Environment.ExitCode = fail == 0 ? 0 : 1;
         }
 

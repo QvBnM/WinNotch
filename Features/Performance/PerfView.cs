@@ -265,7 +265,7 @@ namespace WinNotch.Features.Performance
         private void PaintLeaks()
         {
             var monitor = PerfMonitor.Current;
-            var leaks = monitor?.Leaks() ?? new List<(string, MemoryTrendResult)>();
+            List<(string Name, MemoryTrendResult Trend)> leaks = monitor?.Leaks() ?? new List<(string Name, MemoryTrendResult Trend)>();
             var shown = leaks.Take(5).ToList();
             string signature = string.Join("|", shown.Select(x => x.Name + ":" + N(x.Trend.MbPerHour)));
             if (signature != _leakSignature)
