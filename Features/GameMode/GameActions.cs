@@ -21,10 +21,11 @@ namespace WinNotch.Features.GameMode
     {
         public const string LastReportId = "game.last-report";
         /// <summary>
-        /// The same glyph the alert and the widget use (<c>Ui.GGamepad</c>): one picture for one feature, so the
-        /// summary looks like the same thing wherever it shows up.
+        /// The feature's one glyph (a gamepad from the app's icon font), used by the action, the alert and the widget
+        /// so the summary looks like the same thing wherever it shows up. It lives here, and not next to the other
+        /// glyphs in <c>Ui</c>, because this file is also compiled into the tests, which have no WPF.
         /// </summary>
-        internal const string GGame = Ui.GGamepad;
+        internal const string GGame = "\uE7FC";
 
         public static ActionDescriptor CreateLastReport(IGameReportHost host)
         {

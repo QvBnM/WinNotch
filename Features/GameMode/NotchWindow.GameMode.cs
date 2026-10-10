@@ -126,7 +126,7 @@ namespace WinNotch
                 try { (System.Windows.Application.Current as App)?.OpenEditor(Features.WindowV2.LayoutRules.Performance); }
                 catch (Exception ex) { App.Log("Mod de joc, deschiderea detaliilor: " + ex.GetType().Name); }
             });
-            var row = LiveRow(LiveIcon(Ui.GGamepad, COk), report.Headline(), sub, details);
+            var row = LiveRow(LiveIcon(Features.GameMode.GameActions.GGame, COk), report.Headline(), sub, details);
             ShowInteractive(LegacyAlerts.GameReport, row, 620, 58, 10000);
         }
 

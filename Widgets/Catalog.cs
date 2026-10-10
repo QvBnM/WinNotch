@@ -31,7 +31,7 @@ namespace WinNotch.Widgets
             D("battery", "Baterie", "Sistem", Ui.GBattery, "Procent, încărcare, timp rămas.", new[] { (1, 1), (2, 1) }, (w, s) => new BatteryWidget(w, s)),
             D("topapps", "Consumă acum", "Sistem", "\uE9F9", "Aplicațiile care folosesc cel mai mult.", new[] { (6, 1), (3, 2) }, (w, s) => new TopAppsWidget(w, s)),
             // P61: the summary of the last game session (Features/GameMode); empty until there is one
-            D("lastgame", "Ultimul joc", "Sistem", Ui.GGamepad, "Rezumatul sesiunii: durată, încărcare, temperaturi, cine fura.", new[] { (3, 1), (6, 1), (3, 2) }, (w, s) => new Features.GameMode.GameWidget(w, s)),
+            D("lastgame", "Ultimul joc", "Sistem", Features.GameMode.GameActions.GGame, "Rezumatul sesiunii: durată, încărcare, temperaturi, cine fura.", new[] { (3, 1), (6, 1), (3, 2) }, (w, s) => new Features.GameMode.GameWidget(w, s)),
 
             D("internet", "Internet", "Rețea", "\uE701", "Viteza acum față de maxim; 3×2 cu test de viteză.", new[] { (2, 1), (3, 2) }, (w, s) => new InternetWidget(w, s)),
 
