@@ -818,3 +818,21 @@ Autorul a cerut să testeze direct prin actualizare („Testez pe update. Trimit
 ramura a intrat în `main`. Amândouă funcțiile noi sunt **experimentale și oprite implicit**, așa că notele de versiune
 spun pe prima linie a fiecăreia cum se pornesc — altfel actualizarea ar fi, pentru el, un non-eveniment, exact plângerea
 pe care auditul de comutatoare (FA1–FA6) există s-o prevină. P60 și P61 trecute pe „Gata (de testat pe Windows)”.
+
+### P70 — Colțuri continue (0.6.27)
+
+Cerut de autor în timpul reviziei vizuale a notch-ului („s-ar putea face marginile mai smooth”), după ce propunerea de
+notch lipit de ramă i s-a părut nenaturală: racordările concave imită un decupaj în panou, care pe Windows nu există.
+Colțul de arc are aceeași problemă la altă scară — curbura sare de la zero la maxim exact unde se termină latura.
+
+- **Pur și testat:** `Core/Ui/SmoothCorner.cs` (cât ține curba pe latură, unde stau punctele de control). Niciun WPF,
+  nicio culoare, niciun cronometru.
+- **Fără sistem paralel:** nu o geometrie nouă, ci varianta „curbă” a lui `Seg` și o supraîncărcare a lui `Outline` /
+  `PillOnly`; traducătorul unic spre WPF (`AnchoredShape`) desenează cubica. Silueta, decupajul conținutului și antetul
+  ferestrei v2 rămân astfel aceeași formă, ca în P50.
+- **Non-regresie prinsă de test:** SC4 compară segment cu segment conturul cu comutatorul oprit față de supraîncărcarea
+  veche; SC8 verifică pe forma mică (22 px) că latura nu merge înapoi — aceeași regresie pe care NA18 o prinde pe arce.
+- **Teste:** SC1–SC12 (12). **Nerulate**: containerul de dezvoltare nu are .NET SDK, deci prima rulare reală e în CI.
+- Limită asumată și scrisă în documentație: pastila plutitoare e un `Border`, ale cărui colțuri le desenează Windows ca
+  arce, deci funcția se vede doar cu `notch-anchored` pornită. Ca să prindă și forma plutitoare, pastila ar trebui să-și
+  deseneze fundalul ca `Path` — pas separat, dacă se cere.

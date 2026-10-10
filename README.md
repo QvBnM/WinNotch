@@ -16,6 +16,10 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.27
+
+- **Colțuri continue** (experimentală, oprită): colțurile de jos ale notch-ului se rotunjesc treptat, ca pictogramele de pe telefon. Se vede doar cu „Notch lipit de ramă” pornită, fiindcă doar acolo forma e desenată de noi.
+
 ## Noutăți în 0.6.26
 
 - Secțiunea **„Performanță”** (experimentală, oprită): procesor, memorie, placă video, cine consumă acum și ce crește pe nesimțite în timp. Arată „—” unde nu știe, nu un zero inventat.
