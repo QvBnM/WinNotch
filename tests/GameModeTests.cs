@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using WinNotch.Core.Context;
 using WinNotch.Core.Flags;
 using WinNotch.Core.Perf;
@@ -151,19 +152,25 @@ namespace WinNotch
                   rep.Blame.Count == 1 && rep.Blame[0].Name == "chrome" &&
                   Math.Abs(rep.Blame[0].CpuPercent - 10) < 0.01 && Math.Abs(rep.Blame[0].GpuPercent - 6) < 0.01);
 
-            // A downloader that ran for two of a hundred samples did not take 40% of the machine.
+            // Un descărcător care a mers scurt dintr-o sesiune lungă nu ți-a luat 40% din mașină.
+            // Forma datelor e cea reală: trecerea scumpă vine la fiecare a patra măsurătoare și aduce **mereu** o
+            // listă nevidă (procesele care rulează acum). Prima versiune a testului punea 98 de liste goale, ceea ce
+            // monitorul nu produce niciodată — și de aceea trecea și cu numitorul greșit.
             var brief = new GameSession("cs2", t0);
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 400; i++)
+            {
+                var procs = new List<ProcUsage> { new ProcUsage("explorer", 0.5, 200, 150, 0, 0, 1) };
+                if (i < 8) procs.Add(new ProcUsage("qbittorrent", 40, 100, 90, 0, 0, 1));   // 2 din 100 de treceri
                 brief.Add(new PerfSample
                 {
                     TimeUtc = t0.AddSeconds(i), CpuPercent = 50, RamUsedGb = 16, RamTotalGb = 32,
-                    Processes = i < 2
-                        ? new List<ProcUsage> { new ProcUsage("qbittorrent", 40, 100, 90, 0, 0, 1) }
-                        : (IReadOnlyList<ProcUsage>)Array.Empty<ProcUsage>(),
+                    Processes = i % 4 == 0 ? procs : (IReadOnlyList<ProcUsage>)Array.Empty<ProcUsage>(),
                 });
-            Check("GM19", "Mediile din fundal sunt pe toată sesiunea, nu doar pe măsurătorile în care au apărut",
-                  brief.Report(t0.AddHours(1)).Blame.Count == 0,
-                  "blame=" + string.Join(",", brief.Report(t0.AddHours(1)).Blame.Select(b => b.Name + ":" + Math.Round(b.CpuPercent))));
+            }
+            var briefReport = brief.Report(t0.AddHours(1));
+            Check("GM19", "Mediile din fundal sunt pe toată sesiunea, nu doar pe trecerile în care au apărut",
+                  briefReport.Blame.Count == 0,
+                  "blame=" + string.Join(",", briefReport.Blame.Select(b => b.Name + ":" + Math.Round(b.CpuPercent, 2))));
 
             // Revizia R1, Major 4: monitorul umple lista de procese o dată la patru măsurători (trecerea scumpă stă la
             // 4 s și în joc). Împărțind la *toate* măsurătorile, un program care lua constant 10% ieșea 2,5% — sub
@@ -329,7 +336,8 @@ namespace WinNotch
                   Src("Features/GameMode/NotchWindow.GameMode.cs").Contains("ProcessPriorityClass.BelowNormal") &&
                   Src("NotchWindow.xaml.cs").Contains("if (!GameQuiet && DateTime.Now - _weatherAt") &&
                   !Src("Features/GameMode/NotchWindow.GameMode.cs").Contains("PowerSetActiveScheme") &&
-                  !Src("Features/GameMode/GameWatcher.cs").Contains("Process."));
+                  !Src("Features/GameMode/GameWatcher.cs").Contains("System.Diagnostics") &&
+                  !Src("Features/GameMode/GameWatcher.cs").Contains("ProcessPriorityClass"));
 
             // Un singur loc declară id-ul. Două constante cu aceeași valoare fac auditul (FA1) să aleagă prin reflexie
             // oricare dintre tipuri, deci trecerea testului devine o chestiune de ordine a membrilor — exact așa a
@@ -400,47 +408,52 @@ namespace WinNotch
                   "rapoarte=" + host.Reports.Count + " fișier=" + store.Last().Count);
 
             // An exclusive game seen before its process name can be read: the watcher must pass the name on.
+            // Counted as deltas from here on: an absolute count would break every time a case is inserted above.
+            int reportsBefore = host.Reports.Count, quietOffBefore = host.QuietOff, quietOnBefore = host.QuietOn;
             rig.Fg.Set(Fg("", covers: true, exclusive: true));
             rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
-            bool nameless = watcher.Playing == "" && monitor.Cadence == PerfCadence.Game;   // sesiune deschisă, dar fără nume
+            bool nameless = watcher.Playing == "" && monitor.Cadence == PerfCadence.Game;   // sesiune deschisă, fără nume
             rig.Fg.Set(Fg("rdr2", covers: true, exclusive: true));
             rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
+            // A real sample has to land, or the session has nothing measured and will (rightly) not be reported:
+            // the fake clock moves the session's duration, but only the monitor's own timer produces samples.
+            Await(() => monitor.Last, x => x.RamTotalGb > 0, 4000);
             Check("GM35b", "O sesiune pornită fără nume îl primește de la detector, fără o sesiune nouă",
-                  nameless && watcher.Playing == "rdr2" && host.Reports.Count == 1 && host.QuietOn == 2,
-                  "playing=" + watcher.Playing + " rapoarte=" + host.Reports.Count + " quietOn=" + host.QuietOn);
-            rig.Clock.Advance(TimeSpan.FromMinutes(10));
-            rig.Fg.Set(Fg("discord"));
-            rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
-            rig.Clock.Advance(GameDetect.Grace);
-            watcher.Tick();
+                  nameless && watcher.Playing == "rdr2" &&
+                  host.Reports.Count == reportsBefore && host.QuietOn == quietOnBefore + 1,
+                  "playing=" + watcher.Playing + " rapoarte=+" + (host.Reports.Count - reportsBefore));
+
+            int named = EndSession(rig, watcher, host, reportsBefore);
             Check("GM35c", "Raportul ei are numele, nu „”, deci se poate compara în timp",
-                  host.Reports.Count == 2 && host.Reports[1].Process == "rdr2" &&
-                  store.For("rdr2").Count == 1,
-                  "proces=" + (host.Reports.Count > 1 ? host.Reports[1].Process : "-"));
+                  named == reportsBefore + 1 && host.Reports[reportsBefore].Process == "rdr2" &&
+                  store.For("rdr2").Count == 1 && host.QuietOff == quietOffBefore + 1,
+                  "rapoarte=" + named + " proces=" + (host.Reports.Count > reportsBefore ? host.Reports[reportsBefore].Process : "-"));
 
             // A session shorter than the minimum is not worth a report.
+            int shortBefore = host.Reports.Count, shortFile = store.Last().Count, shortQuiet = host.QuietOff;
             rig.Fg.Set(Fg("rdr2", covers: true, exclusive: true));
             rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
+            bool shortOpen = watcher.Playing == "rdr2";
             rig.Clock.Advance(TimeSpan.FromSeconds(20));
-            rig.Fg.Set(Fg("discord"));
-            rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
-            rig.Clock.Advance(GameDetect.Grace);
-            watcher.Tick();
+            EndSession(rig, watcher, host, shortBefore);
             Check("GM36", "O sesiune mai scurtă decât minimul nu produce raport (dar se oprește curat)",
-                  host.Reports.Count == 2 && store.Last().Count == 2 &&
-                  watcher.Playing == "" && monitor.Cadence == PerfCadence.Off && host.QuietOff == 3,
-                  "rapoarte=" + host.Reports.Count + " fișier=" + store.Last().Count + " quietOff=" + host.QuietOff);
+                  shortOpen && host.Reports.Count == shortBefore && store.Last().Count == shortFile &&
+                  watcher.Playing == "" && monitor.Cadence == PerfCadence.Off && host.QuietOff == shortQuiet + 1,
+                  "rapoarte=+" + (host.Reports.Count - shortBefore) + " quietOff=+" + (host.QuietOff - shortQuiet));
 
             // Switching the feature off in the middle of a session abandons it: no half-report.
+            int offBefore = host.Reports.Count, offFile = store.Last().Count, offQuiet = host.QuietOff;
             rig.Fg.Set(Fg("cs2", covers: true, exclusive: true));
             rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
+            Await(() => monitor.Last, x => x.RamTotalGb > 0, 4000);      // chiar măsurată, ca abandonul să conteze
             rig.Clock.Advance(TimeSpan.FromHours(1));
             bool had = watcher.Playing == "cs2";
             rig.Flags.Set(GameDetect.FeatureId, false);
             Check("GM37", "Funcția oprită la mijlocul unei sesiuni o abandonează, fără un raport pe jumătate",
-                  had && watcher.Playing == "" && host.Reports.Count == 2 && store.Last().Count == 2 &&
-                  monitor.Cadence == PerfCadence.Off && host.QuietOff == 4,
-                  "rapoarte=" + host.Reports.Count + " quietOff=" + host.QuietOff);
+                  had && watcher.Playing == "" &&
+                  host.Reports.Count == offBefore && store.Last().Count == offFile &&
+                  monitor.Cadence == PerfCadence.Off && host.QuietOff == offQuiet + 1,
+                  "rapoarte=+" + (host.Reports.Count - offBefore) + " quietOff=+" + (host.QuietOff - offQuiet));
 
             rig.Fg.Set(Fg("eldenring", covers: true, exclusive: true));
             rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
@@ -460,6 +473,23 @@ namespace WinNotch
         static bool OneDeclaration(string id) => typeof(FeatureCatalog).Assembly.GetTypes()
             .SelectMany(t => t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
             .Count(f => f.IsLiteral && f.FieldType == typeof(string) && f.Name == "FeatureId" && (string)f.GetRawConstantValue() == id) == 1;
+
+        /// <summary>
+        /// Leaves the game, lets the grace period run out and gives the watcher the tick that notices — then waits a
+        /// moment for the report, since ending a session is not instant. Returns how many reports exist afterwards.
+        /// </summary>
+        static int EndSession(Rig rig, GameWatcher watcher, FakeGameHost host, int before)
+        {
+            rig.Fg.Set(Fg("discord"));
+            rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
+            rig.Clock.Advance(GameDetect.Grace + TimeSpan.FromSeconds(5));
+            for (int i = 0; i < 20 && watcher.Playing.Length > 0; i++)
+            {
+                watcher.Tick();                       // TryEnter: a beat can be skipped, so it is offered again
+                Thread.Sleep(10);
+            }
+            return Await(() => host.Reports.Count, n => n > before, 1500);
+        }
 
         /// <summary>The name a session ends up with when it is created as <paramref name="first"/> and renamed to <paramref name="then"/>.</summary>
         static string Named(string first, string then)
