@@ -305,9 +305,11 @@ namespace WinNotch
                   one.Count == 1 && one[0] == 2 && one.Last == 2 &&
                   Throws(() => new SampleRing<int>(0)) && Throws(() => new SampleRing<int>(-3)));
 
-            Check("PF61", "Sub 20 de cadre nu se numără stutter-uri (mediana nu e încă stabilă)",
-                  FrameStats.From(Enumerable.Repeat(10.0, 19).Concat(new[] { 90.0 }).ToList()).Stutters == 0 &&
-                  FrameStats.From(Enumerable.Repeat(10.0, 20).Concat(new[] { 90.0 }).ToList()).Stutters == 1);
+            // 18 + 1 = 19 cadre, deci sub prag; 19 + 1 = 20 e chiar pragul, deci se numără.
+            Check("PF61", "Sub 20 de cadre nu se numără stutter-uri (mediana nu e încă stabilă); de la 20, da",
+                  FrameStats.From(Enumerable.Repeat(10.0, 18).Concat(new[] { 90.0 }).ToList()).Stutters == 0 &&
+                  FrameStats.From(Enumerable.Repeat(10.0, 19).Concat(new[] { 90.0 }).ToList()).Stutters == 1 &&
+                  FrameStats.MinFramesForStutter == 20);
 
             var paused = FrameStats.From(Enumerable.Repeat(10.0, 600).Concat(new[] { 30000.0, 40.0, 45.0 }).ToList());
             Check("PF62", "Pauzele intră în ceasul de perete, deci nu umflă stutter-urile pe minut",
