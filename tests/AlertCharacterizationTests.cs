@@ -270,8 +270,8 @@ namespace WinNotch
                   interBody.Contains("_liveInteractive = true; LiveLayer.IsHitTestVisible = true; SetClickThrough(false);") &&
                   Regex.IsMatch(Norm(notch), @"private void ToolAlert\([^)]*double width = 440\)"));
             var interactiveSet = all.Where(a => a.Interactive).Select(a => a.Id).OrderBy(x => x).ToList();
-            Check("AC6", "Alertele cu butoane (click-through oprit): RAM, captură, pauză ochi, ofertă, noutăți, serviciu temperatură, extensie, raportul închiderilor",
-                  string.Join(",", interactiveSet) == "capture-result,eye-break,helper-update,old-extension,ram,shutdown-unexplained,update-offer,whats-new" &&
+            Check("AC6", "Alertele cu butoane (click-through oprit): RAM, captură, pauză ochi, ofertă, noutăți, serviciu temperatură, extensie, raportul închiderilor, rezumatul de joc",
+                  string.Join(",", interactiveSet) == "capture-result,eye-break,game-report,helper-update,old-extension,ram,shutdown-unexplained,update-offer,whats-new" &&
                   Count(Norm(Src(LegacyAlerts.Notch)), "_liveInteractive = true;") == 3 && Count(Norm(Src(LegacyAlerts.Updates)), "_liveInteractive = true;") == 4);
 
             // ---- the legacy decisions, pinned to the source
