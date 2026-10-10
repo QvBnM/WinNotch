@@ -1,13 +1,11 @@
-# WinNotch 0.6.23
+# WinNotch 0.6.24
 
 ## Modificat
-- Fereastra WinNotch v2 (experimentală) e regândită de la zero. Avea trei coloane de navigare una lângă alta și repeta aceleași lucruri în două locuri. Acum are **o singură navigare**: patru file sus — Workspace, Widgeturi, Teme, Sistem — iar coloana din stânga aparține filei pe care ești, nu ferestrei.
-- **Workspace** e locul unde îți construiești pagina: în stânga paginile tale și cele standard, plus iconița paginii; în mijloc numele, pagina vie (aceeași grilă pe care o vezi în notch) și managerul de widget-uri; în dreapta mărimile și opțiunile widget-ului pe care ai dat click.
-- **Widgeturi** e catalogul întreg, pe toată înălțimea; ce alegi se adaugă pe pagina din Workspace.
-- **Sistem** adună într-un singur loc acțiunile aplicației, setările și noutățile.
-- Jos e un câmp de comandă: scrii numele unei acțiuni și `Enter` o pornește. `Ctrl + K` te duce acolo, iar rezultatul apare sub el.
+- În fereastra WinNotch v2 (experimentală), fila „Sistem” se numește acum **„Setări”** și e rescrisă de la zero, în tema ta. Până acum era pagina de setări a ferestrei vechi, lipită înăuntru: carduri albe pe fundal întunecat, cu butoane „Renunță / Salvează” care nu aveau ce căuta acolo.
+- Setările sunt împărțite în zece secțiuni, în coloana din stânga: Notch, Standby, Acasă și sănătate, Browser, Sistem, Spații de lucru, Pagina după context, Funcții noi, Acțiuni și Noutăți.
+- **Nu mai există buton de „Salvează”:** fiecare schimbare se aplică pe loc, ca peste tot în fereastra nouă. Ce scrii (link-ul de calendar, orașul, numele unui spațiu de lucru) se salvează la scurt timp după ce te oprești din scris.
 
 ## Îmbunătățit
-- Toată fereastra folosește acum culorile temei tale, și pe luminos și pe întunecat — nu mai apar cardurile albe ale ferestrei vechi peste ea.
-- `Esc` închide întâi fereastra de mărimi a unui widget, apoi fereastra.
-- Pe ferestre mai înguste se strânge întâi coloana din dreapta, apoi cea din stânga, fără să se taie nimic.
+- Toate opțiunile sunt aceleași și stau în aceleași locuri în fișierul tău de setări — doar butoanele, comutatoarele și listele sunt acum ale ferestrei noi, cu culorile temei tale.
+- Comutatoarele din „Funcții noi” pornesc și opresc funcția imediat ce le apeși, fără să mai aștepte o salvare.
+- Scurtăturile „Setări: …” (din Command Bar) deschid direct secțiunea în care a ajuns opțiunea căutată.

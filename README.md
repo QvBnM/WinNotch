@@ -16,6 +16,11 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.24
+
+- Fereastra WinNotch v2 (experimentală): fila „Sistem” se numește „Setări” și e rescrisă în tema ta — gata cu pagina albă a ferestrei vechi lipită înăuntru.
+- Setările se aplică pe loc: nu mai există buton de „Salvează”.
+
 ## Noutăți în 0.6.23
 
 - Fereastra WinNotch v2 (experimentală) regândită: o singură navigare, patru file — Workspace, Widgeturi, Teme, Sistem — și coloana din stânga aparține filei pe care ești.
