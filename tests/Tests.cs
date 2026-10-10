@@ -364,6 +364,7 @@ namespace WinNotch
             WindowV2Tests();
             FeatureAuditTests();
             PillSizeTests();
+            PerfTests();
 
             Console.WriteLine(string.Join("\n", lines));
             Console.WriteLine($"\nTOTAL {pass + fail}: {pass} PASS, {fail} FAIL");

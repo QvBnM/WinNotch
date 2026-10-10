@@ -49,6 +49,8 @@ namespace WinNotch.Features.WindowV2
         public const double LeftWidth = 212, InspectorWidth = 300, MinWidth = 900, MinHeight = 600;
 
         public const string Workspace = "workspace", Widgets = "widgeturi", Themes = "teme", Settings = "setari";
+        /// <summary>P60: the Performanță tab. Not one of the four: it exists only while its own switch is on.</summary>
+        public const string Performance = "performanta";
 
         /// <summary>The header's tabs, in order. Four areas; nothing else navigates.</summary>
         public static readonly IReadOnlyList<V2Tab> Tabs = new[]
@@ -59,7 +61,25 @@ namespace WinNotch.Features.WindowV2
             new V2Tab(Settings, "Setări", ""),
         };
 
-        public static V2Tab FindTab(string id) => Tabs.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.Ordinal));
+        /// <summary>
+        /// P60: the fifth tab, which is not always there. The window's rule is "one navigation", not "exactly four
+        /// doors": a whole area of the app earns a tab, and a switched-off area must not leave an empty one behind. So
+        /// Performanță is listed only while its switch is on, and <see cref="Tabs"/> stays the permanent four.
+        /// </summary>
+        public static readonly V2Tab PerformanceTab = new V2Tab(Performance, "Performanță", "\uE9D9");
+
+        /// <summary>The tabs to draw, in order: the permanent four, plus Performanță when its switch is on.</summary>
+        public static IReadOnlyList<V2Tab> TabsFor(bool performance)
+        {
+            if (!performance) return Tabs;
+            var list = new List<V2Tab>(Tabs);
+            list.Add(PerformanceTab);
+            return list;
+        }
+
+        public static V2Tab FindTab(string id) =>
+            string.Equals(id, Performance, StringComparison.Ordinal) ? PerformanceTab
+            : Tabs.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.Ordinal));
 
         /// <summary>The tab the window opens on when nothing is asked for.</summary>
         public static string DefaultTab => Tabs[0].Id;
@@ -73,6 +93,7 @@ namespace WinNotch.Features.WindowV2
             null or "" => DefaultTab,
             "themes" => Themes,
             "settings" or "news" => Settings,
+            "performance" or Performance => Performance,
             _ => Workspace,
         };
 

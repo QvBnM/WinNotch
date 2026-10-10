@@ -173,6 +173,8 @@ namespace WinNotch
             _notch.StartSmartClipboard();                              // P21: chips in the Clipboard widget; idle with its switch off
             _notch.StartShelf();                                       // P23: the shelf (drops on the open notch); idle with its switch off
             _notch.StartAudioSwitch();                                 // P30: the list of audio outputs beside the volume; idle with its switch off
+            // P60: the one thing that measures the machine. It holds no timer until something asks to see the numbers.
+            Features.Performance.PerfMonitor.Current = new Features.Performance.PerfMonitor(Core.Flags.FeatureFlags.Current);
             StartHealthTimer();
         }
 
@@ -452,6 +454,7 @@ namespace WinNotch
             Guard?.MarkCleanExit();
             _healthTimer?.Dispose();
             try { Core.Context.ContextEngine.Current?.Dispose(); } catch { }
+            try { Features.Performance.PerfMonitor.Current?.Dispose(); } catch { }
             try { _notch?.Cleanup(); } catch { }
             try { _tray?.Dispose(); } catch { }
             Core.Diagnostics.HealthLog.Stop();

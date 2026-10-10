@@ -31,6 +31,7 @@
     <Compile Include="WindowV2Tests.cs" />
     <Compile Include="PillSizeTests.cs" />
     <Compile Include="FeatureAuditTests.cs" />
+    <Compile Include="PerfTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -98,6 +99,14 @@
     <Compile Include="..\Features\Fullscreen\FullscreenRules.cs" />
     <!-- P50: only the pure geometry (the notch's partial, with the WPF drawing, stays out) -->
     <Compile Include="..\Features\NotchAnchored\AnchoredGeometry.cs" />
+    <!-- P60: the performance maths and rules (the sampler, the counters and the tab stay out: Windows and WPF) -->
+    <Compile Include="..\Core\Perf\PerfRules.cs" />
+    <Compile Include="..\Core\Perf\PerfSample.cs" />
+    <Compile Include="..\Core\Perf\SampleRing.cs" />
+    <Compile Include="..\Core\Perf\FrameStats.cs" />
+    <Compile Include="..\Core\Perf\MemoryTrend.cs" />
+    <Compile Include="..\Core\Perf\GpuInstance.cs" />
+    <Compile Include="..\Core\Perf\ProcessRollup.cs" />
     <!-- P52: only the pure layout rules (the window itself stays out) -->
     <Compile Include="..\Features\WindowV2\LayoutRules.cs" />
     <Compile Include="..\Features\WindowV2\SettingsMap.cs" />

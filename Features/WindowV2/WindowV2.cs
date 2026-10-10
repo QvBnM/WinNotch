@@ -43,6 +43,7 @@ namespace WinNotch.Features.WindowV2
         private WorkspaceView _workspace;
         private WidgetsView _widgets;
         private SettingsView _settings;
+        private Features.Performance.PerfView _perf;
         private ScrollViewer _themesHost;
         private readonly EmbeddedPages _themes = new EmbeddedPages();
 
@@ -87,6 +88,7 @@ namespace WinNotch.Features.WindowV2
                 Flush();                                   // a name or a slider still pending is saved, not lost
                 _themes.Detach();
                 _settings?.Detach();
+                _perf?.Detach();
                 if (Application.Current is App app && ReferenceEquals(app.HostedWorkspace, _workspace)) app.HostedWorkspace = null;
                 if (_flagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _flagHandler;
                 _flagHandler = null;
@@ -174,7 +176,7 @@ namespace WinNotch.Features.WindowV2
         private void BuildTabs()
         {
             _tabs.Children.Clear();
-            foreach (var t in LayoutRules.Tabs)
+            foreach (var t in LayoutRules.TabsFor(FeatureFlags.Current?.IsEnabled(Core.Perf.PerfRules.FeatureId) ?? false))
             {
                 var tab = t;
                 bool on = string.Equals(t.Id, _tab, StringComparison.Ordinal);
@@ -227,6 +229,9 @@ namespace WinNotch.Features.WindowV2
         {
             Guarded(() =>
             {
+                // P60: the Performanță tab exists only while its switch is on; turned off, the window falls back.
+                if (_tab == LayoutRules.Performance && !(FeatureFlags.Current?.IsEnabled(Core.Perf.PerfRules.FeatureId) ?? false))
+                    _tab = LayoutRules.DefaultTab;
                 BuildTabs();
                 switch (_tab)
                 {
@@ -251,6 +256,11 @@ namespace WinNotch.Features.WindowV2
                         _themesHost.Content = _themes.Themes(_s, _notch, ReloadThemes, Soon);
                         _bodyHost.Child = _themesHost;
                         break;
+                    case LayoutRules.Performance:
+                        _perf ??= new Features.Performance.PerfView(Say);
+                        _perf.Open();
+                        _bodyHost.Child = _perf;
+                        break;
                     default:
                         _settings ??= new SettingsView(_s, _notch, () => this, Soon, Say);
                         _settings.Open(LayoutRules.SectionFor(pageId), BodyWidth());
@@ -258,6 +268,7 @@ namespace WinNotch.Features.WindowV2
                         break;
                 }
                 if (_tab != LayoutRules.Settings) _settings?.Detach();
+                if (_tab != LayoutRules.Performance) _perf?.Detach();     // stops the sampler: nothing measures unseen
                 Relayout();
             });
         }

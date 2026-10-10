@@ -63,6 +63,8 @@ namespace WinNotch.Core.Flags
         public const string NotchAnchored = "notch-anchored";
         /// <summary>Features/WindowV2: same id as LayoutRules.FeatureId (the tests check they match).</summary>
         public const string WindowV2 = "window-v2";
+        /// <summary>Core/Perf + Features/Performance: same id as PerfRules.FeatureId (the tests check they match).</summary>
+        public const string PerfMonitor = "perf-monitor";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -116,6 +118,9 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Experimental, false),
             // P52: off by default until it is finished; off = the window you know opens, untouched
             new FeatureInfo(WindowV2, "Fereastra WinNotch v2", "Fereastra nouă: antetul e notch-ul desfăcut, o coloană cu categorii, carduri pentru acțiunile care există și o coloană cu clipboard și confidențialitate. Se vede la următoarea deschidere a ferestrei WinNotch (din notch sau din meniul iconiței).",
+                            FeatureStage.Experimental, false),
+
+            new FeatureInfo(PerfMonitor, "Performanță", "Fila „Performanță”: cât se folosește din procesor, memorie și placă video, cine consumă acum și ce crește pe nesimțite în timp (scurgeri de memorie), cu numere de dinainte și de după la fiecare schimbare. Se vede în fereastra WinNotch, fila „Performanță”, și doar cu „Fereastra WinNotch v2” pornită; măsoară numai cât o ai deschisă, nu în fundal.",
                             FeatureStage.Experimental, false),
         };
 
