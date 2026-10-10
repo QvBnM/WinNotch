@@ -818,3 +818,48 @@ Autorul a cerut să testeze direct prin actualizare („Testez pe update. Trimit
 ramura a intrat în `main`. Amândouă funcțiile noi sunt **experimentale și oprite implicit**, așa că notele de versiune
 spun pe prima linie a fiecăreia cum se pornesc — altfel actualizarea ar fi, pentru el, un non-eveniment, exact plângerea
 pe care auditul de comutatoare (FA1–FA6) există s-o prevină. P60 și P61 trecute pe „Gata (de testat pe Windows)”.
+
+## P70 — Fereastra WinNotch, redesenată ca un aparat (10 oct 2026)
+
+Autorul a cerut întâi machete („fa-mi niște modele vizuale”), apoi „regândire totală, reimplementare de la 0”, apoi,
+după ce a văzut machetele a doua oară, „arată mai bine, dai drumul și refă tot”.
+
+**Ce s-a schimbat, pe scurt:** nu structura (P52 o rezolvase: o singură navigare, patru file, nimic găzduit din
+fereastra clasică), ci desenul — și o promisiune nouă: fereastra arată notch-ul în loc să-l descrie. Decizia și
+alternativele refuzate sunt în `docs/adr/0017-fereastra-ca-aparat.md`.
+
+**Decizia de arhitectură care a ținut costul jos:** `V2Controls` și-a păstrat **tot API-ul** (`Card`, `Row`, `Toggle`,
+`Choice`, `SliderRow`, `Field`…). Zece pagini și peste treizeci de grupuri de opțiuni apelau deja prin el, așa că
+schimbarea desenului în acele funcții a redesenat toată fereastra fără ca paginile să fie rescrise. `Card` nu mai
+desenează un card, dar încă se numește `Card` — intenționat, și scris în ADR.
+
+**Cod nou, pur și testat:** `Features/WindowV2/PreviewModel.cs` — unde cade pastila în previzualizare (poziție, formă
+mică, cadru îngust), rândul din subsol, indicatorul de rânduri, scrierea numerelor. 7 teste (PV01–PV07). Desenul
+(`NotchPreview.cs`) nu are nicio regulă proprie.
+
+**Fără compilator local.** Containerul de dezvoltare e Linux și nu are `dotnet`; WPF nu se compilează pe Linux. CI-ul
+pe Windows a fost compilatorul: fiecare pas (teste → build → teste de fum) a fost citit din jurnalul rulării. Prima
+rulare: 986 din 987 de teste trecute, un singur eșec — `NA16`, un test care fixa în text faptul că `WindowV2.cs`
+cheamă `AnchoredShape.Silhouette`. Redesignul mutase forma de acolo în previzualizare, deci testul a fost **mutat**
+(nu slăbit): urmărește acum `NotchPreview.cs` și cere în plus ca nici fereastra, nici previzualizarea să nu-și deschidă
+propriul `StreamGeometry`. Intenția lui — un singur traducător geometrie→WPF — a rămas întreagă.
+
+**Două bucăți de cod moarte, prinse la autorevizie înainte de commit:** `V2Controls.Readout` și `V2Controls.Stepper` nu
+erau chemate de nimeni. `Readout` a fost **șters** (era pentru un ecran de stare care nu s-a făcut), iar `Stepper` a
+fost **folosit**: întârzierea la hover e acum un număr cu pași, nu un cursor. La fel `Danger`, dus la „Șterge pagina”.
+Regula pe care o respect de aici înainte: un control nou intră în `V2Controls` doar odată cu locul care îl cheamă.
+
+**Un defect vechi reparat pe drum:** niciun `ComboBox` din aplicație nu avea stil, deci fiecare listă derulantă din
+fereastra întunecată era un dreptunghi alb de Windows — exact plângerea „foaia albă lipită în fereastra întunecată”
+care dusese la P52, rămasă nereparată într-un colț. Stilul `V2Combo` e **cu cheie**, nu implicit: fereastra clasică și
+notch-ul își păstrează controalele lor.
+
+**Teste:** PV01–PV07 (noi), WV33–WV35 (noi, fixează desenul: etichete + linii în loc de carduri, legătura din subsol
+pusă și tăiată, indicatorul de rânduri), WV08 și WV17 actualizate, NA16 mutat. Documentație: ADR 0017, `ROADMAP.md`
+(P70), `TESTE-MANUALE.md` (P70.1–P70.16), `DOCUMENTATIE.md` (capitolul ferestrei + istoricul versiunilor),
+`RELEASE_NOTES.md` și `README.md` pentru 0.6.27.
+
+**Rămâne de făcut (scris, nu uitat):** previzualizarea arată starea de acum, nu ce ar face rândul de sub mouse.
+Machetele arătau și asta; ar cere ca fiecare rând să declare ce demonstrează, deci se face doar dacă autorul spune că
+lipsește. Și: `V2Controls.Report` e o legătură statică, bună pentru o singură fereastră; o a doua ar trebui s-o facă
+pe instanță.

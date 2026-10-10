@@ -515,3 +515,27 @@ clasică apasă și „Salvează”; în v2 se aplică pe loc).
 | P61.13 | Oprit la mijloc | Cât ești în joc, oprește „Mod de joc” din Setări. | Sesiunea se abandonează: niciun raport, prioritatea revine la „Normal”, și nimic nu mai măsoară la 1 s. |
 | P61.14 | Vremea și calendarul se amână | Cât joci, uită-te la widget-ul Vremea după ce ieși. | Nu s-a actualizat în timpul jocului; se actualizează la prima trecere după ieșire. |
 | P61.15 | Mod sigur | Pornește cu `--safe-mode` și intră într-un joc. | Nicio sesiune, niciun rezumat (funcția e Experimental). |
+
+### P70 — Fereastra WinNotch, redesenată
+
+Pornește din Setări → „Funcții noi” → **„Fereastra WinNotch v2”**, apoi deschide fereastra din notch (rotița) sau din
+meniul iconiței. Pentru paleta pentru care a fost desenată: fila Teme → modul întunecat → **„Aparat”**.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P70.1 | Monitorul din ramă | Deschide fereastra. | Sus, pe banda neagră, o felie de monitor cu o pastilă neagră lipită de marginea lui de sus. Pe pastilă: ce ții în standby (ex. „Muzică · Ora · Vremea”) și ora, la dreapta. |
+| P70.2 | Poziția se vede, nu se citește | Setări → Notch → „Poziție” → apasă „Stânga”, apoi „Dreapta”, apoi „Centru”. | Pastila de sus se mută la fiecare apăsare, în partea potrivită a monitorului. Jos, în subsol, scrie „Poziție → Stânga” (apoi Dreapta, apoi Centru). |
+| P70.3 | Rotunjirea se vede | Fila Teme → trage de „Colțuri”. | Colțurile de jos ale pastilei din ramă se schimbă odată cu ale notch-ului adevărat. |
+| P70.4 | Racordările lui P50 | Pornește „Notch lipit de ramă” din „Funcții noi”, apoi uită-te din nou la previzualizare. | Pastila din ramă capătă racordările concave în stânga și în dreapta, ca notch-ul adevărat. Oprește funcția: dispar. |
+| P70.5 | Standby-ul se vede | Setări → Standby → scoate „Vremea”, adaugă „Baterie”. | Textul de pe pastila din ramă se schimbă odată cu lista. |
+| P70.6 | Rândurile, nu cardurile | Uită-te la orice secțiune din Setări. | Un titlu mic cu majuscule, sub el rânduri despărțite de o linie subțire. Niciun dreptunghi rotunjit în jurul grupului. Controlul fiecărui rând e lipit la dreapta. |
+| P70.7 | Două-trei variante se văd toate | Setări → Notch → „Poziție”. | Cele trei variante sunt butoane alăturate, cea aleasă pe culoarea accentului. „Se micșorează singur după” (cinci variante) rămâne listă. |
+| P70.8 | Listele sunt pe temă | Deschide „Se micșorează singur după”. | Lista care se deschide e întunecată, cu contur subțire și colțuri rotunjite — **nu** un dreptunghi alb de Windows. Varianta de sub mouse se luminează. |
+| P70.9 | Numerele nu tremură | Setări → Notch → „Se deschide la hover după” → apasă de câteva ori − și +. | Valoarea („400 ms”) stă pe loc, nu se mișcă stânga-dreapta la fiecare cifră. Notch-ul chiar își schimbă întârzierea. |
+| P70.10 | Subsolul spune ce s-a scris | Schimbă orice setare (un comutator, o listă, un număr). | Jos, lângă bulina verde și „SE APLICĂ PE LOC”, apare numele setării și noua valoare. Nu există niciun buton „Salvează” sau „Renunță”. |
+| P70.11 | Indicatorul de rânduri | Workspace → o pagină de-a ta. Adaugă un widget pe rândul al treilea. | Sub pagină se aprind trei din cele patru segmente și scrie „3 rânduri din 4 folosite”. Scoate widget-ul: revine. |
+| P70.12 | Ștergerea e roșie | Workspace → „Șterge pagina”. | Butonul e în culoarea de pericol, cu contur. La prima apăsare scrie „Sigur? Apasă din nou”, tot roșu. |
+| P70.13 | Tastatura | Apasă `Tab` repetat prin fereastră. | Se vede clar unde ești: contur pe culoarea accentului pe file, pe rândurile din stânga, pe comutatoare și pe liste. |
+| P70.14 | Orice temă | Fila Teme → treci pe „Luminos”, apoi pe „Hârtie”, apoi înapoi pe „Aparat”. | Fereastra se recolorează întreagă, inclusiv previzualizarea, rândurile și listele. Nicio bucată nu rămâne întunecată pe tema luminoasă (sau invers). |
+| P70.15 | Comutatorul oprit | Oprește „Fereastra WinNotch v2” cât fereastra e deschisă. | Fereastra se închide. Deschide-o din nou din notch: apare fereastra clasică, neschimbată. |
+| P70.16 | Nimic nu rămâne agățat | Deschide și închide fereastra de câteva ori, apoi schimbă setări din fereastra clasică. | Nicio eroare, nimic în `log.txt` despre „window-v2”, iar aplicația merge mai departe. |

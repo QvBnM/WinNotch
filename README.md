@@ -16,6 +16,14 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.27
+
+- Fereastra WinNotch (experimentală) are acum **un monitor sus, cu notch-ul pe el** — conturul adevărat, la rotunjirea ta, cu ce ții în standby scris pe pastilă. Muți poziția și pastila se mută acolo, sub ochii tăi.
+- Jos scrie **ce tocmai ai schimbat** („Poziție → Centru”). Fereastra n-are buton de salvare, deci îți spune ea.
+- Setările nu mai sunt cartonașe: titluri mici peste rânduri despărțite de o linie subțire, numere monospațiate care nu tremură, iar listele derulante nu mai sunt dreptunghiuri albe de Windows.
+- Vezi cât de înalt se va deschide notch-ul cât aranjezi o pagină.
+- Temă nouă: **„Aparat”**.
+
 ## Noutăți în 0.6.26
 
 - Secțiunea **„Performanță”** (experimentală, oprită): procesor, memorie, placă video, cine consumă acum și ce crește pe nesimțite în timp. Arată „—” unde nu știe, nu un zero inventat.

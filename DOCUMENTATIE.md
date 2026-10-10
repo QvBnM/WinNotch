@@ -543,18 +543,29 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   straturi de culoare (deci altă nuanță decât racordările, vizibil pe tema luminoasă) și o îmbinare în colțurile de jos.
   Racordarea e limitată și de înălțimea pastilei, ca pe forma mică să nu depășească începutul colțului de jos. Geometria
   trece printr-un singur traducător (`Features/NotchAnchored/AnchoredShape.cs`), folosit și de antetul ferestrei v2.
-- **Fereastra WinNotch v2 (P52, comutatorul „Fereastra WinNotch v2”, oprit implicit).** Cu el pornit, din notch se
-  deschide fereastra nouă. Antetul e notch-ul desfăcut: aceeași siluetă ca la „Notch lipit de ramă” (aceeași rază,
-  aceleași racordări, același cod de desenare), ca să recunoști obiectul din marginea ecranului.
-  **Are o singură navigare: patru file în antet** — Workspace, Widgeturi, Teme, Sistem. Coloana din stânga nu e o a
+- **Fereastra WinNotch v2 (P52 + P70, comutatorul „Fereastra WinNotch v2”, oprit implicit).** Cu el pornit, din notch
+  se deschide fereastra nouă. **Sus e rama ferestrei, iar pe ea o felie de monitor cu notch-ul desenat pe margine**
+  (P70): nu e o imagine, ci conturul adevărat (aceeași rază pe care ai ales-o, aceleași racordări dacă „Notch lipit de
+  ramă” e pornit, același cod de desenare ca al notch-ului), cu lucrurile pe care le ții în standby scrise pe pastilă.
+  Muți poziția și se mută; schimbi rotunjirea și se rotunjește. Nu mai trebuie să închizi fereastra ca să vezi ce ai
+  făcut.
+  **Are o singură navigare: patru file sub ramă** — Workspace, Widgeturi, Teme, Setări. Coloana din stânga nu e o a
   doua navigare: aparține filei deschise și se schimbă cu ea.
+  - **Cum arată (P70).** Un grup de opțiuni e o etichetă gravată peste un șir de rânduri despărțite de o linie de un
+    pixel — fără carduri unul într-altul. Fiecare rând are numele setării, o singură linie de explicație și controlul
+    lui la marginea din dreapta. Două sau trei variante se văd toate deodată; de la patru în sus se strâng într-o
+    listă (care acum e pe tema aplicației, nu dreptunghiul alb al Windows-ului). Orice număr, cale sau scurtătură e
+    scris monospațiat, ca o coloană de valori să se alinieze și să nu tremure cât o schimbi. Jos, lângă „se aplică pe
+    loc”, scrie **ce tocmai s-a schimbat** („Poziție → Centru”): fereastra nu are buton de salvare, deci spune ea ce a
+    scris. Tema **„Aparat”** (Teme → întunecate) e paleta pentru care a fost desenată.
   - **Workspace** — pagina pe care o construiești. În stânga, paginile tale și cele standard (cu ochiul care le ascunde
     din notch și cu duplicarea), iar sub ele iconița paginii pe care ești. În dreapta, inspectorul widget-ului ales:
     mărimile lui, opțiunile lui și „Scoate widget-ul”. **Mijlocul e împărțit în două**, cu un separator pe care îl poți
     trage: sus pagina **vie** (aceeași grilă 6×4 pe care o vezi în notch, cu drag, redimensionare și selecție), care
     crește până la 1,7× ca să umple jumătatea ei pe un ecran lat; jos biblioteca de widget-uri — categoriile ca jetoane
     pe orizontală și widget-urile într-un rând care se derulează lateral (și cu rotița). O pagină standard nu are
-    bibliotecă: nu se editează.
+    bibliotecă: nu se editează. Sub pagină, **indicatorul de rânduri** (P70): patru segmente, aprinse cât rânduri
+    folosești, adică exact cât de înalt se va deschide notch-ul — altfel nu puteai afla decât deschizându-l.
   - **Widgeturi** — catalogul întreg, pe toată înălțimea, cu categoriile lui. Ce alegi se adaugă pe pagina deschisă în
     Workspace.
   - **Teme** — modul (întunecat / luminos / ca Windows), temele gata făcute și ale tale, culorile temei folosite,
@@ -1119,6 +1130,7 @@ Niciun nume de proces, nicio cale, niciun titlu de fereastră. Un eșantion scri
 
 | Versiune | Ce a adus |
 |---|---|
+| 0.6.27 | Fereastra WinNotch v2 (experimentală), redesenată din temelii (P70, ADR 0017): sus, pe rama ferestrei, **o felie de monitor cu notch-ul pe ea**, desenat cu conturul adevărat (aceeași rază, aceleași racordări, același traducător ca al notch-ului) și ținut în pas cu setările — muți poziția, se mută. Grupurile de opțiuni sunt etichete gravate peste rânduri despărțite de o linie de un pixel, fără carduri; numerele, căile și scurtăturile sunt monospațiate; două-trei variante se văd toate deodată, de la patru în sus se strâng într-o listă — iar listele nu mai sunt dreptunghiuri albe de Windows, ci au stilul temei. Jos scrie ce tocmai s-a schimbat, fiindcă fereastra nu are buton de salvare. În Workspace, un indicator arată cât de înalt va crește notch-ul. Tema nouă **„Aparat”** |
 | 0.1 | Prima variantă: pastilă, hover, muzică cu volum, standby personalizabil, temperaturi, monitoare și fullscreen, mod mic peste ferestre maximizate, tray, setări |
 | 0.2 | Reproiectare completă după schițele aprobate: Acasă (versuri, vizualizator, surse audio, calendar, vreme), Sistem (grafic CPU, internet, test viteză), Dispozitive (microfon/cameră, conectate), Unelte (lansator, spații de lucru, fereastra activă, clipboard 20, notiță), pastila mică, pauza pentru ochi |
 | 0.2.1 | Conflictul de pachete NU1605 rezolvat |
