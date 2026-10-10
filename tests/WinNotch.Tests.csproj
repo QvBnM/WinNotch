@@ -107,6 +107,9 @@
     <Compile Include="..\Core\Perf\MemoryTrend.cs" />
     <Compile Include="..\Core\Perf\GpuInstance.cs" />
     <Compile Include="..\Core\Perf\ProcessRollup.cs" />
+    <Compile Include="..\Core\Perf\IPerfSampler.cs" />
+    <Compile Include="..\Core\Perf\PerfMonitor.cs" />
+    <Compile Include="..\Features\Performance\PerfActions.cs" />
     <!-- P52: only the pure layout rules (the window itself stays out) -->
     <Compile Include="..\Features\WindowV2\LayoutRules.cs" />
     <Compile Include="..\Features\WindowV2\SettingsMap.cs" />

@@ -674,3 +674,50 @@
 - **Stare:** ramura `claude/upbeat-gates-qn0thi`, pornită din `main` (0.6.25). Versiunea **nu** a fost crescută și nu se
   face merge până testează autorul. Urmează P61 (modul de joc), P62 (FPS), P63 (memorie), P64 (plan de alimentare),
   P65 (verificare sistem).
+
+### P60 — revizia R1 și reparațiile
+
+**Verdict R1: nu se poate merge ca atare.** 1 Critic, 3 Majore, 8 Medii, 12 Minore. Matematica pură și interop-ul PDH au
+trecut (revizorul a recalculat de mână 17 din cele 37 de teste), securitatea e curată; problemele erau concentrate în
+`PerfMonitor` și în câteva rânduri din jur. Reparat tot ce era Critic, Major și Mediu, plus Minorele ieftine:
+
+- **Critic — handle nativ închis sub un apel în curs, adică P51c din nou, cu altă bibliotecă.** `Tick` lua referința la
+  sampler sub lacăt, dar măsura în afara lui, iar `Apply`/`Dispose` puteau apela `PdhCloseQuery` exact peste un
+  `PdhCollectQueryData` în desfășurare. Reparat cu două lacăte, în ordine fixă: `_passGate` ține o trecere de la început
+  până la sfârșit, iar cine vrea să retragă samplerul așteaptă trecerea; `_gate` apără doar starea mică și nu se mai
+  ține niciodată peste o măsurătoare. Regula e scrisă în ADR 0016 ca tipar pentru orice funcție viitoare cu handle-uri
+  native într-un pas periodic.
+- **Major — treceri suprapuse.** Un `System.Threading.Timer` periodic pune callback-urile în coadă: o trecere mai lungă
+  decât cadența (300 de procese, 1 s în joc) ar fi pus două fire pe același sampler, care nu e reintrant — delte de CPU
+  aiurea și aceeași cursă nativă. Acum `Monitor.TryEnter`: o bătaie peste o trecere în curs se sare, nu se pune la
+  coadă. Test PF51, cu un sampler fals care ține 120 ms.
+- **Major — detecția de scurgeri murea în liniște.** `_started` se reseta la fiecare schimbare de cadență, dar
+  `_memory` rămânea, deci axa de timp o lua de la zero și condiția „un punct pe minut” devenea permanent falsă: niciun
+  punct nou, pentru niciun proces, pentru totdeauna. Reparat prin ținerea timpului **absolut** în inele, convertit în
+  minute la citire. Test PF42 face exact ce făcea bug-ul: 60 de schimbări de cadență în timp ce memoria crește.
+- **Major — cursă pe comutator.** `enabled` se citea în afara lacătului, cu scurtcircuit pe „cadența n-a schimbat”, deci
+  două schimbări de pe două fire puteau lăsa un cronometru pornit pentru o funcție oprită. Acum se citește sub lacătul
+  care decide.
+- **Mediu:** `Leaks()` făcea `ToList()` pe inele în afara lacătului (`TrendOf` o făcea corect — era o omisiune); un GPU
+  **inactiv** era confundat cu „contoare lipsă” și rămânea lipit pe ultima valoare nenulă (acum `GpuReading.Ok` spune
+  dacă contoarele au răspuns, separat de valori, deci un 0 cinstit se arată ca 0); oprirea comutatorului cu fereastra
+  deschisă nu scotea fila (acum `_flagHandler` o scoate pe loc, și o adaugă la pornire — P60.18); ADR-ul afirma că nu
+  există un al doilea cronometru, când pastila are de dinainte `SystemStats` la 1 s — corectat pe față în ADR și în
+  documentație, cu unificarea lăsată ca sarcină separată, ca să nu umblu în `NotchWindow.xaml.cs` mai mult decât
+  „câteva rânduri de legătură”; `PerfMonitor` n-avea niciun test (mutat în `Core/Perf/`, cu `IPerfSampler` și ceasul
+  injectate — nu atingea WPF deloc); lipsea acțiunea (`perf.open`, cerută de `CLAUDE.md`); lipsea testul de fum (acum
+  `SmokePerformance.cs`); fila refăcea rândurile și copia tot istoricul la fiecare eșantion (acum
+  `WatchedMinutes` calculat sub lacăt, trendurile memorate un minut, rândurile redesenate doar când se schimbă).
+- **Minore reparate:** un pid de 10 cifre trecea ca valid și devenea negativ prin depășire (acum acumulat în `long` și
+  verificat); un rezultat invalid avea `EngineType` null, nu `""`; comentariul din `SampleRing` promitea un snapshot
+  thread-safe, care era exact motivul pentru care `Leaks()` fusese scris greșit; `HistoryCapacity` era documentat „o
+  oră” deși e o oră doar la cadența de joc; `PerfSample.Top` nu era un top (toate procesele, nesortate) → redenumit
+  `Processes`, cu documentația potrivită; pragul de 20 de cadre pentru stutter era nedocumentat și netestat;
+  `StuttersPerMinute` era umflat fiindcă excludea pauzele din numitor (acum `PausedMs` și `ElapsedSeconds`);
+  `GpuCounters.Available` mințea în ambele direcții; o interogare care începea să eșueze nu se mai redeschidea
+  niciodată (acum 4 eșecuri la rând → închide, iar pauza de 60 s o redeschide); `AddViewer`/`RemoveViewer` se puteau
+  dezechilibra dacă monitorul lipsea la deschiderea filei; numele se uitau doar când tabelul era plin, deci cu 200 de
+  nume vii niciun proces nou n-ar mai fi fost urmărit; `Recent(int)` era cod mort.
+- **Teste:** PF38–PF65 (28 noi, total 65), plus testul de fum „Performanță”. Cele care prind regresiile reparate: PF42
+  (axa de timp), PF51 (treceri suprapuse), PF45–PF49 (ciclul de viață și eliberarea samplerului), PF50 (o trecere care
+  crapă nu dărâmă monitorul și se numără ca eroare a funcției), PF64–PF65 (pid-uri imposibile, motor „” în loc de null).

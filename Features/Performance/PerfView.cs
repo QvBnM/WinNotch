@@ -24,7 +24,9 @@ namespace WinNotch.Features.Performance
         private StackPanel _top, _leaks;
         private PerfMetric _sortBy = PerfMetric.Cpu;
         private Action<PerfSample> _onSample;
-        private bool _open;
+        private bool _open, _counted;
+        /// <summary>What the leak rows currently show, so they are only rebuilt when they would change.</summary>
+        private string _leakSignature = "\u0000";
 
         public PerfView(Action<string> say)
         {
@@ -43,10 +45,11 @@ namespace WinNotch.Features.Performance
             if (_open) return;
             _open = true;
             var monitor = PerfMonitor.Current;
-            if (monitor == null) return;
+            if (monitor == null) { Paint(PerfSample.Empty); return; }
             _onSample = s => Dispatcher.InvokeAsync(() => { if (_open) Paint(s); });
             monitor.Sampled += _onSample;
             monitor.AddViewer();
+            _counted = true;            // only now may a Detach take a viewer away
             Paint(monitor.Last);
         }
 
@@ -56,10 +59,12 @@ namespace WinNotch.Features.Performance
             if (!_open) return;
             _open = false;
             var monitor = PerfMonitor.Current;
-            if (monitor == null) return;
-            if (_onSample != null) monitor.Sampled -= _onSample;
+            if (monitor != null && _onSample != null) monitor.Sampled -= _onSample;
             _onSample = null;
-            monitor.RemoveViewer();
+            // Only ever give back a viewer we actually took: subtracting one we never added would stop the sampler
+            // for whoever else is watching.
+            if (_counted && monitor != null) monitor.RemoveViewer();
+            _counted = false;
         }
 
         // ------------------------------------------------------------------ the page
@@ -234,7 +239,7 @@ namespace WinNotch.Features.Performance
         private void PaintTop(PerfSample s)
         {
             _top.Children.Clear();
-            var list = ProcessRollup.Top(s.Top, 7, _sortBy);
+            var list = ProcessRollup.Top(s.Processes, 7, _sortBy);
             if (list.Count == 0)
             {
                 _top.Children.Add(V2Controls.Hint("Nimic demn de raportat: nicio aplicație nu consumă măsurabil acum."));
@@ -252,20 +257,30 @@ namespace WinNotch.Features.Performance
             }
         }
 
+        /// <summary>
+        /// The leak card. Asks the monitor for the trends (it caches them for a minute) and only rebuilds the rows
+        /// when they would look different: this runs every two seconds, and redrawing an unchanged list is work for
+        /// nothing.
+        /// </summary>
         private void PaintLeaks()
         {
-            _leaks.Children.Clear();
             var monitor = PerfMonitor.Current;
             var leaks = monitor?.Leaks() ?? new List<(string, MemoryTrendResult)>();
-            foreach (var (name, trend) in leaks.Take(5))
+            var shown = leaks.Take(5).ToList();
+            string signature = string.Join("|", shown.Select(x => x.Name + ":" + N(x.Trend.MbPerHour)));
+            if (signature != _leakSignature)
             {
-                var label = Ui.T(name, 13, "InkBrush");
-                var detail = Ui.T("+" + N(trend.MbPerHour) + " MB/h, de " + N(trend.Minutes) + " min (acum " + N(trend.GrowthMb) + " MB mai mult)", 12, "WarnBrush");
-                detail.HorizontalAlignment = HorizontalAlignment.Right;
-                _leaks.Children.Add(V2Controls.ListRow(null, label, detail));
+                _leakSignature = signature;
+                _leaks.Children.Clear();
+                foreach (var (name, trend) in shown)
+                {
+                    var label = Ui.T(name, 13, "InkBrush");
+                    var detail = Ui.T("+" + N(trend.MbPerHour) + " MB/h, de " + N(trend.Minutes) + " min (acum " + N(trend.GrowthMb) + " MB mai mult)", 12, "WarnBrush");
+                    detail.HorizontalAlignment = HorizontalAlignment.Right;
+                    _leaks.Children.Add(V2Controls.ListRow(null, label, detail));
+                }
             }
-            var history = monitor?.History();
-            double minutes = history != null && history.Count > 1 ? (history[history.Count - 1].TimeUtc - history[0].TimeUtc).TotalMinutes : 0;
+            double minutes = monitor?.WatchedMinutes ?? 0;
             _watched.Text = leaks.Count > 0
                 ? "Un program care crește așa merită repornit; după repornire numărul de aici trebuie să cadă."
                 : minutes < MemoryTrend.MinMinutes

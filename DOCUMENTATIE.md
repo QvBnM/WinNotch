@@ -1018,6 +1018,13 @@ Regula e într-un singur loc (`Core/Perf/PerfRules.cs`) și e verificată de tes
   pragurile: peste 50 MB/h, de cel puțin 20 de minute, cu cel puțin 150 MB adunați, și cu o linie care se potrivește
   (R² ≥ 0,80). Un browser folosit normal crește repede, dar în zig-zag, deci nu apare.
 
+### Ce măsoară, și ce nu e unificat
+
+Pentru secțiunea de performanță măsoară un singur loc, `PerfMonitor`: tot ce arată un număr acolo i-l cere, și nu există
+un al doilea cronometru al secțiunii. Pastila notch-ului are însă de dinainte propriul `SystemStats`, citit o dată pe
+secundă pentru CPU, RAM și rețea; cu fila deschisă, procesorul și memoria se citesc deci din două locuri. Unificarea e o
+sarcină separată, de făcut după ce secțiunea se așază — vezi ADR 0016, §5.
+
 ### De unde vin numerele
 
 - **Procesor, memorie, commit:** `GetSystemTimes` și `GlobalMemoryStatusEx`. Ieftine, neprivilegiate.
@@ -1028,6 +1035,12 @@ Regula e într-un singur loc (`Core/Perf/PerfRules.cs`) și e verificată de tes
   de placă video murit la o schimbare de monitoare a aruncat un `AccessViolationException` din NVML, care în .NET 8 nu
   poate fi prins de niciun `catch`, și aplicația s-a închis fără un rând în log. Ce cere biblioteca de senzori vine din
   serviciul SYSTEM, în procesul lui, unde o moarte nu ne costă nimic.
+
+### Acțiunea
+
+`perf.open` („Deschide Performanță”, aliasuri „performanță”, „cine consumă”, „performance”, „monitor”): deschide
+fereastra direct pe filă, din Command Bar sau de pe o scurtătură. Cu „Fereastra WinNotch v2” oprită spune ce lipsește,
+în loc să deschidă fereastra clasică pe o pagină care nu există acolo.
 
 ### Ce nu scrie în log
 
@@ -1054,7 +1067,7 @@ Niciun nume de proces, nicio cale, niciun titlu de fereastră. Un eșantion scri
 - **Raft (experimental):** pastila închisă nu primește fișiere (lasă click-urile să treacă): tragi peste ea și aștepți ca la hover, ori deschizi notch-ul înainte (dacă dai drumul înainte să se deschidă, fișierul ajunge la fereastra de dedesubt, ca fără raft); deasupra unei ferestre maximizate se deschide doar la marginea de sus a ecranului, ca la hover. O tragere de fereastră sau o selecție de text adusă peste pastilă o deschide și ea (se închide singură când pleci). Din aplicații pornite ca administrator Windows nu lasă tragerea spre WinNotch. Un `.lnk` fără informații locale (de exemplu spre „Acest PC” sau spre o aplicație din Store) e refuzat. OCR-ul și conversia citesc doar primul cadru și nu aplică rotirea EXIF a fotografiilor; o imagine e micșorată la 3000 px pentru OCR.
 - **Smart Clipboard (experimental):** chip-urile sunt doar pentru ultimul text copiat (nu pentru cele mai vechi din istoric) și doar în widget-ul Clipboard, nu și în lista paginii Unelte; după o repornire nu e niciun text până la prima copiere; un text de peste 64 KB nu e analizat; „Deschide folderul” nu selectează fișierul în Explorer, doar deschide folderul lui.
 - **Pagina după context (experimental):** decide doar la deschiderea notch-ului (nu schimbă pagina cât e deschis); alegerea manuală de 10 minute nu se păstrează după repornire; fără „Motorul de context” (sau în `--safe-mode`) nu face nimic. Paginile ascunse nu sunt alese, chiar dacă sunt în mapare.
-- **Performanță (experimental):** măsoară doar cât ai fila deschisă (sau cât rulează un joc, mai târziu): închizi fereastra, se oprește tot, iar istoricul și trendurile pornesc de la zero la următoarea deschidere. Contoarele plăcii video au nevoie de o trecere ca să dea prima valoare, deci în prima secundă placa video arată `—`. Memoria video n-are procent (nu citim cât are placa). Temperaturile nu sunt încă în filă. Un „1% low” are nevoie de cel puțin 500 de cadre, iar „0.1% low” de 5000; sub atât scrie `—` în loc de un număr.
+- **Performanță (experimental):** măsoară doar cât ai fila deschisă (sau cât rulează un joc, mai târziu): închizi fereastra, se oprește tot, iar istoricul și trendurile pornesc de la zero la următoarea deschidere. Contoarele plăcii video au nevoie de o trecere ca să dea prima valoare, deci în prima secundă placa video arată `—`. Memoria video n-are procent (nu citim cât are placa). Temperaturile nu sunt încă în filă. Un „1% low” are nevoie de cel puțin 500 de cadre, iar „0.1% low” de 5000; sub atât scrie `—` în loc de un număr. Pastila notch-ului își citește încă CPU-ul și RAM-ul separat (vezi secțiunea 17), deci cu fila deschisă aceleași două valori se măsoară de două ori.
 - **Detectarea se bazează pe reporniri apropiate:** după o închidere bruscă WinNotch nu repornește singur; protecția reacționează când îl pornești din nou (3 porniri în 5 minute). Un WinNotch blocat, dar încă deschis, nu e detectat.
 
 ---

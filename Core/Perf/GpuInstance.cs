@@ -15,14 +15,20 @@ namespace WinNotch.Core.Perf
     /// </summary>
     public readonly struct GpuInstance
     {
+        /// <summary>Not a counter line we can use. Returned instead of <c>default</c>, so the properties never hand
+        /// back a null string to a caller that did not check <see cref="IsValid"/>.</summary>
+        public static readonly GpuInstance Invalid = new GpuInstance(0, "", false);
+
         private GpuInstance(int pid, string engineType, bool valid)
         {
-            Pid = pid; EngineType = engineType ?? ""; IsValid = valid;
+            Pid = pid; _engine = engineType ?? ""; IsValid = valid;
         }
+
+        private readonly string _engine;
 
         public int Pid { get; }
         /// <summary>"3D", "VideoDecode", "Copy", "Compute_0"…; "" when the name carries no engine (process memory).</summary>
-        public string EngineType { get; }
+        public string EngineType => _engine ?? "";
         public bool IsValid { get; }
 
         /// <summary>The engine that renders the game. The one worth showing on its own.</summary>
@@ -35,22 +41,25 @@ namespace WinNotch.Core.Perf
         /// </summary>
         public static GpuInstance Parse(string instance)
         {
-            if (string.IsNullOrEmpty(instance)) return default;
-            if (!instance.StartsWith("pid_", StringComparison.OrdinalIgnoreCase)) return default;
+            if (string.IsNullOrEmpty(instance)) return Invalid;
+            if (!instance.StartsWith("pid_", StringComparison.OrdinalIgnoreCase)) return Invalid;
 
-            int i = 4, pid = 0, digits = 0;
+            // Accumulated as a long and range-checked: a ten-digit number fits the format but not an int, and
+            // silently wrapping to a negative process id would put a nonsense row in the per-process numbers.
+            int i = 4, digits = 0;
+            long pid = 0;
             for (; i < instance.Length && instance[i] >= '0' && instance[i] <= '9'; i++, digits++)
             {
-                if (digits > 9) return default;                     // a pid that long is not a pid
+                if (digits >= 10) return Invalid;
                 pid = pid * 10 + (instance[i] - '0');
             }
-            if (digits == 0) return default;
-            if (i < instance.Length && instance[i] != '_') return default;
+            if (digits == 0 || pid > int.MaxValue || pid <= 0) return Invalid;
+            if (i < instance.Length && instance[i] != '_') return Invalid;
 
             const string tag = "_engtype_";
             int t = instance.IndexOf(tag, StringComparison.OrdinalIgnoreCase);
             string engine = t < 0 ? "" : instance.Substring(t + tag.Length);
-            return new GpuInstance(pid, engine, true);
+            return new GpuInstance((int)pid, engine, true);
         }
 
         public override string ToString() =>

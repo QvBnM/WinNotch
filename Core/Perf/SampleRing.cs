@@ -4,9 +4,11 @@ using System.Collections.Generic;
 namespace WinNotch.Core.Perf
 {
     /// <summary>
-    /// A fixed window of the most recent samples. Fixed on purpose: an hour of history must cost the same whether the
-    /// app has been up for ten minutes or ten days, so nothing here grows and nothing is ever allocated after the
-    /// start. Oldest first when read.
+    /// A fixed window of the most recent samples. Fixed on purpose: the history must cost the same whether the app has
+    /// been up for ten minutes or ten days, so the storage never grows. Oldest first when read.
+    /// <para><b>Not thread-safe.</b> Reading and writing from two threads must be serialized by the caller
+    /// (<see cref="PerfMonitor"/> does it under its own lock). <see cref="ToList"/> and <see cref="Tail"/> do
+    /// allocate, so a caller that reads them on a timer should not do it per frame.</para>
     /// </summary>
     public sealed class SampleRing<T>
     {
@@ -51,7 +53,10 @@ namespace WinNotch.Core.Perf
         /// <summary>The newest sample, or <c>default</c> when nothing has been added yet.</summary>
         public T Last => Count > 0 ? this[Count - 1] : default;
 
-        /// <summary>Oldest first. A snapshot: adding while the caller reads it cannot change what it sees.</summary>
+        /// <summary>
+        /// Oldest first, in a new list. Not atomic: an <see cref="Add"/> from another thread while this runs can be
+        /// half-seen, so the caller holds its own lock around both.
+        /// </summary>
         public List<T> ToList()
         {
             var list = new List<T>(Count);

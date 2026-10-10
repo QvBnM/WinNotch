@@ -95,10 +95,21 @@ namespace WinNotch.Features.WindowV2
                 _s.Save();
             };
             // The switch can be turned off from Settings while the window is open: then it closes, like any feature stopping.
+            // P60: the Performanță switch does not close the window, it adds or removes the fifth tab on the spot.
             _flagHandler = id =>
             {
-                if (!string.Equals(id, LayoutRules.FeatureId, StringComparison.Ordinal)) return;
-                Dispatcher.InvokeAsync(() => { if (!(FeatureFlags.Current?.IsEnabled(LayoutRules.FeatureId) ?? false)) Close(); });
+                if (string.Equals(id, LayoutRules.FeatureId, StringComparison.Ordinal))
+                {
+                    Dispatcher.InvokeAsync(() => { if (!(FeatureFlags.Current?.IsEnabled(LayoutRules.FeatureId) ?? false)) Close(); });
+                    return;
+                }
+                if (!string.Equals(id, Core.Perf.PerfRules.FeatureId, StringComparison.Ordinal)) return;
+                Dispatcher.InvokeAsync(() => Guarded(() =>
+                {
+                    if (_tab == LayoutRules.Performance && !(FeatureFlags.Current?.IsEnabled(Core.Perf.PerfRules.FeatureId) ?? false))
+                        _tab = LayoutRules.DefaultTab;      // ShowTab detaches the view and rebuilds the header
+                    ShowTab(null);
+                }));
             };
             if (FeatureFlags.Current != null) FeatureFlags.Current.Changed += _flagHandler;
         }

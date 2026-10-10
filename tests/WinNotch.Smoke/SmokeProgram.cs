@@ -113,6 +113,8 @@ namespace WinNotch.Smoke
                 else Console.WriteLine("SKIP  Raft (rulează o singură dată, în rularea cu activity-manager oprit)");
                 if (!_activityOn) Run(step = "Căști/boxe: lista ieșirilor audio de lângă volum se deschide și fără niciun dispozitiv („Nicio ieșire audio”), butonul o închide și o redeschide, comutatorul nu se oprește singur", AudioOutputs);
                 else Console.WriteLine("SKIP  Căști/boxe (rulează o singură dată, în rularea cu activity-manager oprit)");
+                if (!_activityOn) Run(step = "Performanță: fila a cincea apare doar cu comutatorul pornit, se deschide fără excepție și dispare când îl opresc", PerformanceTab);
+                else Console.WriteLine("SKIP  Performanță (rulează o singură dată, în rularea cu activity-manager oprit)");
                 Run(step = "Command Bar oprit: Win+Alt+Space nu deschide nimic", CommandBarOff);
                 Run(step = "Command Bar: se deschide, „volum” găsește un rezultat, o alertă nu ia pastila, Esc închide și focusul revine", CommandBarSearchAndEscape);
                 Run(step = "Command Bar: Enter pe „settings.position” (sigură) deschide Setări în fereastra WinNotch", CommandBarRunsAction);

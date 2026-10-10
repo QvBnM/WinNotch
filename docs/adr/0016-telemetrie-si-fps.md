@@ -86,8 +86,15 @@ inventat. Percentila simplă de frametime există separat, ca să nu fie confund
 2 s; joc pornit → 1 s. Trecerea prin toate procesele rămâne la 4 s în ambele cazuri. `AllowedInStandby` e testată și
 spune explicit că un ritm sub 2 s fără joc e un bug, nu o setare.
 
-Un singur loc măsoară: `PerfMonitor`. Tot ce arată un număr îi cere, cu `AddViewer` / `RemoveViewer`. Nu există a doua
-sursă de eșantioane și nu există un al doilea cronometru.
+Un singur loc măsoară **pentru secțiunea de performanță**: `PerfMonitor`. Tot ce arată un număr acolo îi cere, cu
+`AddViewer` / `RemoveViewer`, și nu există un al doilea cronometru al secțiunii.
+
+**Ce nu e unificat, și se spune pe față** (găsit la revizia R1): pastila notch-ului are de dinainte propriul
+`SystemStats`, citit din `SecondTick` o dată pe secundă, permanent, pentru CPU, RAM și rețea. Cu fila Performanță
+deschisă, procesorul și memoria se citesc deci din două locuri. N-am unificat-o în P60 pentru că ar fi însemnat să umblu
+prin `NotchWindow.xaml.cs` mai mult decât „câteva rânduri de legătură”, pe un drum acoperit de teste de caracterizare.
+Unificarea (pastila devine un consumator al lui `PerfMonitor`, iar `SystemStats` dispare) e o sarcină separată, de făcut
+după ce secțiunea se așază — altfel aș repara un lucru care funcționează ca să respect o propoziție dintr-un ADR.
 
 ### 6. Memoria: ce facem și ce nu
 
@@ -122,7 +129,11 @@ R² ≥ 0,80): o aplicație folosită normal crește repede dar în zig-zag și 
   Windows. O funcție nouă adaugă o regulă pură și o bucată de interfață, nu un sistem.
 - Mai greu: FPS-ul depinde de serviciul SYSTEM și de reinstalarea lui după fiecare actualizare. Trebuie să degradeze
   curat, nu să se plângă.
-- **De respectat de acum:** (1) nicio bibliotecă de senzori în procesul WinNotch, niciodată; (2) nimic nu măsoară pe
-  cont propriu — tot prin `PerfMonitor`; (3) serviciul SYSTEM nu primește intrări, doar publică numere; (4) orice
-  funcție de „optimizare” vine cu înainte/după măsurat, altfel nu se face; (5) nume de procese, căi și titluri nu ajung
-  în `log.txt`.
+- **De respectat de acum:** (1) nicio bibliotecă de senzori în procesul WinNotch, niciodată; (2) nimic din secțiunea de
+  performanță nu măsoară pe cont propriu — tot prin `PerfMonitor` (pastila are încă `SystemStats`, vezi §5); (3)
+  serviciul SYSTEM nu primește intrări, doar publică numere; (4) orice funcție de „optimizare” vine cu înainte/după
+  măsurat, altfel nu se face; (5) nume de procese, căi și titluri nu ajung în `log.txt`.
+- **Cine ține handle-urile native:** samplerul le deține, iar monitorul nu i le ia niciodată din mână în timpul unei
+  treceri (vezi cele două lacăte din `PerfMonitor`). Regula asta a ieșit din revizia R1, care a găsit exact cursa prin
+  care `PdhCloseQuery` putea fi apelat peste un `PdhCollectQueryData` în curs — adică P51c, din nou, cu altă
+  bibliotecă. Orice funcție viitoare care ține un handle nativ într-un pas periodic respectă același tipar.

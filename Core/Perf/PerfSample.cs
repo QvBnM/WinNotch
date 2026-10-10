@@ -59,12 +59,17 @@ namespace WinNotch.Core.Perf
         /// <summary>Dedicated video memory in use, MB; -1 when unknown.</summary>
         public double VramUsedMb { get; init; } = -1;
 
-        /// <summary>The processes that used the most, biggest first. Empty on the samples between two expensive passes.</summary>
-        public IReadOnlyList<ProcUsage> Top { get => _top; init => _top = value ?? Array.Empty<ProcUsage>(); }
-        private readonly IReadOnlyList<ProcUsage> _top = Array.Empty<ProcUsage>();
+        /// <summary>
+        /// <b>Every</b> process measured in this pass, added up by name and in no particular order — not a top: the
+        /// tab sorts it three different ways and the game report needs all of it. Use
+        /// <see cref="ProcessRollup.Top"/> to get the biggest few. Empty on the samples between two expensive passes
+        /// (see <see cref="PerfRules.ProcessSeconds"/>).
+        /// </summary>
+        public IReadOnlyList<ProcUsage> Processes { get => _procs; init => _procs = value ?? Array.Empty<ProcUsage>(); }
+        private readonly IReadOnlyList<ProcUsage> _procs = Array.Empty<ProcUsage>();
 
         public bool HasGpu => GpuPercent >= 0;
-        public bool HasProcesses => _top.Count > 0;
+        public bool HasProcesses => _procs.Count > 0;
         public double RamPercent => RamTotalGb > 0 ? Math.Clamp(RamUsedGb / RamTotalGb * 100, 0, 100) : 0;
         public double CommitPercent => CommitLimitGb > 0 ? Math.Clamp(CommitUsedGb / CommitLimitGb * 100, 0, 100) : 0;
 

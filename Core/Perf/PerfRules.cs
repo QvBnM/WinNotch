@@ -35,7 +35,10 @@ namespace WinNotch.Core.Perf
         /// </summary>
         public const int ProcessSeconds = 4;
 
-        /// <summary>How long a sample stays interesting: an hour of history is enough to see a leak and cheap to keep.</summary>
+        /// <summary>
+        /// How far back the memory trend looks: an hour is enough to see a leak and cheap to keep (one point a minute
+        /// per process). It also sizes the sample history, through <see cref="HistoryCapacity"/>.
+        /// </summary>
         public const int HistoryMinutes = 60;
 
         /// <summary>The cadence for a given state. A game wins over a visible window: it is the stricter measurement.</summary>
@@ -61,7 +64,11 @@ namespace WinNotch.Core.Perf
         public static bool AllowedInStandby(PerfCadence c, bool gameRunning) =>
             c == PerfCadence.Off || (SecondsFor(c) >= 2) || gameRunning;
 
-        /// <summary>How many cheap samples fit in <see cref="HistoryMinutes"/> at the fastest rate (the ring's size).</summary>
+        /// <summary>
+        /// The sample history's size: enough slots for <see cref="HistoryMinutes"/> at the <em>fastest</em> rate, so
+        /// an hour of a game fits. At the 2-second cadence the same slots hold twice as long, which is a bonus, not a
+        /// promise — nothing may assume the history is exactly an hour.
+        /// </summary>
         public static int HistoryCapacity => HistoryMinutes * 60 / GameSeconds;
 
         /// <summary>Every how many cheap samples the expensive per-process pass runs, at this cadence.</summary>

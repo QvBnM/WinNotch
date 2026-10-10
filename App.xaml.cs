@@ -174,7 +174,8 @@ namespace WinNotch
             _notch.StartShelf();                                       // P23: the shelf (drops on the open notch); idle with its switch off
             _notch.StartAudioSwitch();                                 // P30: the list of audio outputs beside the volume; idle with its switch off
             // P60: the one thing that measures the machine. It holds no timer until something asks to see the numbers.
-            Features.Performance.PerfMonitor.Current = new Features.Performance.PerfMonitor(Core.Flags.FeatureFlags.Current);
+            Core.Perf.PerfMonitor.Current = new Core.Perf.PerfMonitor(
+                Core.Flags.FeatureFlags.Current, () => new Features.Performance.PerfSampler());
             StartHealthTimer();
         }
 
@@ -283,6 +284,7 @@ namespace WinNotch
                 Features.SmartClipboard.SmartClipboardActions.Register(registry, new Features.SmartClipboard.NotchSmartClipboardHost(_notch), _notch.SmartClipboardCache);
                 Features.Shelf.ShelfActions.Register(registry, new Features.Shelf.NotchShelfHost(_notch));
                 Features.AudioSwitch.AudioSwitchActions.Register(registry, _notch.AudioOutputs, () => Core.Flags.FeatureFlags.Current);
+                Features.Performance.PerfActions.Register(registry, new Features.Performance.AppPerfHost(this));
                 Core.Actions.ActionRegistry.Current = registry;
             }
             catch (Exception ex) { Log("Acțiuni: înregistrarea a eșuat: " + ex.GetType().Name); }
@@ -454,7 +456,7 @@ namespace WinNotch
             Guard?.MarkCleanExit();
             _healthTimer?.Dispose();
             try { Core.Context.ContextEngine.Current?.Dispose(); } catch { }
-            try { Features.Performance.PerfMonitor.Current?.Dispose(); } catch { }
+            try { Core.Perf.PerfMonitor.Current?.Dispose(); } catch { }
             try { _notch?.Cleanup(); } catch { }
             try { _tray?.Dispose(); } catch { }
             Core.Diagnostics.HealthLog.Stop();

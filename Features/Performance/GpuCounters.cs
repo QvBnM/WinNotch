@@ -8,6 +8,11 @@ namespace WinNotch.Features.Performance
     /// <summary>What one pass over the GPU counters found.</summary>
     internal sealed class GpuReading
     {
+        /// <summary>
+        /// The counters answered this pass. Separate from the values on purpose: an idle graphics card reports zero,
+        /// and "zero" must not be confused with "could not read" in either direction.
+        /// </summary>
+        public bool Ok;
         /// <summary>Busiest engine type, 0..100; -1 when there was nothing to read.</summary>
         public double BusiestPercent = -1;
         /// <summary>The 3D engine alone, 0..100; -1 when unknown. In a game, this is the GPU load.</summary>
@@ -65,8 +70,12 @@ namespace WinNotch.Features.Performance
             public double Value;
         }
 
+        /// <summary>Failed collections in a row before the query is thrown away and opened again.</summary>
+        private const int MaxFailures = 4;
+
         private IntPtr _query, _engine, _memory;
         private bool _primed;
+        private int _failures;
         private DateTime _nextTry = DateTime.MinValue;
         private byte[] _engineBuf = new byte[64 * 1024], _memoryBuf = new byte[16 * 1024];
 
@@ -84,8 +93,20 @@ namespace WinNotch.Features.Performance
             {
                 if (!Open()) return r;
                 int rc = PdhCollectQueryData(_query);
-                if (rc != 0) return r;
+                if (rc != 0)
+                {
+                    // A query that has started failing for good (a driver swap, the counter service restarted) would
+                    // otherwise answer nothing for ever: after a few in a row, close it and let the retry delay
+                    // below open a fresh one.
+                    if (++_failures >= MaxFailures) Close();
+                    return r;
+                }
+                _failures = 0;
                 if (!_primed) { _primed = true; return r; }     // a rate counter says nothing on its first pass
+                r.Ok = true;
+                Available = true;
+                r.BusiestPercent = 0;
+                r.Percent3d = 0;
 
                 double total3d = 0;
                 var byType = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
@@ -99,17 +120,13 @@ namespace WinNotch.Features.Performance
                     byType[gi.EngineType] = t + value;
                     if (gi.Is3D) total3d += value;
                 }
-                if (byType.Count > 0)
-                {
-                    double busiest = 0;
-                    foreach (var kv in byType) if (kv.Value > busiest) busiest = kv.Value;
-                    r.BusiestPercent = Math.Clamp(busiest, 0, 100);
-                    r.Percent3d = Math.Clamp(total3d, 0, 100);
-                    Available = true;
-                }
+                double busiest = 0;
+                foreach (var kv in byType) if (kv.Value > busiest) busiest = kv.Value;
+                r.BusiestPercent = Math.Clamp(busiest, 0, 100);
+                r.Percent3d = Math.Clamp(total3d, 0, 100);
 
                 double vram = 0;
-                bool anyVram = false;
+                bool anyVram = _memory != IntPtr.Zero;
                 foreach (var (instance, value) in Items(_memory, ref _memoryBuf))
                 {
                     var gi = GpuInstance.Parse(instance);
@@ -118,9 +135,8 @@ namespace WinNotch.Features.Performance
                     r.VramByPid.TryGetValue(gi.Pid, out double had);
                     r.VramByPid[gi.Pid] = had + mb;
                     vram += mb;
-                    anyVram = true;
                 }
-                if (anyVram) r.VramMb = vram;
+                if (anyVram) r.VramMb = vram;      // 0 is a real answer; -1 stays only when there is no such counter
             }
             catch (Exception ex)
             {
@@ -184,6 +200,8 @@ namespace WinNotch.Features.Performance
             if (_query != IntPtr.Zero) { try { PdhCloseQuery(_query); } catch { } }
             _query = _engine = _memory = IntPtr.Zero;
             _primed = false;
+            _failures = 0;
+            Available = false;              // whatever it used to answer, it does not answer now
         }
 
         public void Dispose() => Close();

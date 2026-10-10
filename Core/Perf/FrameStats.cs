@@ -25,14 +25,18 @@ namespace WinNotch.Core.Perf
         /// <summary>...and at least this many milliseconds more than it, so a spike at 500 fps is not called a stutter.</summary>
         public const double StutterFloorMs = 8;
 
-        public static readonly FrameStats Empty = new FrameStats(Array.Empty<double>(), 0);
+        /// <summary>Under this many frames the median is not steady enough to call anything a stutter.</summary>
+        public const int MinFramesForStutter = 20;
+
+        public static readonly FrameStats Empty = new FrameStats(Array.Empty<double>(), 0, 0);
 
         private readonly double[] _sorted;
 
-        private FrameStats(double[] sortedFrameTimes, int pauses)
+        private FrameStats(double[] sortedFrameTimes, int pauses, double pausedMs)
         {
             _sorted = sortedFrameTimes;
             Pauses = pauses;
+            PausedMs = pausedMs;
             double total = 0;
             for (int i = 0; i < _sorted.Length; i++) total += _sorted[i];
             TotalMs = total;
@@ -44,25 +48,34 @@ namespace WinNotch.Core.Perf
             if (frameTimesMs == null || frameTimesMs.Count == 0) return Empty;
             var kept = new List<double>(frameTimesMs.Count);
             int pauses = 0;
+            double pausedMs = 0;
             for (int i = 0; i < frameTimesMs.Count; i++)
             {
                 double ms = frameTimesMs[i];
                 if (double.IsNaN(ms) || double.IsInfinity(ms) || ms <= 0) continue;
-                if (ms > PauseMs) { pauses++; continue; }
+                if (ms > PauseMs) { pauses++; pausedMs += ms; continue; }
                 kept.Add(ms);
             }
             var arr = kept.ToArray();
             Array.Sort(arr);
-            return new FrameStats(arr, pauses);
+            return new FrameStats(arr, pauses, pausedMs);
         }
 
         /// <summary>Frames that counted (pauses left out).</summary>
         public int Frames => _sorted.Length;
         /// <summary>Frames longer than <see cref="PauseMs"/>: a loading screen or an alt-tab, not a stutter.</summary>
         public int Pauses { get; }
-        /// <summary>How long those frames took together, in milliseconds.</summary>
+        /// <summary>How long the pauses took together, in milliseconds. Kept out of the frame rate, counted in the wall clock.</summary>
+        public double PausedMs { get; }
+        /// <summary>How long the frames that counted took together, in milliseconds (pauses left out).</summary>
         public double TotalMs { get; }
+        /// <summary>Seconds of actual rendering — the denominator of the frame rate.</summary>
         public double Seconds => TotalMs / 1000.0;
+        /// <summary>
+        /// Seconds from the first frame to the last, pauses included. The denominator for anything "per minute":
+        /// a session with two minutes of loading screens did last those two minutes.
+        /// </summary>
+        public double ElapsedSeconds => (TotalMs + PausedMs) / 1000.0;
 
         /// <summary>Frames divided by the time they took — the only honest average frame rate.</summary>
         public double AvgFps => TotalMs > 0 ? Frames * 1000.0 / TotalMs : 0;
@@ -106,12 +119,16 @@ namespace WinNotch.Core.Perf
             return _sorted[Math.Clamp(idx, 0, Frames - 1)];
         }
 
-        /// <summary>Frames that took over twice the median (and at least 8 ms more): the ones you actually feel.</summary>
+        /// <summary>
+        /// Frames that took over twice the median (and at least 8 ms more): the ones you actually feel. Under
+        /// <see cref="MinFramesForStutter"/> frames this is 0, because the median of a handful of frames is not
+        /// steady enough to measure anything against.
+        /// </summary>
         public int Stutters
         {
             get
             {
-                if (Frames < 20) return 0;
+                if (Frames < MinFramesForStutter) return 0;
                 double limit = Math.Max(MedianFrameMs * StutterFactor, MedianFrameMs + StutterFloorMs);
                 int n = 0;
                 for (int i = Frames - 1; i >= 0 && _sorted[i] > limit; i--) n++;
@@ -119,7 +136,10 @@ namespace WinNotch.Core.Perf
             }
         }
 
-        /// <summary>Stutters per minute of play — comparable between a 5-minute and a 2-hour session.</summary>
-        public double StuttersPerMinute => Seconds > 0 ? Stutters / (Seconds / 60.0) : 0;
+        /// <summary>
+        /// Stutters per minute of play — comparable between a 5-minute and a 2-hour session. Measured against the
+        /// wall clock (<see cref="ElapsedSeconds"/>), so loading screens do not inflate the rate.
+        /// </summary>
+        public double StuttersPerMinute => ElapsedSeconds > 0 ? Stutters / (ElapsedSeconds / 60.0) : 0;
     }
 }

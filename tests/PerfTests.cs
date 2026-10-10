@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using WinNotch.Core.Actions;
 using WinNotch.Core.Flags;
 using WinNotch.Core.Perf;
+using WinNotch.Features.Performance;
 using WinNotch.Features.WindowV2;
 
 namespace WinNotch
@@ -212,7 +215,7 @@ namespace WinNotch
                 TimeUtc = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc),
                 CpuPercent = 42.4, RamUsedGb = 16, RamTotalGb = 32, CommitUsedGb = 20, CommitLimitGb = 40,
                 GpuPercent = 88, Gpu3dPercent = 85, VramUsedMb = 7000,
-                Top = new List<ProcUsage> { new ProcUsage("cs2", 40, 4000, 3900, 95, 7000, 1) },
+                Processes = new List<ProcUsage> { new ProcUsage("cs2", 40, 4000, 3900, 95, 7000, 1) },
             };
             Check("PF34", "Procentele derivate din eșantion sunt corecte",
                   Math.Abs(sample.RamPercent - 50) < 0.01 && Math.Abs(sample.CommitPercent - 50) < 0.01 &&
@@ -238,6 +241,95 @@ namespace WinNotch
                   LayoutRules.TabFor(LayoutRules.Performance) == LayoutRules.Performance &&
                   !LayoutRules.HasLeftPanel(LayoutRules.Performance) &&
                   !LayoutRules.HasInspector(LayoutRules.Performance));
+
+            // ---------------------------------------------------------------- the monitor: when it runs, and what it keeps
+            // Reparat după revizia R1: axa de timp a trendului se rupea la fiecare schimbare de cadență.
+            MonitorTests();
+
+            // ---------------------------------------------------------------- acțiunea
+            string reason = "Pornește și „Fereastra WinNotch v2”";
+            var okHost = new FakePerfHost(null);
+            var noHost = new FakePerfHost(reason);
+            var open = PerfActions.CreateOpen(okHost);
+            Check("PF52", "Acțiunea „perf.open”: id, titlu, iconiță, comutator, fir UI",
+                  open.Id == "perf.open" && open.Id == PerfActions.OpenId &&
+                  open.Title == "Deschide Performanță" && open.Icon.Length > 0 &&
+                  open.FeatureId == PerfRules.FeatureId && open.RequiresUiThread &&
+                  open.UnavailableMessage.Length > 0);
+
+            Check("PF53", "Are aliasuri în română și în engleză, fără dubluri",
+                  open.Aliases.Contains("performanță") && open.Aliases.Contains("performance") &&
+                  open.Aliases.Distinct().Count() == open.Aliases.Count);
+
+            var ran = open.ExecuteAsync(ActionArgs.Empty, default).GetAwaiter().GetResult();
+            Check("PF54", "Pornită, chiar deschide fila și o spune",
+                  ran.Success && okHost.Opened == 1 && ran.Message.Contains("Performanță"));
+
+            var refused = PerfActions.CreateOpen(noHost).ExecuteAsync(ActionArgs.Empty, default).GetAwaiter().GetResult();
+            Check("PF55", "Fără fereastra v2, acțiunea spune ce lipsește în loc să eșueze mut",
+                  !refused.Success && refused.Message == reason && noHost.Opened == 0);
+
+            // ---------------------------------------------------------------- cazuri limită cerute la revizia R1
+            Check("PF56", "Un pid refolosit cu alt nume nu moștenește timpul de procesor al celui vechi",
+                  ProcessRollup.Merge(
+                      new Dictionary<int, RawProc> { [7] = new RawProc(7, "vechi", 1000, 10, 10) },
+                      new List<RawProc> { new RawProc(7, "nou", 9000, 10, 10) },
+                      1000, 8).Single().CpuPercent == 0);
+
+            var many = new List<RawProc>();
+            var beforeMany = new Dictionary<int, RawProc>();
+            for (int i = 0; i < 40; i++)
+            {
+                beforeMany[100 + i] = new RawProc(100 + i, "greu", 0, 10, 10);
+                many.Add(new RawProc(100 + i, "greu", 8000, 10, 10));      // fiecare un nucleu întreg
+            }
+            var heavy = ProcessRollup.Merge(beforeMany, many, 1000, 8).Single();
+            Check("PF57", "Suma pe nume nu trece de 100%, oricât s-ar aduna",
+                  heavy.CpuPercent == 100 && heavy.Processes == 40 && heavy.Name == "greu");
+
+            var backwards = new List<(double, double)>();
+            for (int i = 0; i <= 30; i++) backwards.Add((60 - i * 2, 500 + i * 10));
+            Check("PF58", "Puncte cu timpul care scade: nicio concluzie, nu un verdict pe dos",
+                  MemoryTrend.Of(backwards).Verdict == MemoryVerdict.Unknown);
+
+            Check("PF59", "Percentile la margini și cu valori imposibile nu ies din interval",
+                  Math.Abs(spiky.FrameMsPercentile(0) - 10) < 0.01 &&
+                  Math.Abs(spiky.FrameMsPercentile(-5) - 10) < 0.01 &&
+                  Math.Abs(spiky.FrameMsPercentile(500) - 50) < 0.01 &&
+                  FrameStats.Empty.FrameMsPercentile(50) == 0 &&
+                  steady.LowFps(0) == 0 && steady.LowFps(-1) == 0);
+
+            var one = new SampleRing<int>(1);
+            one.Add(1); one.Add(2);
+            Check("PF60", "Inel de o poziție ține ultima valoare; o capacitate de zero e refuzată",
+                  one.Count == 1 && one[0] == 2 && one.Last == 2 &&
+                  Throws(() => new SampleRing<int>(0)) && Throws(() => new SampleRing<int>(-3)));
+
+            Check("PF61", "Sub 20 de cadre nu se numără stutter-uri (mediana nu e încă stabilă)",
+                  FrameStats.From(Enumerable.Repeat(10.0, 19).Concat(new[] { 90.0 }).ToList()).Stutters == 0 &&
+                  FrameStats.From(Enumerable.Repeat(10.0, 20).Concat(new[] { 90.0 }).ToList()).Stutters == 1);
+
+            var paused = FrameStats.From(Enumerable.Repeat(10.0, 600).Concat(new[] { 30000.0, 40.0, 45.0 }).ToList());
+            Check("PF62", "Pauzele intră în ceasul de perete, deci nu umflă stutter-urile pe minut",
+                  Math.Abs(paused.PausedMs - 30000) < 0.01 &&
+                  Math.Abs(paused.ElapsedSeconds - (6000 + 85 + 30000) / 1000.0) < 0.01 &&
+                  paused.ElapsedSeconds > paused.Seconds &&
+                  paused.StuttersPerMinute < 2.0 * 60 / paused.Seconds);
+
+            Check("PF63", "O cadență necunoscută nu primește nici ritm, nici trecere prin procese",
+                  PerfRules.SecondsFor((PerfCadence)99) == 0 && PerfRules.ProcessEvery((PerfCadence)99) == 0);
+
+            Check("PF64", "Un pid care nu încape într-un întreg, sau zero, e refuzat (nu devine negativ)",
+                  !GpuInstance.Parse("pid_4294967295_phys_0").IsValid &&
+                  !GpuInstance.Parse("pid_9999999999_phys_0").IsValid &&
+                  !GpuInstance.Parse("pid_0_phys_0").IsValid &&
+                  GpuInstance.Parse("pid_2147483647_phys_0").Pid == int.MaxValue);
+
+            Check("PF65", "Un rezultat invalid are motor „”, nu null (nimeni nu ia NullReference)",
+                  GpuInstance.Invalid.EngineType == "" && !GpuInstance.Invalid.IsValid &&
+                  default(GpuInstance).EngineType == "" &&
+                  GpuInstance.Parse("_Total").EngineType.Length == 0 &&
+                  GpuInstance.Invalid.ToString() == "-");
         }
 
         /// <summary>Points on a straight line: (0, mb0) … every minute, mbPerMinute apart.</summary>
@@ -258,6 +350,196 @@ namespace WinNotch
         static bool Throws(Action a)
         {
             try { a(); return false; } catch { return true; }
+        }
+
+        /// <summary>
+        /// P60, după revizia R1: cât rulează monitorul, ce ține minte și ce eliberează. Samplerul e fals și ceasul lui
+        /// sare un minut pe trecere, deci o oră de urmărire se verifică în câteva milisecunde.
+        /// </summary>
+        static void MonitorTests()
+        {
+            var store = new Dictionary<string, bool>();
+            var flags = new FeatureFlags(store);
+            FakeSampler made = null;
+            var monitor = new PerfMonitor(flags, () => made = new FakeSampler());
+
+            Check("PF38", "Comutatorul oprit: niciun cronometru, niciun sampler, oricâți spectatori",
+                  !flags.IsEnabled(PerfRules.FeatureId) &&
+                  Apply(monitor, m => { m.AddViewer(); m.SetGame(true); }) &&
+                  monitor.Cadence == PerfCadence.Off && !monitor.Running && made == null);
+
+            monitor.RemoveViewer();
+            monitor.SetGame(false);
+            flags.Set(PerfRules.FeatureId, true);
+
+            monitor.AddViewer();
+            var first = Await(() => made, s => s != null && s.Passes > 0, 4000);
+            Check("PF39", "Pornit și cu un spectator: cadența de 2 s, un sampler, trecerile încep",
+                  monitor.Cadence == PerfCadence.Visible && monitor.Viewers == 1 &&
+                  first != null && first.Passes > 0 && first.Disposals == 0);
+
+            monitor.AddViewer();
+            monitor.RemoveViewer();
+            Check("PF40", "Doi spectatori, unul plecat: încă măsoară (numărătoarea nu se dezechilibrează)",
+                  monitor.Viewers == 1 && monitor.Cadence == PerfCadence.Visible);
+
+            monitor.SetGame(true);
+            Check("PF41", "Jocul urcă ritmul la 1 s fără să schimbe samplerul",
+                  monitor.Cadence == PerfCadence.Game && ReferenceEquals(made, first) && first.Disposals == 0);
+
+            // Exact regresia prinsă la R1: o schimbare de cadență muta axa de timp și trendul îngheța pentru totdeauna.
+            var sampler = made;
+            for (int i = 0; i < 60; i++)
+            {
+                int target = sampler.Passes + 1;
+                monitor.SetGame(i % 2 == 0);                 // fiecare schimbare forțează o trecere imediată
+                Await(() => sampler.Passes, n => n >= target, 3000);
+            }
+
+            var trend = monitor.TrendOf("curge.exe");
+            Check("PF42", "Trendul de memorie supraviețuiește schimbărilor de cadență (R1, Major 3)",
+                  trend.Verdict == MemoryVerdict.Growing && trend.Minutes >= MemoryTrend.MinMinutes &&
+                  trend.Points >= MemoryTrend.MinPoints && trend.MbPerHour > MemoryTrend.MinMbPerHour,
+                  "verdict=" + trend.Verdict + " min=" + Math.Round(trend.Minutes) + " pct=" + trend.Points + " mb/h=" + Math.Round(trend.MbPerHour));
+
+            Check("PF43", "Un proces care stă pe loc rămâne „stabil” în același timp",
+                  monitor.TrendOf("linistit").Verdict == MemoryVerdict.Steady &&
+                  monitor.Leaks().Any(l => l.Name == "curge") &&
+                  monitor.Leaks().All(l => l.Name != "linistit"));
+
+            Check("PF44", "Istoricul ține doar totalurile (o oră de liste pe proces ar costa megabytes)",
+                  monitor.Last.RamTotalGb == 32 && monitor.History().Count > 1 &&
+                  monitor.History().All(h => !h.HasProcesses) && monitor.WatchedMinutes > 20,
+                  "minute=" + Math.Round(monitor.WatchedMinutes) + " eșantioane=" + monitor.History().Count);
+
+            monitor.SetGame(false);
+            monitor.RemoveViewer();
+            Check("PF45", "Fără spectatori și fără joc: cronometrul dispare, samplerul e eliberat o dată, istoricul se uită",
+                  monitor.Cadence == PerfCadence.Off && !monitor.Running &&
+                  sampler.Disposals == 1 && monitor.History().Count == 0 &&
+                  monitor.Last == PerfSample.Empty && monitor.TrendOf("curge").Verdict == MemoryVerdict.Unknown &&
+                  monitor.WatchedMinutes == 0);
+
+            int passesAfterStop = sampler.Passes;
+            Check("PF46", "Oprit, nu mai măsoară nimic (nicio trecere nouă)",
+                  Await(() => sampler.Passes, n => n > passesAfterStop, 1200) == passesAfterStop);
+
+            // A second life: a fresh sampler, and the old one is not touched again.
+            made = null;
+            monitor.AddViewer();
+            var second = Await(() => made, s => s != null && s.Passes > 0, 4000);
+            Check("PF47", "Repornit, își face un sampler nou și nu-l mai atinge pe cel vechi",
+                  second != null && !ReferenceEquals(second, sampler) && sampler.Disposals == 1);
+
+            monitor.Dispose();
+            Check("PF48", "Dispose: cronometru oprit, samplerul eliberat, dezabonat de la comutatoare",
+                  second.Disposals == 1 && monitor.Cadence == PerfCadence.Off &&
+                  Apply(monitor, m => m.AddViewer()) && monitor.Cadence == PerfCadence.Off);
+
+            // Un comutator care se stinge singur (3 erori în 10 minute) oprește și măsurarea.
+            var store2 = new Dictionary<string, bool>();
+            var flags2 = new FeatureFlags(store2);
+            flags2.Set(PerfRules.FeatureId, true);
+            FakeSampler third = null;
+            var monitor2 = new PerfMonitor(flags2, () => third = new FakeSampler());
+            monitor2.AddViewer();
+            Await(() => third, s => s != null && s.Passes > 0, 4000);
+            flags2.Disable(PerfRules.FeatureId, "motiv de test");
+            bool stopped = Await(() => monitor2.Cadence, c => c == PerfCadence.Off, 3000) == PerfCadence.Off;
+            Check("PF49", "Oprită singură (Disable), măsurarea se oprește fără să fie nevoie de altceva",
+                  stopped && third.Disposals == 1 && !flags2.IsEnabled(PerfRules.FeatureId));
+
+            Check("PF50", "O trecere care crapă nu dărâmă monitorul și se numără ca eroare a funcției",
+                  CrashPassIsSurvived());
+
+            Check("PF51", "Două treceri nu se suprapun niciodată pe același sampler",
+                  NoOverlappingPasses());
+            monitor2.Dispose();
+        }
+
+        /// <summary>Calls something on the monitor and reports success — lets a Check read like a sentence.</summary>
+        static bool Apply(PerfMonitor m, Action<PerfMonitor> what) { what(m); return true; }
+
+        static bool CrashPassIsSurvived()
+        {
+            var flags = new FeatureFlags(new Dictionary<string, bool>());
+            flags.Set(PerfRules.FeatureId, true);
+            FakeSampler s = null;
+            var m = new PerfMonitor(flags, () => s = new FakeSampler { Throw = true });
+            m.AddViewer();
+            var seen = Await(() => s, x => x != null && x.Passes >= 2, 5000);
+            bool alive = seen != null && seen.Passes >= 2;
+            m.Dispose();
+            return alive;
+        }
+
+        static bool NoOverlappingPasses()
+        {
+            var flags = new FeatureFlags(new Dictionary<string, bool>());
+            flags.Set(PerfRules.FeatureId, true);
+            FakeSampler s = null;
+            var m = new PerfMonitor(flags, () => s = new FakeSampler { PassMs = 120 });
+            m.AddViewer();
+            m.SetGame(true);                                   // 1 s cadence over a 120 ms pass
+            for (int i = 0; i < 20; i++) { m.SetGame(i % 2 == 0); }
+            var seen = Await(() => s, x => x != null && x.Passes >= 3, 6000);
+            bool ok = seen != null && seen.MaxConcurrent == 1;
+            m.Dispose();
+            return ok;
+        }
+
+        /// <summary>
+        /// A sampler that measures nothing: its clock jumps a minute each pass, one process grows 10 MB a minute and
+        /// another stays put, so an hour of watching takes milliseconds.
+        /// </summary>
+        sealed class FakeSampler : IPerfSampler
+        {
+            private int _concurrent;
+            public int Passes, Disposals, MaxConcurrent, PassMs;
+            public bool Throw;
+            private DateTime _at = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc);
+
+            public PerfSample Sample(bool withProcesses)
+            {
+                int now = Interlocked.Increment(ref _concurrent);
+                try
+                {
+                    if (now > MaxConcurrent) MaxConcurrent = now;
+                    Passes++;
+                    if (PassMs > 0) Thread.Sleep(PassMs);
+                    if (Throw) throw new InvalidOperationException("trecere de test");
+                    _at = _at.AddMinutes(1);
+                    double mb = 300 + (_at - new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc)).TotalMinutes * 10;
+                    return new PerfSample
+                    {
+                        TimeUtc = _at, CpuPercent = 20, RamUsedGb = 16, RamTotalGb = 32,
+                        CommitUsedGb = 20, CommitLimitGb = 40, GpuPercent = 30, Gpu3dPercent = 25, VramUsedMb = 2000,
+                        Processes = withProcesses
+                            ? new List<ProcUsage>
+                              {
+                                  new ProcUsage("curge", 5, mb, mb, 0, 0, 1),
+                                  new ProcUsage("linistit", 1, 500, 500, 0, 0, 1),
+                              }
+                            : System.Array.Empty<ProcUsage>(),
+                    };
+                }
+                finally { Interlocked.Decrement(ref _concurrent); }
+            }
+
+            public void Dispose() => Disposals++;
+        }
+
+        sealed class FakePerfHost : IPerfHost
+        {
+            private readonly string _why;
+            public int Opened;
+            public FakePerfHost(string why) { _why = why; }
+            public string OpenPerformance()
+            {
+                if (_why != null) return _why;
+                Opened++;
+                return null;
+            }
         }
     }
 }

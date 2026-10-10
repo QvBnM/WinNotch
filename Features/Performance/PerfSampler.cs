@@ -14,14 +14,18 @@ namespace WinNotch.Features.Performance
     /// half — walking every process — is asked for separately, because <see cref="PerfRules.ProcessSeconds"/> keeps it
     /// slow even while a game runs.</para>
     /// </summary>
-    internal sealed class PerfSampler : IDisposable
+    internal sealed class PerfSampler : IPerfSampler
     {
         private readonly GpuCounters _gpu = new GpuCounters();
         private long _idle, _kernel, _user;
         private Dictionary<int, RawProc> _lastProcs = new Dictionary<int, RawProc>();
         private DateTime _lastProcTime;
 
-        /// <summary>The last reading of the GPU counters, kept so the samples between two passes still show a value.</summary>
+        /// <summary>
+        /// The last reading the counters actually answered, kept for the rare pass that fails. Only replaced when the
+        /// counters answered (<see cref="GpuReading.Ok"/>) — never because the numbers happened to be non-zero: an
+        /// idle graphics card reports an honest 0, and showing the last busy value instead would be a lie.
+        /// </summary>
         private GpuReading _lastGpu = new GpuReading();
 
         /// <summary>
@@ -35,7 +39,7 @@ namespace WinNotch.Features.Performance
             var (ramUsed, ramTotal, commitUsed, commitLimit) = ReadMemory();
 
             var gpu = _gpu.Read();
-            if (gpu.BusiestPercent >= 0 || gpu.ByPid.Count > 0) _lastGpu = gpu; else gpu = _lastGpu;
+            if (gpu.Ok) _lastGpu = gpu; else gpu = _lastGpu;
 
             IReadOnlyList<ProcUsage> top = Array.Empty<ProcUsage>();
             if (withProcesses)
@@ -61,11 +65,11 @@ namespace WinNotch.Features.Performance
                 GpuPercent = gpu.BusiestPercent,
                 Gpu3dPercent = gpu.Percent3d,
                 VramUsedMb = gpu.VramMb,
-                Top = top,
+                Processes = top,
             };
         }
 
-        /// <summary>The counters have not answered yet (a fresh query needs one pass to prime).</summary>
+        /// <summary>The GPU counters answered on the last pass (a fresh query needs one pass to prime).</summary>
         public bool GpuAvailable => _gpu.Available;
 
         private double ReadCpu()

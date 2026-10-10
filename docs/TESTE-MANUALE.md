@@ -472,3 +472,5 @@ clasică) și apasă „Salvează”, apoi deschide fereastra din notch sau din 
 | P60.14 | Lățimea | Trage fereastra de la lat la îngust (până la minim). | Cele patru valori de sus rămân pe un rând și se îngustează; barele se redesenează la mărimea nouă, nu rămân late sau tăiate. |
 | P60.15 | Oprirea curată | Cu fila deschisă, du-te în Setări → „Funcții noi”, oprește „Performanță”. | Fila dispare din antet și fereastra sare pe Workspace. Nimic nu mai măsoară (Task Manager: fără activitate periodică). |
 | P60.16 | Mod sigur | Pornește WinNotch cu `--safe-mode`. | Fila „Performanță” nu există (funcția e Experimental), chiar dacă e bifată în setări. |
+| P60.17 | Acțiunea | Din Command Bar (`Win+Alt+Space`) scrie „performanță” și apasă `Enter`. | Fereastra se deschide direct pe fila Performanță. Cu „Fereastra WinNotch v2” oprită, jos scrie că trebuie pornită și ea — nu se deschide fereastra clasică. |
+| P60.18 | Comutatorul pornit cu fereastra deschisă | Cu fereastra deschisă pe Workspace, du-te în Setări → „Funcții noi” și pornește „Performanță”. | Fila a cincea apare în antet pe loc, fără să redeschizi fereastra. |
