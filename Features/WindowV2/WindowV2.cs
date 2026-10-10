@@ -378,7 +378,9 @@ namespace WinNotch.Features.WindowV2
             double e = AnchoredGeometry.Ear(_s.CornerRadius, w, windowWidth, h);
             _headerShape.Width = w + 2 * Math.Max(0, e);
             _headerShape.Height = h;
-            _headerShape.Data = AnchoredShape.Silhouette(w, h, r, e);
+            // the header is the notch unfolded, so it follows the same corner switch
+            _headerShape.Data = AnchoredShape.Silhouette(w, h, r, e,
+                FeatureFlags.Current?.IsEnabled(Core.Ui.SmoothCorner.FeatureId) ?? false);
         }
 
         private void OnKey(object sender, KeyEventArgs e)

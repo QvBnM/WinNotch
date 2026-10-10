@@ -21,7 +21,10 @@ namespace WinNotch.Features.NotchAnchored
                 foreach (var seg in segments)
                 {
                     var to = new Point(seg.To.X + shiftX, seg.To.Y);
-                    if (seg.IsArc && seg.Radius > 0)
+                    if (seg.IsCurve)
+                        c.BezierTo(new Point(seg.C1.X + shiftX, seg.C1.Y), new Point(seg.C2.X + shiftX, seg.C2.Y), to,
+                                   false, false);
+                    else if (seg.IsArc && seg.Radius > 0)
                         c.ArcTo(to, new Size(seg.Radius, seg.Radius), 0, false,
                                 seg.Clockwise ? SweepDirection.Clockwise : SweepDirection.Counterclockwise, false, false);
                     else c.LineTo(to, false, false);
@@ -32,14 +35,17 @@ namespace WinNotch.Features.NotchAnchored
         }
 
         /// <summary>The whole silhouette (pill plus both fillets), its left ear starting at x = 0.</summary>
-        internal static StreamGeometry Silhouette(double w, double h, double r, double e)
+        internal static StreamGeometry Silhouette(double w, double h, double r, double e) => Silhouette(w, h, r, e, false);
+
+        /// <summary>The same, with continuous corners when <paramref name="smooth"/> is on.</summary>
+        internal static StreamGeometry Silhouette(double w, double h, double r, double e, bool smooth)
         {
             if (e <= 0)
             {
-                var only = AnchoredGeometry.PillOnly(w, h, r);
+                var only = AnchoredGeometry.PillOnly(w, h, r, smooth);
                 return Build(only.Start, only.Segments, 0);
             }
-            var (start, segs) = AnchoredGeometry.Outline(w, h, r, e);
+            var (start, segs) = AnchoredGeometry.Outline(w, h, r, e, smooth);
             return Build(start, segs, e);
         }
     }

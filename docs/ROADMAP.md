@@ -52,6 +52,7 @@ au acum sensul din plan. Fiecare sarcină se face într-o rulare de pilot automa
 | P65 | „Verificare sistem”: un audit al setărilor Windows care chiar se măsoară (înregistrarea în fundal din Game Bar, optimizările pentru jocuri pe fereastră, aplicațiile de pornire, sarcini programate, spațiu ocupat de cache-uri) — cele per-utilizator aplicate direct, restul prin serviciul SYSTEM cu o confirmare și revenire. Jumătatea utilă dintr-o unealtă de tip „Windows utility”, fără tweak-urile nemăsurabile | `system-check` | De făcut |
 | ~~P44~~ | Game Mode (pastila ascunsă în joc, rezumat fără FPS) — **înlocuit de P61**, care îl face cu telemetrie și FPS | `game-mode` | Înlocuit |
 | P46 | Activități live din browser: Glovo, Bolt Food, Tazz, Flashscore, LiveScore, ca activitate persistentă | `browser-live` | De făcut |
+| P70 | Colțuri continue: colțurile de jos ale siluetei se rotunjesc treptat (o cubică pe colț, `SmoothCorner` pur — curba pornește de la 1,6 × raza pe fiecare latură și e limitată de jumătatea laturii și de latura rămasă sub racordare), în loc să intre dintr-odată în arc de cerc. `Seg` capătă varianta „curbă”, iar traducătorul unic spre WPF o desenează; aceeași formă pentru siluetă, pentru decupajul conținutului și pentru antetul ferestrei v2. Se vede doar cu P50 pornită (singura siluetă desenată de noi; pastila plutitoare rămâne un `Border`) | `colturi-continue` (Experimental, oprit) | Gata (de testat pe Windows) |
 
 După P46: oprire. Autorul folosește aplicația 2 săptămâni, apoi alegem din „Idei pentru mai târziu”.
 

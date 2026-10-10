@@ -543,6 +543,15 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   straturi de culoare (deci altă nuanță decât racordările, vizibil pe tema luminoasă) și o îmbinare în colțurile de jos.
   Racordarea e limitată și de înălțimea pastilei, ca pe forma mică să nu depășească începutul colțului de jos. Geometria
   trece printr-un singur traducător (`Features/NotchAnchored/AnchoredShape.cs`), folosit și de antetul ferestrei v2.
+- **Colțuri continue (P70, comutatorul „Colțuri continue”, oprit implicit).** Colțurile de jos ale siluetei nu mai intră
+  dintr-odată în arc de cerc: curba pleacă mai devreme de pe laterală (de la 1,6 ori raza) și iese mai departe pe muchia
+  de jos, deci curbura crește treptat și nu se mai vede punctul în care începe rotunjirea — forma pictogramelor de pe
+  telefon. Raza din Setări rămâne parametrul: la 12 colțul e discret, la 28 e rotund. Curba e limitată de jumătatea
+  laturii (ca două colțuri de pe aceeași muchie să nu se suprapună) și de latura rămasă sub racordare, ca pe forma mică
+  să nu se îndoaie conturul peste el însuși. Se vede **doar cu „Notch lipit de ramă” pornită** — acolo silueta e un
+  contur desenat de noi — și în antetul ferestrei v2, prin același traducător; pastila plutitoare e un `Border`, ale
+  cărui colțuri le desenează Windows ca arce. Geometria e pură și testată (`Core/Ui/SmoothCorner.cs`), iar forma se
+  reface doar când se schimbă mărimea sau comutatorul, nu la fiecare cadru.
 - **Fereastra WinNotch v2 (P52, comutatorul „Fereastra WinNotch v2”, oprit implicit).** Cu el pornit, din notch se
   deschide fereastra nouă. Antetul e notch-ul desfăcut: aceeași siluetă ca la „Notch lipit de ramă” (aceeași rază,
   aceleași racordări, același cod de desenare), ca să recunoști obiectul din marginea ecranului.

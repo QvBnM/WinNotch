@@ -5,6 +5,7 @@ using System.Windows.Media;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using WinNotch.Core.Flags;
+using WinNotch.Core.Ui;
 using WinNotch.Features.NotchAnchored;
 
 namespace WinNotch
@@ -29,6 +30,12 @@ namespace WinNotch
 
         private static bool AnchoredEnabled() => FeatureFlags.Current?.IsEnabled(AnchoredGeometry.FeatureId) ?? false;
 
+        /// <summary>
+        /// Continuous corners instead of arcs. Only the anchored silhouette is a painted path, so this is what it can
+        /// change; the floating pill is a Border, whose corners Windows draws as arcs.
+        /// </summary>
+        private static bool SmoothEnabled() => FeatureFlags.Current?.IsEnabled(SmoothCorner.FeatureId) ?? false;
+
         /// <summary>True while the anchored look is on (read by ApplyMode, ApplyRadius and IdleWidth).</summary>
         internal bool Anchored => _anchoredOn;
 
@@ -38,6 +45,16 @@ namespace WinNotch
             if (_anchoredFlagHandler != null) return;
             _anchoredFlagHandler = id =>
             {
+                if (string.Equals(id, SmoothCorner.FeatureId, StringComparison.Ordinal))
+                {
+                    // the corners changed, not the look: rebuild the one shape, nothing else moves
+                    Dispatcher.InvokeAsync(() =>
+                    {
+                        try { _shapeW = _shapeH = _shapeR = _shapeE = -1; ApplyRadius(); }
+                        catch (Exception ex) { FeatureFlags.Current?.ReportError(SmoothCorner.FeatureId, ex); }
+                    });
+                    return;
+                }
                 if (!string.Equals(id, AnchoredGeometry.FeatureId, StringComparison.Ordinal)) return;
                 Dispatcher.InvokeAsync(ApplyAnchoredSwitch);
             };
@@ -118,6 +135,7 @@ namespace WinNotch
         private double AnchoredIdleWidth(double w) => AnchoredGeometry.IdleWidth(w, _anchoredOn);
 
         private double _shapeW = -1, _shapeH = -1, _shapeR = -1, _shapeE = -1;
+        private bool _shapeSmooth;
 
         /// <summary>
         /// Hook in ApplyRadius / UpdateClip: the pill is rounded only at the bottom and its content is clipped with the
@@ -133,13 +151,14 @@ namespace WinNotch
             double scale = Math.Max(0.01, UiScale);
             double r = Math.Min(Radius, Math.Min(w / 2, h / 2));
             double e = AnchoredGeometry.Ear(Radius / scale, w / scale, Width / scale, h / scale) * scale;
-            if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE)) return true;
-            _shapeW = w; _shapeH = h; _shapeR = r; _shapeE = e;
+            bool smooth = SmoothEnabled();
+            if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE) && smooth == _shapeSmooth) return true;
+            _shapeW = w; _shapeH = h; _shapeR = r; _shapeE = e; _shapeSmooth = smooth;
 
             Pill.CornerRadius = new CornerRadius(0, 0, r, r);
-            var pill = AnchoredGeometry.PillOnly(w, h, r);
+            var pill = AnchoredGeometry.PillOnly(w, h, r, smooth);
             Inner.Clip = AnchoredShape.Build(pill.Start, pill.Segments, 0);     // the same outline that is painted
-            AnchoredDrawShape(w, h, r, e);
+            AnchoredDrawShape(w, h, r, e, smooth);
             return true;
         }
 
@@ -149,12 +168,12 @@ namespace WinNotch
         /// The whole silhouette — one painted shape, the pill included. Without ears (a window too narrow for them) it
         /// is the pill's own outline, never nothing: the pill itself no longer paints a background while anchored.
         /// </summary>
-        private void AnchoredDrawShape(double w, double h, double r, double e)
+        private void AnchoredDrawShape(double w, double h, double r, double e, bool smooth)
         {
             if (_anchoredShape == null) return;
             _anchoredShape.Width = w + 2 * Math.Max(0, e);
             _anchoredShape.Height = h;
-            _anchoredShape.Data = AnchoredShape.Silhouette(w, h, r, e);
+            _anchoredShape.Data = AnchoredShape.Silhouette(w, h, r, e, smooth);
         }
     }
 }

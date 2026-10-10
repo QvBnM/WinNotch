@@ -515,3 +515,20 @@ clasică apasă și „Salvează”; în v2 se aplică pe loc).
 | P61.13 | Oprit la mijloc | Cât ești în joc, oprește „Mod de joc” din Setări. | Sesiunea se abandonează: niciun raport, prioritatea revine la „Normal”, și nimic nu mai măsoară la 1 s. |
 | P61.14 | Vremea și calendarul se amână | Cât joci, uită-te la widget-ul Vremea după ce ieși. | Nu s-a actualizat în timpul jocului; se actualizează la prima trecere după ieșire. |
 | P61.15 | Mod sigur | Pornește cu `--safe-mode` și intră într-un joc. | Nicio sesiune, niciun rezumat (funcția e Experimental). |
+
+### P70 — Colțuri continue
+
+Comutatorul `colturi-continue` (Setări → Funcții noi, Experimental, oprit implicit). Silueta notch-ului e desenată de
+noi doar cât „Notch lipit de ramă” e pornită, deci acolo se vede schimbarea; pastila plutitoare e un `Border`, ale cărui
+colțuri le desenează Windows ca arce.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P70.1 | Oprit, nimic nu se schimbă | Pornește „Notch lipit de ramă”, lasă „Colțuri continue” oprită. Fă o captură cu pastila în standby. | Forma e exact cea de până acum: colțurile de jos sunt arce de cerc cu raza din Setări. |
+| P70.2 | Pornit, colțurile se rotunjesc treptat | Bifează „Colțuri continue”, salvează. Fă aceeași captură și compar-o cu prima. | Colțul începe mai sus pe laterală și se termină mai departe pe muchia de jos; nu se mai vede punctul în care începe rotunjirea. Lățimea și înălțimea pastilei sunt neschimbate. |
+| P70.3 | Se aplică fără repornire | Cu notch-ul în standby, bifează și debifează comutatorul de câteva ori. | Forma se schimbă la fiecare apăsare, fără să clipească, fără să se mute pastila și fără rânduri de eroare în `log.txt`. |
+| P70.4 | Raza din Setări contează tot | Cu comutatorul pornit, mută rotunjirea din Teme de la 12 la 28. | Colțul crește odată cu raza, la fel ca pe arce; la 12 e discret, la 28 e vizibil rotund. |
+| P70.5 | Forma mică nu se strâmbă | Lasă notch-ul în pace 10 secunde, până trece la pastila mică (22 px), cu rotunjirea pe 28. | Racordările din stânga și dreapta se continuă lin în colțurile de jos; nicio îndoitură, nicio muchie care merge înapoi. |
+| P70.6 | Conținutul e tăiat cu aceeași formă | Pune o piesă cu copertă colorată și uită-te la colțurile de jos ale pastilei. | Fundalul colorat se oprește exact pe contur; nu iese în colț și nu lasă o felie de culoare în afara siluetei. |
+| P70.7 | Antetul ferestrei v2 | Pornește și „Fereastra WinNotch v2”, deschide fereastra. | Antetul are exact aceleași colțuri ca notch-ul din marginea ecranului — recunoști același obiect. |
+| P70.8 | Mod sigur | Pornește cu `--safe-mode`. | Colțurile sunt arce (funcția e Experimental, deci oprită în mod sigur). |

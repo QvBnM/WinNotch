@@ -14,15 +14,31 @@ namespace WinNotch.Features.NotchAnchored
         public override string ToString() => "(" + Math.Round(X, 2) + "," + Math.Round(Y, 2) + ")";
     }
 
-    /// <summary>A piece of the outline: a straight line, or an arc with its radius and sweep.</summary>
+    /// <summary>A piece of the outline: a straight line, an arc with its radius and sweep, or a cubic curve.</summary>
     public readonly struct Seg
     {
-        public Seg(Pt to, double radius, bool clockwise, bool arc) { To = to; Radius = radius; Clockwise = clockwise; IsArc = arc; }
+        public Seg(Pt to, double radius, bool clockwise, bool arc)
+        {
+            To = to; Radius = radius; Clockwise = clockwise; IsArc = arc;
+            C1 = default; C2 = default; IsCurve = false;
+        }
+
+        /// <summary>A cubic Bézier: the two control points, then the end point (see <see cref="Core.Ui.SmoothCorner"/>).</summary>
+        public Seg(Pt c1, Pt c2, Pt to)
+        {
+            To = to; Radius = 0; Clockwise = false; IsArc = false;
+            C1 = c1; C2 = c2; IsCurve = true;
+        }
+
         public Pt To { get; }
         public double Radius { get; }
         /// <summary>Sweep direction; the concave "ears" turn the other way from the convex bottom corners.</summary>
         public bool Clockwise { get; }
         public bool IsArc { get; }
+        /// <summary>The control points of a cubic corner; meaningless unless <see cref="IsCurve"/>.</summary>
+        public Pt C1 { get; }
+        public Pt C2 { get; }
+        public bool IsCurve { get; }
     }
 
     /// <summary>
@@ -71,22 +87,44 @@ namespace WinNotch.Features.NotchAnchored
         /// The outline, starting at the left ear's outer end and closing along the top edge (y = 0):
         /// concave ear → left side → convex bottom-left → bottom → convex bottom-right → right side → concave ear.
         /// </summary>
-        public static (Pt Start, IReadOnlyList<Seg> Segments) Outline(double w, double h, double radius, double ear)
+        public static (Pt Start, IReadOnlyList<Seg> Segments) Outline(double w, double h, double radius, double ear) =>
+            Outline(w, h, radius, ear, false);
+
+        /// <summary>
+        /// The same outline, with the two bottom corners drawn either as arcs (<paramref name="smooth"/> false, the
+        /// shape up to 0.6.26) or with continuous curvature (<see cref="Core.Ui.SmoothCorner"/>). The piece count and
+        /// the order never change, so everything that walks the outline keeps working either way.
+        /// </summary>
+        public static (Pt Start, IReadOnlyList<Seg> Segments) Outline(double w, double h, double radius, double ear, bool smooth)
         {
             // The radius comes in already clamped by <see cref="Radius"/> and scaled: here only the geometry limits it.
             double r = Math.Max(0, Math.Min(radius, Math.Min(w / 2, h / 2)));
             double e = Math.Max(0, ear);
+            // How far a smooth corner reaches: sideways at most half the width (the two corners share the bottom edge),
+            // upwards at most the straight side left under the ear — past it the outline would fold over itself.
+            double ex = smooth ? Core.Ui.SmoothCorner.Extent(r, w / 2) : r;
+            double ey = smooth ? Core.Ui.SmoothCorner.Extent(r, Math.Max(0, h - e)) : r;
             var segs = new List<Seg>
             {
                 new Seg(new Pt(0, e), e, true, e > 0),              // left ear, concave (centre at (-e, e))
-                new Seg(new Pt(0, h - r), 0, false, false),
-                new Seg(new Pt(r, h), r, false, r > 0),             // bottom-left, convex
-                new Seg(new Pt(w - r, h), 0, false, false),
-                new Seg(new Pt(w, h - r), r, false, r > 0),         // bottom-right, convex
+                new Seg(new Pt(0, h - ey), 0, false, false),
+                smooth ? Corner(0, h - ey, ex, h, 0, h)             // bottom-left, continuous
+                       : new Seg(new Pt(r, h), r, false, r > 0),    // bottom-left, convex arc
+                new Seg(new Pt(w - ex, h), 0, false, false),
+                smooth ? Corner(w - ex, h, w, h - ey, w, h)         // bottom-right, continuous
+                       : new Seg(new Pt(w, h - r), r, false, r > 0),// bottom-right, convex arc
                 new Seg(new Pt(w, e), 0, false, false),
                 new Seg(new Pt(w + e, 0), e, true, e > 0),          // right ear, concave (centre at (w + e, e))
             };
             return (new Pt(-e, 0), segs);
+        }
+
+        /// <summary>One corner as a cubic: from (fx, fy) to (tx, ty), bending around the corner point (cx, cy).</summary>
+        private static Seg Corner(double fx, double fy, double tx, double ty, double cx, double cy)
+        {
+            var (c1x, c1y) = Core.Ui.SmoothCorner.Control(fx, fy, cx, cy);
+            var (c2x, c2y) = Core.Ui.SmoothCorner.Control(tx, ty, cx, cy);
+            return new Seg(new Pt(c1x, c1y), new Pt(c2x, c2y), new Pt(tx, ty));
         }
 
         /// <summary>The outline is closed: the last point and the start sit on the top edge, so the figure shuts along it.</summary>
@@ -114,9 +152,13 @@ namespace WinNotch.Features.NotchAnchored
         /// The same outline without the ears (the pill's own shape, used to clip its content): starts at the top-left
         /// corner and closes along the top edge. Same rules, so the shape and its clip can never drift apart.
         /// </summary>
-        public static (Pt Start, IReadOnlyList<Seg> Segments) PillOnly(double w, double h, double radius)
+        public static (Pt Start, IReadOnlyList<Seg> Segments) PillOnly(double w, double h, double radius) =>
+            PillOnly(w, h, radius, false);
+
+        /// <summary>The same, with continuous corners when <paramref name="smooth"/> is on.</summary>
+        public static (Pt Start, IReadOnlyList<Seg> Segments) PillOnly(double w, double h, double radius, bool smooth)
         {
-            var (_, segs) = Outline(w, h, radius, 0);
+            var (_, segs) = Outline(w, h, radius, 0, smooth);
             // the first and the last segment are the ears: without them the figure closes along the top edge
             return (new Pt(0, 0), segs.Skip(1).Take(segs.Count - 2).ToList());
         }

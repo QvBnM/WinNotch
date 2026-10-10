@@ -63,6 +63,8 @@ namespace WinNotch.Core.Flags
         public const string NotchAnchored = "notch-anchored";
         /// <summary>Features/WindowV2: same id as LayoutRules.FeatureId (the tests check they match).</summary>
         public const string WindowV2 = "window-v2";
+        /// <summary>Core/Ui + Features/NotchAnchored: same id as SmoothCorner.FeatureId (the tests check they match).</summary>
+        public const string SmoothCorners = "colturi-continue";
         /// <summary>Core/Perf + Features/Performance: same id as PerfRules.FeatureId (the tests check they match).</summary>
         public const string PerfMonitor = "perf-monitor";
         /// <summary>Core/Perf + Features/GameMode: same id as GameDetect.FeatureId (the tests check they match).</summary>
@@ -120,6 +122,10 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Experimental, false),
             // P52: off by default until it is finished; off = the window you know opens, untouched
             new FeatureInfo(WindowV2, "Fereastra WinNotch v2", "Fereastra nouă: antetul e notch-ul desfăcut, o coloană cu categorii, carduri pentru acțiunile care există și o coloană cu clipboard și confidențialitate. Se vede la următoarea deschidere a ferestrei WinNotch (din notch sau din meniul iconiței).",
+                            FeatureStage.Experimental, false),
+
+            // P70: off by default until it is announced; off = the bottom corners are arcs, exactly as before
+            new FeatureInfo(SmoothCorners, "Colțuri continue", "Colțurile de jos ale notch-ului se rotunjesc treptat, ca pictogramele de pe telefon, în loc să intre dintr-odată în arc de cerc. Se vede doar cu „Notch lipit de ramă” pornită (acolo silueta e desenată de noi) și în antetul ferestrei v2; pastila plutitoare rămâne cu colțurile ei.",
                             FeatureStage.Experimental, false),
 
             new FeatureInfo(PerfMonitor, "Performanță", "Fila „Performanță”: cât se folosește din procesor, memorie și placă video, cine consumă acum și ce crește pe nesimțite în timp (scurgeri de memorie), cu numere de dinainte și de după la fiecare schimbare. Se vede în fereastra WinNotch, fila „Performanță”, și doar cu „Fereastra WinNotch v2” pornită; măsoară numai cât o ai deschisă, nu în fundal.",

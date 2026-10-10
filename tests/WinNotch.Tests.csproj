@@ -28,6 +28,7 @@
     <Compile Include="OverlayStackTests.cs" />
     <Compile Include="InterruptTests.cs" />
     <Compile Include="NotchAnchoredTests.cs" />
+    <Compile Include="SmoothCornerTests.cs" />
     <Compile Include="WindowV2Tests.cs" />
     <Compile Include="PillSizeTests.cs" />
     <Compile Include="FeatureAuditTests.cs" />
@@ -46,6 +47,8 @@
     <Compile Include="..\Core\Ui\OverlayStack.cs" />
     <!-- P51b: the pure interrupt rules (the notch's partial, with the WPF hooks, stays out) -->
     <Compile Include="..\Core\Ui\InterruptRules.cs" />
+    <!-- P70: the continuous corner (pure maths; the drawing lives in the notch's partial and stays out) -->
+    <Compile Include="..\Core\Ui\SmoothCorner.cs" />
     <Compile Include="..\Core\Flags\FeatureFlags.cs" />
     <Compile Include="..\Core\Flags\FeatureSettings.cs" />
     <Compile Include="..\Core\Diagnostics\HealthLog.cs" />
