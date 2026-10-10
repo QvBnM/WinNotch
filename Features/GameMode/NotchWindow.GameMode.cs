@@ -23,10 +23,24 @@ namespace WinNotch
         private GameWatcher _game;
         private GameReportStore _gameStore;
         private GameReport _lastGameReport;
+        private bool _lastGameLoaded;
         private ProcessPriorityClass? _priorityBefore;
 
-        /// <summary>The newest session of this run, or the newest on disk; null when there is none.</summary>
-        internal GameReport LastGameReport => _lastGameReport ?? (_gameStore ?? GameStore()).Latest();
+        /// <summary>
+        /// The newest session of this run, or — once, the first time anyone asks — the newest on disk. Read from the
+        /// file only once per run: a widget asks for this about once a second, and reading a file that often to answer
+        /// the same question would be exactly the kind of waste this section is supposed to find.
+        /// </summary>
+        internal GameReport LastGameReport
+        {
+            get
+            {
+                if (_lastGameReport != null) return _lastGameReport;
+                if (_lastGameLoaded) return null;
+                _lastGameLoaded = true;
+                return _lastGameReport = GameStore().Latest();
+            }
+        }
 
         internal GameReportStore GameStore() => _gameStore ??= new GameReportStore(AppSettings.Folder, App.Log);
 

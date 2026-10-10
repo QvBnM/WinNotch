@@ -32,6 +32,15 @@ namespace WinNotch.Features.GameMode
     /// </summary>
     public sealed class GameWatcher : IDisposable
     {
+        /// <summary>
+        /// Serialises everything that decides: the detector (which has state and is not thread-safe), starting and
+        /// ending a session, and subscribing or unsubscribing. Three threads reach these — the context engine's timer,
+        /// the UI thread through <see cref="Tick"/>, and whichever thread flips the switch — and without this two of
+        /// them could both see "no session", both start one, and the first would never be reported. Order: this one
+        /// first, then <see cref="_gate"/>.
+        /// </summary>
+        private readonly object _turn = new object();
+        /// <summary>Guards the small state only; never held across a call into the host, the store or the monitor.</summary>
         private readonly object _gate = new object();
         private readonly FeatureFlags _flags;
         private readonly PerfMonitor _monitor;
@@ -49,7 +58,7 @@ namespace WinNotch.Features.GameMode
         private Action<PerfSample> _sampleHandler;
         private bool _running, _disposed;
 
-        /// <summary>How many sessions were reported this run. For the tests and the health line.</summary>
+        /// <summary>How many sessions were reported this run.</summary>
         public int Reported { get; private set; }
         /// <summary>The game of the open session, "" when none.</summary>
         public string Playing { get { lock (_gate) return _session?.Game ?? ""; } }
@@ -91,22 +100,40 @@ namespace WinNotch.Features.GameMode
         /// </summary>
         private void Apply()
         {
+            lock (_turn) ApplyLocked();
+        }
+
+        private void ApplyLocked()
+        {
             bool want = _flags.IsEnabled(GameDetect.FeatureId) && _flags.IsEnabled(PerfRules.FeatureId) && _engine != null;
             lock (_gate)
             {
                 if (_disposed || want == _running) return;
                 _running = want;
             }
+            // Under _turn, so two switch changes from two threads cannot leave the subscriptions and the flag
+            // disagreeing — which once meant a stopped watcher still listening, and a second Hook leaking the first
+            // handler for good.
             if (want) Hook(); else Unhook(abandon: true);
         }
 
+        /// <summary>Idempotent: whatever was attached is detached first, so a handler can never be left unreachable.</summary>
         private void Hook()
         {
-            _contextHandler = (s, e) => OnContext(e?.New);
+            Detach();
+            _contextHandler = (s, e) => OnContext(e?.New);        // arrives on the engine's thread: takes _turn
             _engine.Changed += _contextHandler;
             _sampleHandler = OnSample;
             if (_monitor != null) _monitor.Sampled += _sampleHandler;
-            OnContext(_engine.Snapshot);                 // a game already running when the switch goes on
+            OnContextLocked(_engine.Snapshot);           // a game already running when the switch goes on
+        }
+
+        private void Detach()
+        {
+            if (_contextHandler != null && _engine != null) _engine.Changed -= _contextHandler;
+            _contextHandler = null;
+            if (_sampleHandler != null && _monitor != null) _monitor.Sampled -= _sampleHandler;
+            _sampleHandler = null;
         }
 
         /// <summary>
@@ -116,10 +143,7 @@ namespace WinNotch.Features.GameMode
         /// </summary>
         private void Unhook(bool abandon)
         {
-            if (_contextHandler != null && _engine != null) _engine.Changed -= _contextHandler;
-            _contextHandler = null;
-            if (_sampleHandler != null && _monitor != null) _monitor.Sampled -= _sampleHandler;
-            _sampleHandler = null;
+            Detach();
             if (!abandon) return;
             bool had;
             lock (_gate)
@@ -139,21 +163,47 @@ namespace WinNotch.Features.GameMode
         /// </summary>
         private void OnContext(ContextSnapshot snapshot)
         {
+            lock (_turn) OnContextLocked(snapshot);
+        }
+
+        /// <summary>Caller holds <see cref="_turn"/>.</summary>
+        private void OnContextLocked(ContextSnapshot snapshot)
+        {
             GameChange change;
             try { change = _detect.Update(snapshot, _clock()); }
             catch (Exception ex) { _flags.ReportError(GameDetect.FeatureId, ex); return; }
 
             if (change.Ended) End(change.EndedProcess);
             if (change.Started) Begin(change.Process);
+            else if (change.Process.Length > 0)
+            {
+                // An exclusive-fullscreen game is sometimes seen before its process name can be read: the session is
+                // started nameless and is given the name as soon as the detector learns it. Without this the report
+                // would be saved as "", the comparison over time would be impossible for that game, and the game
+                // itself would end up in the "what was stealing your machine" list.
+                GameSession open;
+                lock (_gate) open = _session;
+                open?.Rename(change.Process);
+            }
         }
 
         /// <summary>One line from the app's existing per-second timer. Cheap: returns at once when nothing is open.</summary>
         public void Tick()
         {
-            bool idle;
-            lock (_gate) idle = !_running || (_session == null && _detect.State == GameState.None);
-            if (idle) return;
-            OnContext(_engine?.Snapshot);
+            // TryEnter, not a plain lock: this runs on the UI thread, and ending a session touches the file and the
+            // monitor's own gate. Rather than let the notch wait for that, the beat is skipped — another comes in a
+            // second, and the grace period is ninety.
+            if (!System.Threading.Monitor.TryEnter(_turn)) return;
+            try
+            {
+                bool running;
+                bool open;
+                lock (_gate) { running = _running; open = _session != null; }
+                // The detector's state is read under _turn, like everything else that touches it.
+                if (!running || (!open && _detect.State == GameState.None)) return;
+                OnContextLocked(_engine?.Snapshot);
+            }
+            finally { System.Threading.Monitor.Exit(_turn); }
         }
 
         private void Begin(string process)
@@ -169,7 +219,14 @@ namespace WinNotch.Features.GameMode
                 _host?.Quiet(true);
                 _log?.Invoke("Mod de joc: pornit.");     // no name: a game is personal enough
             }
-            catch (Exception ex) { _flags.ReportError(GameDetect.FeatureId, ex); }
+            catch (Exception ex)
+            {
+                // Nothing would be measuring this session, so a report from it would be an empty promise.
+                _flags.ReportError(GameDetect.FeatureId, ex);
+                lock (_gate) _session = null;
+                _detect.Reset();
+                Stop();
+            }
         }
 
         private void End(string process)
@@ -228,8 +285,11 @@ namespace WinNotch.Features.GameMode
             }
             if (_flagHandler != null) _flags.Changed -= _flagHandler;
             _flagHandler = null;
-            Unhook(abandon: true);
-            lock (_gate) _running = false;
+            lock (_turn)
+            {
+                Unhook(abandon: true);
+                lock (_gate) _running = false;
+            }
         }
     }
 }

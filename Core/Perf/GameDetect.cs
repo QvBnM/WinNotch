@@ -101,6 +101,11 @@ namespace WinNotch.Core.Perf
             bool playing = Playing(snapshot);
             string process = playing ? Normalize(snapshot) : "";
 
+            // A clock that jumped backwards (an NTP correction, the user changing the time) would otherwise leave the
+            // grace period never able to expire: the session would stay open for the rest of the run, which means the
+            // one-second sampling and the lowered priority would stay on with no way out but the switch.
+            if (nowUtc < _leftAt) _leftAt = nowUtc;
+
             if (playing)
             {
                 if (State == GameState.None)

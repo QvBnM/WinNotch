@@ -98,6 +98,9 @@ namespace WinNotch.Core.Perf
         {
             try
             {
+                // Same guard as Last(): a file this big was not written by us, and loading it whole to trim it would
+                // be the one place that reads what the reader itself refuses.
+                if (new FileInfo(Path).Length > MaxFile) return;
                 var lines = File.ReadAllLines(Path);
                 if (lines.Length <= MaxLines) return;
                 string tmp = Path + ".tmp";

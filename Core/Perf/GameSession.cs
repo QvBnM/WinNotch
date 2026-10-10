@@ -11,6 +11,10 @@ namespace WinNotch.Core.Perf
     /// <para>Bounded by design: whatever the session's length, this holds a handful of running totals plus one entry
     /// per background process name (at most <see cref="MaxNames"/>). Nothing grows with the number of samples, so a
     /// six-hour evening costs exactly what a five-minute match costs.</para>
+    /// <para>Thread-safe, because it has to be: the samples arrive on <see cref="PerfMonitor"/>'s timer thread while
+    /// the session can be closed from the context thread or the UI thread. Without the lock, <see cref="Report"/>
+    /// could enumerate the background totals while <see cref="Add"/> is writing them — which throws, loses the report,
+    /// and counts as an error against the feature.</para>
     /// </summary>
     public sealed class GameSession
     {
@@ -19,14 +23,20 @@ namespace WinNotch.Core.Perf
         /// <summary>A background program must have averaged at least this much to be named.</summary>
         public const double BlameMinPercent = 3;
 
-        private readonly string _game;
+        private readonly object _gate = new object();
         private readonly DateTime _startUtc;
 
+        private string _game;
         private int _samples;
+        /// <summary>
+        /// Samples that carried a process list. The expensive pass runs every
+        /// <see cref="PerfRules.ProcessSeconds"/>, so this is a quarter of <see cref="_samples"/> during a game — and
+        /// it, not the total, is the right denominator for the background averages.
+        /// </summary>
+        private int _procSamples;
         private double _cpuSum, _cpuMax, _gpuSum, _gpuMax, _ramSum, _ramPeak, _vramPeak = -1;
         private int _gpuSamples;
         private double _cpuTempMax = -1, _gpuTempMax = -1;
-        private readonly List<double> _frameTimesMs = new List<double>();
         private readonly Dictionary<string, (double Cpu, double Gpu, int N)> _others =
             new Dictionary<string, (double, double, int)>(StringComparer.Ordinal);
 
@@ -36,9 +46,28 @@ namespace WinNotch.Core.Perf
             _startUtc = startUtc;
         }
 
-        public string Game => _game;
+        public string Game { get { lock (_gate) return _game; } }
         public DateTime StartedUtc => _startUtc;
-        public int Samples => _samples;
+        public int Samples { get { lock (_gate) return _samples; } }
+
+        /// <summary>
+        /// The game's name, once it is known. An exclusive-fullscreen game is sometimes reported by Windows before its
+        /// process name can be read, and a session that never learned its name would be saved as "" — which breaks the
+        /// comparison the whole report file exists for, and makes <see cref="Remember"/> fail to recognise the game and
+        /// list it under "what was stealing your machine". Named only once: a second game is a second session.
+        /// </summary>
+        public void Rename(string gameProcess)
+        {
+            string name = RawProc.Normalize(gameProcess);
+            if (name.Length == 0) return;
+            lock (_gate)
+            {
+                if (_game.Length > 0) return;
+                _game = name;
+                // Anything already blamed under this name was the game itself, mistaken for background noise.
+                _others.Remove(name);
+            }
+        }
 
         /// <summary>
         /// One sample. Temperatures come from the caller (the app reads them through the existing sensor service, or
@@ -47,6 +76,11 @@ namespace WinNotch.Core.Perf
         public void Add(PerfSample sample, double? cpuTempC = null, double? gpuTempC = null)
         {
             if (sample == null) return;
+            lock (_gate) AddLocked(sample, cpuTempC, gpuTempC);
+        }
+
+        private void AddLocked(PerfSample sample, double? cpuTempC, double? gpuTempC)
+        {
             _samples++;
 
             _cpuSum += sample.CpuPercent;
@@ -54,8 +88,11 @@ namespace WinNotch.Core.Perf
 
             if (sample.HasGpu)
             {
-                // The 3D engine is the game's load; the busiest engine is the fallback when 3D is not published.
-                double gpu = sample.Gpu3dPercent >= 0 ? Math.Max(sample.Gpu3dPercent, sample.GpuPercent) : sample.GpuPercent;
+                // The 3D engine is the game's load, and it is what the report must show. The busiest engine is only a
+                // fallback: it is the maximum over every engine type, so it can be a video encoder (a recording in the
+                // background) rather than the game — taking the larger of the two, as this did at first, meant the 3D
+                // figure was never actually used.
+                double gpu = sample.Gpu3dPercent >= 0 ? sample.Gpu3dPercent : sample.GpuPercent;
                 _gpuSum += gpu;
                 _gpuSamples++;
                 if (gpu > _gpuMax) _gpuMax = gpu;
@@ -68,21 +105,7 @@ namespace WinNotch.Core.Perf
             if (cpuTempC is double ct && ct > _cpuTempMax) _cpuTempMax = ct;
             if (gpuTempC is double gt && gt > _gpuTempMax) _gpuTempMax = gt;
 
-            Remember(sample);
-        }
-
-        /// <summary>Frame times, in milliseconds, as they arrive (P62). Bounded: the oldest are dropped past an hour.</summary>
-        public void AddFrames(IEnumerable<double> frameTimesMs)
-        {
-            if (frameTimesMs == null) return;
-            foreach (double ms in frameTimesMs)
-            {
-                if (ms <= 0 || double.IsNaN(ms) || double.IsInfinity(ms)) continue;
-                _frameTimesMs.Add(ms);
-            }
-            // An hour at 240 fps is ~864k frames; past that the oldest go, so a long evening stays bounded.
-            const int max = 1_000_000;
-            if (_frameTimesMs.Count > max) _frameTimesMs.RemoveRange(0, _frameTimesMs.Count - max);
+            if (sample.HasProcesses) { _procSamples++; Remember(sample); }
         }
 
         /// <summary>
@@ -110,7 +133,11 @@ namespace WinNotch.Core.Perf
         /// </summary>
         public GameReport Report(DateTime endUtc)
         {
-            var frames = FrameStats.From(_frameTimesMs);
+            lock (_gate) return ReportLocked(endUtc);
+        }
+
+        private GameReport ReportLocked(DateTime endUtc)
+        {
             return new GameReport
             {
                 Process = _game,
@@ -126,18 +153,24 @@ namespace WinNotch.Core.Perf
                 AvgRamGb = _samples > 0 ? _ramSum / _samples : 0,
                 PeakRamGb = _ramPeak,
                 PeakVramMb = _vramPeak,
-                AvgFps = frames.Frames > 0 ? frames.AvgFps : 0,
-                P1LowFps = frames.HasP1 ? frames.P1Low : 0,
-                Stutters = frames.Stutters,
+                // Frames come with P62 (ETW in the SYSTEM helper), which will also decide how to keep them without
+                // holding megabytes of raw frame times. Until then these stay zero and HasFps is false, so the UI
+                // shows "—" rather than a made-up number.
                 Blame = Blame(),
             };
         }
 
+        /// <summary>
+        /// Divided by the number of samples that <b>carried a process list</b>, not by every sample. Getting this
+        /// wrong is not a rounding error: the expensive pass runs once every four samples during a game, so dividing
+        /// by the total made every background average four times too small, pushed everything under
+        /// <see cref="BlameMinPercent"/>, and turned the real answer into "nothing was stealing your machine".
+        /// </summary>
         private IReadOnlyList<GameBlame> Blame()
         {
-            if (_samples == 0) return Array.Empty<GameBlame>();
+            if (_procSamples == 0) return Array.Empty<GameBlame>();
             return _others
-                .Select(kv => new GameBlame(kv.Key, kv.Value.Cpu / _samples, kv.Value.Gpu / _samples))
+                .Select(kv => new GameBlame(kv.Key, kv.Value.Cpu / _procSamples, kv.Value.Gpu / _procSamples))
                 .Where(b => b.CpuPercent >= BlameMinPercent || b.GpuPercent >= BlameMinPercent)
                 .OrderByDescending(b => Math.Max(b.CpuPercent, b.GpuPercent))
                 .ThenBy(b => b.Name, StringComparer.Ordinal)

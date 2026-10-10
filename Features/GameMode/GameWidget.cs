@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using WinNotch.Core.Flags;
 using WinNotch.Core.Perf;
 using WinNotch.Widgets;
 
@@ -18,6 +19,7 @@ namespace WinNotch.Features.GameMode
         private readonly TextBlock _title, _first;
         private readonly StackPanel _rest;
         private DateTime _shown = DateTime.MinValue;
+        private bool _wasOn, _asked;
 
         public GameWidget(NotchWindow w, WidgetSlot s) : base(w, s)
         {
@@ -36,12 +38,24 @@ namespace WinNotch.Features.GameMode
 
         public override void Refresh()
         {
-            var report = W.LastGameReport;
-            // Rebuilt only when the session shown changes: this runs about once a second while the page is open.
-            if (report != null && report.StartedUtc == _shown) return;
+            bool on = FeatureFlags.Current?.IsEnabled(GameDetect.FeatureId) ?? false;
+            // LastGameReport falls back to the file on disk, so asking for it every second would mean reading
+            // game-sessions.jsonl every second while the page is open. It is asked once, and again only after a
+            // session ends (which bumps the notch's own copy).
+            var report = on ? W.LastGameReport : null;
+            if (on == _wasOn && report != null && report.StartedUtc == _shown) return;
+            if (on == _wasOn && report == null && _asked) return;
+            _wasOn = on;
+            _asked = true;
             _shown = report?.StartedUtc ?? DateTime.MinValue;
             _rest.Children.Clear();
 
+            if (!on)
+            {
+                _title.Text = "Oprit";
+                _first.Text = "Pornește „Mod de joc” în Setări › Funcții noi.";
+                return;
+            }
             if (report == null || !report.Measured)
             {
                 _title.Text = W.GameRunning ? "Se joacă acum" : "Nicio sesiune încă";

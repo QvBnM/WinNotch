@@ -20,11 +20,16 @@ namespace WinNotch.Features.GameMode
     public static class GameActions
     {
         public const string LastReportId = "game.last-report";
-        /// <summary>Segoe Fluent / MDL2 "Game".</summary>
-        internal const string GGame = "";
+        /// <summary>
+        /// The same glyph the alert and the widget use (<c>Ui.GGamepad</c>): one picture for one feature, so the
+        /// summary looks like the same thing wherever it shows up.
+        /// </summary>
+        internal const string GGame = Ui.GGamepad;
 
-        public static ActionDescriptor CreateLastReport(IGameReportHost host) =>
-            new ActionDescriptor(LastReportId, "Ultimul joc: rezumatul",
+        public static ActionDescriptor CreateLastReport(IGameReportHost host)
+        {
+            if (host == null) throw new ArgumentNullException(nameof(host));
+            return new ActionDescriptor(LastReportId, "Ultimul joc: rezumatul",
                 (args, ct) =>
                 {
                     var report = host.LastReport();
@@ -42,6 +47,7 @@ namespace WinNotch.Features.GameMode
                 RequiresUiThread = true,
                 UnavailableMessage = "Modul de joc e oprit (Setări › Funcții noi).",
             };
+        }
 
         /// <summary>Registered once at startup, from App.RegisterActions.</summary>
         public static void Register(ActionRegistry registry, IGameReportHost host) => registry.Register(CreateLastReport(host));

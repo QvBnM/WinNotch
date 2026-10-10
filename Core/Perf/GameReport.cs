@@ -74,7 +74,11 @@ namespace WinNotch.Core.Perf
         /// <summary>"1 h 24 min", "7 min", "48 s" — Romanian, short, no false precision.</summary>
         public static string Spell(TimeSpan d)
         {
-            if (d.TotalSeconds < 60) return Math.Max(0, (int)Math.Round(d.TotalSeconds)) + " s";
+            // Rounded first: 59,6 s rounds to 60 and must read as a minute, not as "60 s".
+            long seconds = (long)Math.Round(d.TotalSeconds, MidpointRounding.AwayFromZero);
+            if (seconds < 0) seconds = 0;
+            if (seconds < 60) return seconds + " s";
+            d = TimeSpan.FromSeconds(seconds);
             int hours = (int)d.TotalHours, minutes = d.Minutes;
             if (hours <= 0) return minutes + " min";
             return hours + " h" + (minutes > 0 ? " " + minutes + " min" : "");

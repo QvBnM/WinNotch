@@ -90,6 +90,16 @@ namespace WinNotch
             Check("GM13", "Un joc exclusiv fără nume ia numele când se află, fără sesiune nouă",
                   !named.Started && !named.Ended && d4.Process == "rdr2");
 
+            // Revizia R1, Mediu 1: un ceas dat în spate (corecție NTP) lăsa răgazul să nu se mai termine niciodată,
+            // deci sesiunea rămânea deschisă — cu măsurare la 1 s și prioritatea coborâtă — până la oprirea funcției.
+            var d5 = new GameDetect();
+            d5.Update(Snap("cs2", AppCategory.Game, FullscreenKind.Game), t0);
+            d5.Update(Snap("discord", AppCategory.Other, FullscreenKind.None), t0.AddMinutes(10));
+            d5.Update(Snap("discord", AppCategory.Other, FullscreenKind.None), t0.AddMinutes(5));    // ceasul sare în spate
+            var afterJump = d5.Update(Snap("discord", AppCategory.Other, FullscreenKind.None), t0.AddMinutes(5).Add(GameDetect.Grace));
+            Check("GM13b", "Un ceas dat în spate nu blochează sesiunea deschisă pentru totdeauna",
+                  afterJump.Ended && afterJump.State == GameState.None && afterJump.EndedProcess == "cs2");
+
             // ---------------------------------------------------------------- the accumulator
             var session = new GameSession("CS2.exe", t0);
             Check("GM14", "Numele jocului e normalizat; o sesiune fără măsurători nu raportează nimic",
@@ -121,6 +131,16 @@ namespace WinNotch
                   Math.Abs(rep.AvgGpu - 84.5) < 0.01 && Math.Abs(rep.MaxGpu - 89) < 0.01 &&
                   Math.Abs(rep.PeakVramMb - 7090) < 0.01 && Math.Abs(rep.PeakRamGb - 16.9) < 0.01);
 
+            // Revizia R1, Mediu 6: „cel mai ocupat motor” e prin definiție ≥ motorul 3D, deci un Math.Max între ele
+            // alegea mereu primul — adică putea raporta un encoder video (o înregistrare în fundal) în loc de joc.
+            var engines = new GameSession("cs2", t0);
+            engines.Add(new PerfSample { TimeUtc = t0, CpuPercent = 10, RamUsedGb = 16, RamTotalGb = 32, GpuPercent = 95, Gpu3dPercent = 60 });
+            engines.Add(new PerfSample { TimeUtc = t0.AddSeconds(1), CpuPercent = 10, RamUsedGb = 16, RamTotalGb = 32, GpuPercent = 90, Gpu3dPercent = -1 });
+            var enginesReport = engines.Report(t0.AddMinutes(30));
+            Check("GM15b", "Încărcarea plăcii video e cea a motorului 3D când se știe, și cel mai ocupat doar ca rezervă",
+                  Math.Abs(enginesReport.AvgGpu - 75) < 0.01 && Math.Abs(enginesReport.MaxGpu - 90) < 0.01,
+                  "avg=" + enginesReport.AvgGpu + " max=" + enginesReport.MaxGpu);
+
             Check("GM16", "Temperaturile raportate sunt maximele, nu ultima citire",
                   Math.Abs(rep.MaxCpuTempC - 69) < 0.01 && Math.Abs(rep.MaxGpuTempC - 79) < 0.01 && rep.HasTemps);
 
@@ -145,6 +165,26 @@ namespace WinNotch
                   brief.Report(t0.AddHours(1)).Blame.Count == 0,
                   "blame=" + string.Join(",", brief.Report(t0.AddHours(1)).Blame.Select(b => b.Name + ":" + Math.Round(b.CpuPercent))));
 
+            // Revizia R1, Major 4: monitorul umple lista de procese o dată la patru măsurători (trecerea scumpă stă la
+            // 4 s și în joc). Împărțind la *toate* măsurătorile, un program care lua constant 10% ieșea 2,5% — sub
+            // pragul de 3%, deci raportul scria „nimic din fundal nu ți-a luat resurse”. Testul de dinainte trecea
+            // fiindcă hrănea procese la fiecare măsurătoare, lucru pe care monitorul real nu-l face niciodată.
+            var sparse = new GameSession("cs2", t0);
+            for (int i = 0; i < 120; i++)
+                sparse.Add(new PerfSample
+                {
+                    TimeUtc = t0.AddSeconds(i), CpuPercent = 50, RamUsedGb = 16, RamTotalGb = 32,
+                    Processes = i % 4 == 0
+                        ? new List<ProcUsage> { new ProcUsage("chrome", 10, 900, 800, 4, 300, 20) }
+                        : (IReadOnlyList<ProcUsage>)Array.Empty<ProcUsage>(),
+                });
+            var sparseReport = sparse.Report(t0.AddHours(1));
+            Check("GM19b", "Numitorul e numărul de măsurători cu procese, nu totalul: 10% constant rămâne 10%",
+                  sparseReport.Samples == 120 && sparseReport.Blame.Count == 1 &&
+                  Math.Abs(sparseReport.Blame[0].CpuPercent - 10) < 0.01 &&
+                  Math.Abs(sparseReport.Blame[0].GpuPercent - 4) < 0.01,
+                  "blame=" + string.Join(",", sparseReport.Blame.Select(b => b.Name + ":" + Math.Round(b.CpuPercent, 2))));
+
             // ---------------------------------------------------------------- the words
             Check("GM20", "Durata în română, scurt și fără precizie falsă",
                   GameReport.Spell(TimeSpan.FromSeconds(48)) == "48 s" &&
@@ -152,6 +192,37 @@ namespace WinNotch
                   GameReport.Spell(TimeSpan.FromMinutes(84)) == "1 h 24 min" &&
                   GameReport.Spell(TimeSpan.FromHours(2)) == "2 h" &&
                   GameReport.Spell(TimeSpan.Zero) == "0 s");
+
+            Check("GM20b", "59,6 s se citește ca un minut, nu ca „60 s”",
+                  GameReport.Spell(TimeSpan.FromSeconds(59.6)) == "1 min" &&
+                  GameReport.Spell(TimeSpan.FromSeconds(59.4)) == "59 s" &&
+                  GameReport.Spell(TimeSpan.FromHours(1)) == "1 h" &&
+                  GameReport.Spell(TimeSpan.FromSeconds(-5)) == "0 s");
+
+            // Revizia R1, Mediu 5: o sesiune pornită fără nume (joc exclusiv văzut înainte să se poată citi procesul)
+            // rămânea cu numele „”, deci linia din fișier nu se putea compara — și, mai rău, jocul însuși intra în
+            // lista „din fundal îți luau”, fiindcă excluderea se face pe nume.
+            var nameless = new GameSession("", t0);
+            nameless.Add(new PerfSample
+            {
+                TimeUtc = t0, CpuPercent = 40, RamUsedGb = 16, RamTotalGb = 32,
+                Processes = new List<ProcUsage> { new ProcUsage("rdr2", 90, 4000, 3900, 95, 7000, 1) },
+            });
+            nameless.Rename("RDR2.exe");
+            nameless.Add(new PerfSample
+            {
+                TimeUtc = t0.AddSeconds(1), CpuPercent = 40, RamUsedGb = 16, RamTotalGb = 32,
+                Processes = new List<ProcUsage> { new ProcUsage("rdr2", 90, 4000, 3900, 95, 7000, 1) },
+            });
+            var namelessReport = nameless.Report(t0.AddMinutes(30));
+            Check("GM20c", "O sesiune care își află numele târziu îl primește, și jocul nu se mai blamează pe sine",
+                  nameless.Game == "rdr2" && namelessReport.Process == "rdr2" &&
+                  namelessReport.Headline().StartsWith("rdr2", StringComparison.Ordinal) &&
+                  namelessReport.Blame.All(b => b.Name != "rdr2"),
+                  "blame=" + string.Join(",", namelessReport.Blame.Select(b => b.Name)));
+
+            Check("GM20d", "Numele se pune o singură dată: un alt joc e o altă sesiune",
+                  Named("cs2", "eldenring") == "cs2" && Named("", "eldenring") == "eldenring" && Named("", "") == "");
 
             var lines = rep.Lines();
             Check("GM21", "Rezumatul spune încărcarea, căldura, memoria și cine fura — fără FPS, că nu-l avem încă",
@@ -213,6 +284,16 @@ namespace WinNotch
                   File.ReadAllLines(store.Path).Length <= GameReportStore.MaxLines &&
                   store.Last(1000).Count <= GameReportStore.MaxLines,
                   "linii=" + File.ReadAllLines(store.Path).Length);
+
+            string big = Path.Combine(TestFolder, "jocuri-mari");
+            if (Directory.Exists(big)) Directory.Delete(big, true);
+            var bigStore = new GameReportStore(big);
+            bigStore.Append(rep);
+            File.AppendAllText(bigStore.Path, new string('x', (int)GameReportStore.MaxFile + 16) + Environment.NewLine);
+            long sizeBefore = new FileInfo(bigStore.Path).Length;
+            bigStore.Append(rep);
+            Check("GM29b", "Un fișier peste limită nu e nici citit, nici rescris la scurtare",
+                  bigStore.Last().Count == 0 && new FileInfo(bigStore.Path).Length >= sizeBefore);
 
             // ---------------------------------------------------------------- the watcher, through the real engine
             WatcherTests();
@@ -318,6 +399,25 @@ namespace WinNotch
                   store.Last().Count == 1 && store.Latest().Process == "cs2",
                   "rapoarte=" + host.Reports.Count + " fișier=" + store.Last().Count);
 
+            // An exclusive game seen before its process name can be read: the watcher must pass the name on.
+            rig.Fg.Set(Fg("", covers: true, exclusive: true));
+            rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
+            bool nameless = watcher.Playing == "" && monitor.Cadence == PerfCadence.Game;   // sesiune deschisă, dar fără nume
+            rig.Fg.Set(Fg("rdr2", covers: true, exclusive: true));
+            rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
+            Check("GM35b", "O sesiune pornită fără nume îl primește de la detector, fără o sesiune nouă",
+                  nameless && watcher.Playing == "rdr2" && host.Reports.Count == 1 && host.QuietOn == 2,
+                  "playing=" + watcher.Playing + " rapoarte=" + host.Reports.Count + " quietOn=" + host.QuietOn);
+            rig.Clock.Advance(TimeSpan.FromMinutes(10));
+            rig.Fg.Set(Fg("discord"));
+            rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
+            rig.Clock.Advance(GameDetect.Grace);
+            watcher.Tick();
+            Check("GM35c", "Raportul ei are numele, nu „”, deci se poate compara în timp",
+                  host.Reports.Count == 2 && host.Reports[1].Process == "rdr2" &&
+                  store.For("rdr2").Count == 1,
+                  "proces=" + (host.Reports.Count > 1 ? host.Reports[1].Process : "-"));
+
             // A session shorter than the minimum is not worth a report.
             rig.Fg.Set(Fg("rdr2", covers: true, exclusive: true));
             rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
@@ -327,8 +427,9 @@ namespace WinNotch
             rig.Clock.Advance(GameDetect.Grace);
             watcher.Tick();
             Check("GM36", "O sesiune mai scurtă decât minimul nu produce raport (dar se oprește curat)",
-                  host.Reports.Count == 1 && store.Last().Count == 1 &&
-                  watcher.Playing == "" && monitor.Cadence == PerfCadence.Off && host.QuietOff == 2);
+                  host.Reports.Count == 2 && store.Last().Count == 2 &&
+                  watcher.Playing == "" && monitor.Cadence == PerfCadence.Off && host.QuietOff == 3,
+                  "rapoarte=" + host.Reports.Count + " fișier=" + store.Last().Count + " quietOff=" + host.QuietOff);
 
             // Switching the feature off in the middle of a session abandons it: no half-report.
             rig.Fg.Set(Fg("cs2", covers: true, exclusive: true));
@@ -337,8 +438,9 @@ namespace WinNotch
             bool had = watcher.Playing == "cs2";
             rig.Flags.Set(GameDetect.FeatureId, false);
             Check("GM37", "Funcția oprită la mijlocul unei sesiuni o abandonează, fără un raport pe jumătate",
-                  had && watcher.Playing == "" && host.Reports.Count == 1 && store.Last().Count == 1 &&
-                  monitor.Cadence == PerfCadence.Off && host.QuietOff == 3);
+                  had && watcher.Playing == "" && host.Reports.Count == 2 && store.Last().Count == 2 &&
+                  monitor.Cadence == PerfCadence.Off && host.QuietOff == 4,
+                  "rapoarte=" + host.Reports.Count + " quietOff=" + host.QuietOff);
 
             rig.Fg.Set(Fg("eldenring", covers: true, exclusive: true));
             rig.Clock.Advance(TimeSpan.FromMilliseconds(400));
@@ -358,6 +460,14 @@ namespace WinNotch
         static bool OneDeclaration(string id) => typeof(FeatureCatalog).Assembly.GetTypes()
             .SelectMany(t => t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
             .Count(f => f.IsLiteral && f.FieldType == typeof(string) && f.Name == "FeatureId" && (string)f.GetRawConstantValue() == id) == 1;
+
+        /// <summary>The name a session ends up with when it is created as <paramref name="first"/> and renamed to <paramref name="then"/>.</summary>
+        static string Named(string first, string then)
+        {
+            var s = new GameSession(first, new DateTime(2026, 10, 10, 20, 0, 0, DateTimeKind.Utc));
+            s.Rename(then);
+            return s.Game;
+        }
 
         static ContextSnapshot Snap(string process, AppCategory category, FullscreenKind fullscreen) =>
             ContextSnapshot.Empty with { ForegroundProcess = process ?? "", ForegroundCategory = category, Fullscreen = fullscreen };

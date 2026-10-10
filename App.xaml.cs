@@ -457,9 +457,10 @@ namespace WinNotch
             LogShutdown(kind);                 // before MarkCleanExit: the reason is saved while the state is still ours
             Guard?.MarkCleanExit();
             _healthTimer?.Dispose();
+            // The notch first: its cleanup stops the game watcher, which still wants the engine and the monitor.
+            try { _notch?.Cleanup(); } catch { }
             try { Core.Context.ContextEngine.Current?.Dispose(); } catch { }
             try { Core.Perf.PerfMonitor.Current?.Dispose(); } catch { }
-            try { _notch?.Cleanup(); } catch { }
             try { _tray?.Dispose(); } catch { }
             Core.Diagnostics.HealthLog.Stop();
             Settings?.Save();

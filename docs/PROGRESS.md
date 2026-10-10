@@ -757,3 +757,57 @@ trecut (revizorul a recalculat de mână 17 din cele 37 de teste), securitatea e
 - **Teste:** GM1–GM46 (46 noi), inclusiv watcher-ul pe motorul real de context cu ceasul și sursele false din P12, și
   alerta nouă adăugată în tabelul de caracterizare (29 de alerte, cu fișierul ei scanat de AC2).
 - **Stare:** ramura `claude/upbeat-gates-qn0thi`. Versiunea nu a crescut, fără merge în `main`.
+
+### P61 — revizia R1 și reparațiile
+
+**Verdict R1: nu se poate merge ca atare.** 4 Majore, 7 Medii, 11 Minore. Structura, documentația și regulile de formă
+au trecut; problemele erau de corectitudine și de fire de execuție. Reparat tot ce era Major și Mediu, plus Minorele
+ieftine:
+
+- **Major — rândul „Din fundal îți luau…” era greșit cu un factor de 4 și în practică nu apărea niciodată.** `Blame`
+  împărțea sumele la **toate** măsurătorile, dar monitorul umple lista de procese doar la fiecare a patra (trecerea
+  scumpă stă la 4 s și în joc). Un program care lua constant 10% ieșea 2,5% — sub pragul de 3%, deci raportul scria
+  „nimic din fundal nu ți-a luat resurse”. Adică exact una din cele trei promisiuni ale raportului era, tăcut, falsă.
+  Numitorul e acum numărul măsurătorilor **cu** procese. Testul meu de dinainte (GM19) trecea fiindcă samplerul fals
+  hrănea procese la fiecare pas, lucru pe care monitorul real nu-l face niciodată — GM19b reproduce acum 1 din 4.
+- **Major — trei curse de fire.** (1) `GameDetect` e mutat din trei fire (timerul motorului de context, firul UI prin
+  `Tick`, firul care schimbă comutatorul) și nu era sub nicio sincronizare: două fire puteau vedea amândouă „nicio
+  sesiune”, porni amândouă una, și prima nu se mai raporta niciodată. (2) `Hook`/`Unhook` rulau în afara lacătului care
+  decidea, deci două schimbări de comutator din fire diferite puteau lăsa watcher-ul „oprit” dar încă abonat, iar un
+  `Hook` al doilea suprascria handler-ul — scurgere permanentă plus fiecare schimbare de context procesată de două ori.
+  (3) `GameSession.Add` (firul timerului) și `Report` (firul de context) puteau rula simultan: `Blame()` enumera
+  dicționarul în timp ce `Remember` îl modifica → excepție, raport pierdut, și trei astfel de erori opresc funcția.
+  Reparat cu un lacăt `_turn` care serializează detectorul, începutul/sfârșitul sesiunii și abonările (ordine fixă
+  înaintea lacătului de stare), `Hook` idempotent, și un lacăt propriu în `GameSession`. `Tick` folosește `TryEnter`:
+  rulează pe firul UI, iar închiderea unei sesiuni atinge fișierul și poarta monitorului — mai bine sare o bătaie.
+- **Mediu — un ceas dat în spate** (corecție NTP) lăsa răgazul să nu se mai termine niciodată: sesiunea rămânea
+  deschisă, deci **măsurare la 1 s în standby** și prioritatea coborâtă, până la oprirea comutatorului. Exact ce
+  interzice `PLAN.md`. Reparat, cu test (GM13b).
+- **Mediu — un joc exclusiv fără nume de proces se blama pe sine.** Sesiunea pornea cu numele „”, nu-l mai afla
+  niciodată, iar excluderea jocului din lista „cine fura” se face pe nume — deci jocul însuși apărea acolo cu 90%
+  procesor. Și linia din fișier avea `game: ""`, deci comparația în timp, justificarea întregului fișier, nu funcționa
+  pentru el. Acum sesiunea primește numele de la detector (`Rename`, o singură dată), cu teste pe ambele niveluri.
+- **Mediu — încărcarea plăcii video raporta motorul greșit.** „Cel mai ocupat motor” e prin definiție ≥ motorul 3D,
+  deci `Math.Max` între ele alegea mereu primul: un encoder video (o înregistrare în fundal) putea fi raportat ca
+  încărcarea jocului. Comentariul spunea exact invers de ce făcea codul. Acum e motorul 3D când se știe, cel mai ocupat
+  doar ca rezervă (GM15b).
+- **Mediu — o afirmație falsă scrisă la prezent.** `GameSession` pretindea „nimic nu crește cu numărul de măsurători”,
+  dar avea o listă de până la un milion de timpi de cadru „pentru P62”: 8 MB reținuți și o mutare de 8 MB la fiecare
+  apel odată atins plafonul — în chiar partea care urmărește memoria. Codul n-avea nici apelant, nici test, așa că l-am
+  **scos**, nu l-am peticit: P62 aduce cadrele ca histogram (câțiva kilobytes, oricât ar dura seara), scris în ADR 0016
+  și în roadmap.
+- **Mediu — widget-ul citea fișierul de sesiuni o dată pe secundă** (`LastGameReport` cădea pe disc cât timp nu era
+  nicio sesiune în rularea curentă, iar `Refresh` e chemat la fiecare secundă). Acum se citește o singură dată pe
+  rulare. Și widget-ul își verifică acum comutatorul, cum promitea comentariul lui.
+- **Mediu — `Trim` citea un fișier pe care cititorul însuși l-ar fi refuzat** (fără garda de 2 MB). Reparat, cu test.
+- **Mediu — testele de fum nu fuseseră extinse**, abatere de la `PLAN.md`. Revizorul a arătat că exact un astfel de
+  test ar fi prins cursa de abonări: `SmokeGameMode.cs` pornește și oprește funcția de trei ori la rând pe aplicația
+  vie și verifică apoi că nu s-a pornit nicio sesiune fantomă și că notch-ul mai răspunde.
+- **Minore reparate:** 59,6 s se citea „60 s” în loc de „1 min”; ordinea la ieșire (watcher-ul oprit înaintea motorului
+  și a monitorului); `GameActions.Register` fără verificare de null; trei glife diferite pentru aceeași funcție (acum
+  una); dacă `SetGame(true)` eșuează la începutul sesiunii, sesiunea se abandonează în loc să rămână fără măsurători.
+- **Afirmații slăbite ca să fie adevărate:** „modul de joc moștenește tăcerea de la P53” e acum condiționat (P53 tace
+  doar cu setarea „Peste jocuri / fullscreen” pe „ascuns”), și limitele asumate spun acum și că rezumatul nu se arată
+  dacă ieși din joc cu notch-ul deschis, și că un salt de ceas înainte se adună la durată.
+- **Teste:** GM1–GM53 (53), plus pasul de fum. Cele care prind regresiile reparate: GM19b (numitorul), GM13b (ceasul),
+  GM15b (motorul 3D), GM20b–GM20d și GM35b–GM35c (numele târziu), GM29b (fișierul peste limită).

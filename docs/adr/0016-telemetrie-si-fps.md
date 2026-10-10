@@ -135,6 +135,17 @@ propriului proces și amânarea celor două aduceri din rețea. Nimic nu atinge 
 după o închidere bruscă și nu e nevoie de jurnal de revenire. Jurnalul apare la P64, când se schimbă planul de
 alimentare — adică primul lucru care supraviețuiește procesului nostru.
 
+Moștenirea de la P53 e condiționată, și am scris-o așa și în documentație după revizia R1: P53 tace doar cu setarea
+„Peste jocuri / fullscreen” pe „ascuns”. Decizia de a nu construi o a doua poartă rămâne, dar afirmația „modul de joc
+moștenește tăcerea” nu e necondiționată.
+
+**Cadrele nu se țin ca listă.** Prima versiune a lui `GameSession` avea un `List<double>` de până la un milion de
+timpi de cadru „pentru P62”: 8 MB reținuți, plus o mutare de 8 MB la fiecare adăugare odată atins plafonul, în chiar
+partea de aplicație care urmărește memoria — și cu un comentariu care pretindea că nimic nu crește cu numărul de
+măsurători. Codul a fost scos (nu avea nici apelant, nici test). P62 aduce cadrele cu un **histogram** de timpi de
+cadru, nu cu valorile brute: percentilele ies din el cu precizia unui interval, iar costul e de câțiva kilobytes,
+oricât ar dura seara.
+
 ## Consecințe
 
 - Mai ușor: orice funcție nouă de performanță are deja eșantioane, istoric, atribuire și percentile, toate testate fără
