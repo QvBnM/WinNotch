@@ -16,6 +16,11 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.25
+
+- Pe monitoare 2K și 4K se mărește acum și pastila de standby: ora și data se citesc, nu mai rămân minuscule.
+- Fereastra WinNotch v2 (experimentală): Workspace e împărțit în două — pagina sus, widget-urile de adăugat jos, cu o linie pe care o poți trage.
+
 ## Noutăți în 0.6.24
 
 - Fereastra WinNotch v2 (experimentală): fila „Sistem” se numește „Setări” și e rescrisă în tema ta — gata cu pagina albă a ferestrei vechi lipită înăuntru.
