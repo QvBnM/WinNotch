@@ -50,7 +50,8 @@ namespace WinNotch.Features.Activity
     public static class LegacyAlerts
     {
         public const string Notch = "NotchWindow.xaml.cs", Updates = "NotchWindow.Updates.cs", Context = "Features/Context/NotchWindow.Context.cs",
-            Diagnostics = "Features/Diagnostics/NotchWindow.ShutdownReport.cs";
+            Diagnostics = "Features/Diagnostics/NotchWindow.ShutdownReport.cs",
+            GameMode = "Features/GameMode/NotchWindow.GameMode.cs";
 
         public const string Volume = "volume", Track = "track", Power = "power", BatteryLow = "battery-low", TempHot = "temp-hot",
             Ram = "ram", RamProgress = "ram-progress", RamDone = "ram-done", CaptureResult = "capture-result", CaptureError = "capture-error",
@@ -60,7 +61,7 @@ namespace WinNotch.Features.Activity
             UpdateReplaceFailed = "update-replace-failed", UpdateFailed = "update-failed", WhatsNew = "whats-new",
             HelperUpdate = "helper-update", OldExtension = "old-extension",
             // P51c: the app closed by itself twice in a row (Features/Diagnostics)
-            ShutdownUnexplained = "shutdown-unexplained";
+            ShutdownUnexplained = "shutdown-unexplained", GameReport = "game-report";
 
         /// <summary>Shared keys of the multi-step flows (see <see cref="LegacyAlert.Key"/>).</summary>
         public const string OcrKey = "ocr", RamOptimizeKey = "ram-optimize", UpdateInstallKey = "update-install";
@@ -103,6 +104,8 @@ namespace WinNotch.Features.Activity
             new LegacyAlert(OldExtension, Updates, "content, 540, 58, 20000)", "content, 540, 58, 20000)", 540, 58, 20000, false, true),
             // P51c: not a legacy alert, but this table is the one registry FromAlert reads, so a new alert belongs here too
             new LegacyAlert(ShutdownUnexplained, Diagnostics, "row, 520, 58, 9000)", "row, 520, 58, 9000)", 520, 58, 9000, true, true),
+            // P61: the summary after a game. Important, so it is not dropped by the fullscreen rules on the way out.
+            new LegacyAlert(GameReport, GameMode, "row, 620, 58, 10000)", "row, 620, 58, 10000)", 620, 58, 10000, true, true),
         };
 
         public static LegacyAlert Find(string id) => All.FirstOrDefault(a => string.Equals(a.Id, id, StringComparison.Ordinal));

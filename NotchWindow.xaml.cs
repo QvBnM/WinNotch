@@ -221,6 +221,7 @@ namespace WinNotch
             Sessions.Dispose();
             Bridge.Dispose();
             Audio.Dispose();
+            StopGameMode();
             Temps.Dispose();
             Close();
         }
@@ -1272,6 +1273,7 @@ namespace WinNotch
             if (TempHist.Count > 60) TempHist.RemoveAt(0);
             bool tempsShown = _mode == Mode.Expanded || S.Standby.Any(x => x is "ctemp" or "gtemp" or "stemp");
             if (S.Temperatures && _tick % (tempsShown ? 2 : 15) == 0) Temps.RefreshAsync();     // 15 s is still enough for the heat alert
+            GameModeTick();                        // P61: the game session (one line; idle with its switch off)
             if (_tick % 3 == 0) Media.Poll();       // safety net: some apps don't announce pause/next
             if (_tick % 3 == 1) Audio.CheckDevice(); // headphones / Bluetooth became the default output
             if (_tick % 5 == 2 && S.ThemeMode == "auto" && ThemeManager.IsLight(S) != _themeLight) ApplySettings();   // Windows switched light/dark
@@ -1316,8 +1318,9 @@ namespace WinNotch
                 }
             }
 
-            if (DateTime.Now - _weatherAt > TimeSpan.FromMinutes(20)) RefreshWeather();
-            if (!string.IsNullOrWhiteSpace(S.CalendarIcs) && DateTime.Now - _calendarAt > TimeSpan.FromMinutes(15)) RefreshCalendar();
+            // P61: while a game runs, our own two network fetches wait — no hiccup of ours in the middle of a match.
+            if (!GameQuiet && DateTime.Now - _weatherAt > TimeSpan.FromMinutes(20)) RefreshWeather();
+            if (!GameQuiet && !string.IsNullOrWhiteSpace(S.CalendarIcs) && DateTime.Now - _calendarAt > TimeSpan.FromMinutes(15)) RefreshCalendar();
 
             BuildIdle();
             UpdateIdleValues();

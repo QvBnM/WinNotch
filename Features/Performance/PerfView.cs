@@ -104,11 +104,48 @@ namespace WinNotch.Features.Performance
                 "O scurgere de memorie crește drept și constant, ore în șir — spre deosebire de un program folosit normal, care urcă și coboară. Apare aici doar ce crește cu peste 50 MB pe oră, de cel puțin 20 de minute, cu cel puțin 150 MB adunați.",
                 V2Controls.Stack(_leaks, _watched)));
 
+            _body.Children.Add(V2Controls.Card("Sesiuni de joc",
+                "Fiecare sesiune care a ținut peste două minute se salvează, ca să le poți compara: dacă același joc merge mai prost decât luna trecută, aici se vede. Cere „Mod de joc” pornit.",
+                Sessions()));
+
             _cadence = V2Controls.Hint("");
             _body.Children.Add(_cadence);
 
             var scroll = new ScrollViewer { Style = Ui.S("SlimScroll"), Content = _body };
             Children.Add(scroll);
+        }
+
+        /// <summary>
+        /// The saved sessions, newest first. Built once when the tab opens: sessions change when a game ends, not
+        /// every two seconds, so there is nothing to refresh on a timer.
+        /// </summary>
+        private FrameworkElement Sessions()
+        {
+            var list = new StackPanel();
+            List<GameReport> saved;
+            try { saved = new GameReportStore(AppSettings.Folder).Last(8); }
+            catch { saved = new List<GameReport>(); }
+
+            if (saved.Count == 0)
+            {
+                list.Children.Add(V2Controls.Hint("Nicio sesiune salvată încă."));
+                return list;
+            }
+            foreach (var r in saved)
+            {
+                var when = Ui.T(r.StartedUtc == default ? "—" : r.StartedUtc.ToLocalTime().ToString("dd MMM HH:mm", new CultureInfo("ro-RO")), 11.5, "DimBrush", false, true);
+                when.Width = 92;
+                when.VerticalAlignment = VerticalAlignment.Center;
+                var name = Ui.T(r.Headline(), 13, "InkBrush");
+                var numbers = Ui.T(
+                    (r.HasFps ? N(r.AvgFps) + " FPS   " : "") +
+                    N(r.AvgCpu) + "% CPU" +
+                    (r.HasGpu ? "   " + N(r.AvgGpu) + "% GPU" : "") +
+                    (r.HasTemps ? "   max " + N(Math.Max(r.MaxCpuTempC, r.MaxGpuTempC)) + "°C" : ""), 12, "MutedBrush");
+                numbers.HorizontalAlignment = HorizontalAlignment.Right;
+                list.Children.Add(V2Controls.ListRow(when, name, numbers));
+            }
+            return list;
         }
 
         private Button SortButton(string text, PerfMetric metric)

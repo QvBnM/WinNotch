@@ -32,8 +32,6 @@ namespace WinNotch.Features.GameMode
     /// </summary>
     public sealed class GameWatcher : IDisposable
     {
-        public const string FeatureId = GameDetect.FeatureId;
-
         private readonly object _gate = new object();
         private readonly FeatureFlags _flags;
         private readonly PerfMonitor _monitor;
@@ -75,10 +73,10 @@ namespace WinNotch.Features.GameMode
         {
             _flagHandler = id =>
             {
-                if (!string.Equals(id, FeatureId, StringComparison.Ordinal) &&
+                if (!string.Equals(id, GameDetect.FeatureId, StringComparison.Ordinal) &&
                     !string.Equals(id, PerfRules.FeatureId, StringComparison.Ordinal)) return;
                 try { Apply(); }
-                catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
+                catch (Exception ex) { _flags.ReportError(GameDetect.FeatureId, ex); }
             };
             _flags.Changed += _flagHandler;
             Apply();
@@ -93,7 +91,7 @@ namespace WinNotch.Features.GameMode
         /// </summary>
         private void Apply()
         {
-            bool want = _flags.IsEnabled(FeatureId) && _flags.IsEnabled(PerfRules.FeatureId) && _engine != null;
+            bool want = _flags.IsEnabled(GameDetect.FeatureId) && _flags.IsEnabled(PerfRules.FeatureId) && _engine != null;
             lock (_gate)
             {
                 if (_disposed || want == _running) return;
@@ -143,7 +141,7 @@ namespace WinNotch.Features.GameMode
         {
             GameChange change;
             try { change = _detect.Update(snapshot, _clock()); }
-            catch (Exception ex) { _flags.ReportError(FeatureId, ex); return; }
+            catch (Exception ex) { _flags.ReportError(GameDetect.FeatureId, ex); return; }
 
             if (change.Ended) End(change.EndedProcess);
             if (change.Started) Begin(change.Process);
@@ -171,7 +169,7 @@ namespace WinNotch.Features.GameMode
                 _host?.Quiet(true);
                 _log?.Invoke("Mod de joc: pornit.");     // no name: a game is personal enough
             }
-            catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
+            catch (Exception ex) { _flags.ReportError(GameDetect.FeatureId, ex); }
         }
 
         private void End(string process)
@@ -198,14 +196,14 @@ namespace WinNotch.Features.GameMode
                 _log?.Invoke("Mod de joc: oprit, " + report.ToLogString() + ".");
                 _host?.SessionEnded(report);
             }
-            catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
+            catch (Exception ex) { _flags.ReportError(GameDetect.FeatureId, ex); }
         }
 
         /// <summary>Back to normal: the fast sampling and our own quieting both go, whatever happened to the report.</summary>
         private void Stop()
         {
-            try { _monitor?.SetGame(false); } catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
-            try { _host?.Quiet(false); } catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
+            try { _monitor?.SetGame(false); } catch (Exception ex) { _flags.ReportError(GameDetect.FeatureId, ex); }
+            try { _host?.Quiet(false); } catch (Exception ex) { _flags.ReportError(GameDetect.FeatureId, ex); }
         }
 
         private void OnSample(PerfSample sample)
@@ -218,7 +216,7 @@ namespace WinNotch.Features.GameMode
                 var (cpu, gpu) = _temps();
                 session.Add(sample, cpu, gpu);
             }
-            catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
+            catch (Exception ex) { _flags.ReportError(GameDetect.FeatureId, ex); }
         }
 
         public void Dispose()

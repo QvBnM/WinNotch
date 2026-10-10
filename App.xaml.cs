@@ -168,7 +168,7 @@ namespace WinNotch
             _tray = new TrayIcon(this);
             RegisterActions();
             _notch.StartCommandBar();                                  // P14: the shortcut, only with its switch on
-            Features.Context.ContextStartup.Start(_notch, Log);       // what the user is doing now (P12); off with its switch
+            var context = Features.Context.ContextStartup.Start(_notch, Log);   // what the user is doing now (P12); off with its switch
             _notch.StartQuickActions();                                // P20: buttons under the pill by context; idle with its switch off
             _notch.StartSmartClipboard();                              // P21: chips in the Clipboard widget; idle with its switch off
             _notch.StartShelf();                                       // P23: the shelf (drops on the open notch); idle with its switch off
@@ -176,6 +176,7 @@ namespace WinNotch
             // P60: the one thing that measures the machine. It holds no timer until something asks to see the numbers.
             Core.Perf.PerfMonitor.Current = new Core.Perf.PerfMonitor(
                 Core.Flags.FeatureFlags.Current, () => new Features.Performance.PerfSampler());
+            _notch.StartGameMode(context);                             // P61: the game session; idle with its switch off
             StartHealthTimer();
         }
 
@@ -285,6 +286,7 @@ namespace WinNotch
                 Features.Shelf.ShelfActions.Register(registry, new Features.Shelf.NotchShelfHost(_notch));
                 Features.AudioSwitch.AudioSwitchActions.Register(registry, _notch.AudioOutputs, () => Core.Flags.FeatureFlags.Current);
                 Features.Performance.PerfActions.Register(registry, new Features.Performance.AppPerfHost(this));
+                Features.GameMode.GameActions.Register(registry, new Features.GameMode.NotchGameReportHost(_notch));
                 Core.Actions.ActionRegistry.Current = registry;
             }
             catch (Exception ex) { Log("Acțiuni: înregistrarea a eșuat: " + ex.GetType().Name); }

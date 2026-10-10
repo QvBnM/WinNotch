@@ -227,8 +227,8 @@ namespace WinNotch
         static void AlertCharacterizationTests()
         {
             var all = LegacyAlerts.All;
-            Check("AC1", "Tabelul alertelor: 28, id-uri unice, cu literă mică și cratime",
-                  all.Count == 28 && all.Select(a => a.Id).Distinct().Count() == 28 && all.All(a => Regex.IsMatch(a.Id, "^[a-z]+(-[a-z]+)*$")),
+            Check("AC1", "Tabelul alertelor: 29, id-uri unice, cu literă mică și cratime",
+                  all.Count == 29 && all.Select(a => a.Id).Distinct().Count() == 29 && all.All(a => Regex.IsMatch(a.Id, "^[a-z]+(-[a-z]+)*$")),
                   all.Count + " alerte");
 
             // ---- source pins: each call still passes the table's literal size, duration and "important"
@@ -244,7 +244,7 @@ namespace WinNotch
 
             // every alert call in the notch's files is one of the table's (a new alert must be added to the table)
             var calls = new List<string>();
-            foreach (var f in new[] { LegacyAlerts.Notch, LegacyAlerts.Updates, LegacyAlerts.Context, LegacyAlerts.Diagnostics })
+            foreach (var f in new[] { LegacyAlerts.Notch, LegacyAlerts.Updates, LegacyAlerts.Context, LegacyAlerts.Diagnostics, LegacyAlerts.GameMode })
                 foreach (var l in Src(f).Split('\n'))
                 {
                     string n = Norm(NoComments(l));

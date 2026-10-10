@@ -217,10 +217,46 @@ namespace WinNotch
             // ---------------------------------------------------------------- the watcher, through the real engine
             WatcherTests();
 
-            Check("GM40", "Comutatorul din catalog e același id ca regulile, Experimental, oprit implicit",
+            // ---------------------------------------------------------------- the action and the widget
+            var reportHost = new FakeReportHost { Report = rep };
+            var act = GameActions.CreateLastReport(reportHost);
+            Check("GM41", "Acțiunea „game.last-report”: id, titlu, iconiță, comutator, fir UI, aliasuri în ambele limbi",
+                  act.Id == "game.last-report" && act.Id == GameActions.LastReportId &&
+                  act.FeatureId == GameDetect.FeatureId && act.RequiresUiThread && act.Icon.Length > 0 &&
+                  act.Aliases.Contains("ultimul joc") && act.Aliases.Contains("game report") &&
+                  act.Aliases.Distinct().Count() == act.Aliases.Count && act.UnavailableMessage.Length > 0);
+
+            var ran = act.ExecuteAsync(Core.Actions.ActionArgs.Empty, default).GetAwaiter().GetResult();
+            Check("GM42", "Pornită, arată ultima sesiune și spune care e",
+                  ran.Success && reportHost.Shown == 1 && ran.Message == "cs2 · 1 h 24 min");
+
+            reportHost.Report = null;
+            var none = act.ExecuteAsync(Core.Actions.ActionArgs.Empty, default).GetAwaiter().GetResult();
+            Check("GM43", "Fără nicio sesiune, spune asta în loc să arate un raport gol",
+                  !none.Success && none.Message.Contains("nicio sesiune") && reportHost.Shown == 1);
+
+            reportHost.Report = new GameSession("cs2", t0).Report(t0.AddHours(1));       // nemăsurată
+            Check("GM44", "O sesiune nemăsurată e tratată ca inexistentă",
+                  !act.ExecuteAsync(Core.Actions.ActionArgs.Empty, default).GetAwaiter().GetResult().Success &&
+                  reportHost.Shown == 1);
+
+            Check("GM45", "Widget-ul „Ultimul joc” e în catalog, la Sistem, cu mărimile lui",
+                  Src("Widgets/Catalog.cs").Contains("D(\"lastgame\", \"Ultimul joc\", \"Sistem\"") &&
+                  Src("Widgets/Catalog.cs").Contains("new Features.GameMode.GameWidget(w, s)"));
+
+            Check("GM46", "Liniștea e doar a noastră: prioritatea proprie și cele două aduceri din rețea, nimic din sistem",
+                  Src("Features/GameMode/NotchWindow.GameMode.cs").Contains("ProcessPriorityClass.BelowNormal") &&
+                  Src("NotchWindow.xaml.cs").Contains("if (!GameQuiet && DateTime.Now - _weatherAt") &&
+                  !Src("Features/GameMode/NotchWindow.GameMode.cs").Contains("PowerSetActiveScheme") &&
+                  !Src("Features/GameMode/GameWatcher.cs").Contains("Process."));
+
+            // Un singur loc declară id-ul. Două constante cu aceeași valoare fac auditul (FA1) să aleagă prin reflexie
+            // oricare dintre tipuri, deci trecerea testului devine o chestiune de ordine a membrilor — exact așa a
+            // scăpat „game-session” la prima rulare, și exact așa trecea „perf-monitor” doar din noroc.
+            Check("GM40", "Comutatorul din catalog e același id ca regulile, Experimental, oprit implicit, declarat o singură dată",
                   FeatureCatalog.GameSession == GameDetect.FeatureId &&
-                  GameWatcher.FeatureId == GameDetect.FeatureId &&
-                  FeatureCatalog.Find(GameDetect.FeatureId) is { Stage: FeatureStage.Experimental, DefaultOn: false });
+                  FeatureCatalog.Find(GameDetect.FeatureId) is { Stage: FeatureStage.Experimental, DefaultOn: false } &&
+                  OneDeclaration(GameDetect.FeatureId) && OneDeclaration(PerfRules.FeatureId));
         }
 
         static void WatcherTests()
@@ -318,8 +354,21 @@ namespace WinNotch
             monitor.Dispose();
         }
 
+        /// <summary>Exactly one public static literal field in the app declares this switch id.</summary>
+        static bool OneDeclaration(string id) => typeof(FeatureCatalog).Assembly.GetTypes()
+            .SelectMany(t => t.GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static))
+            .Count(f => f.IsLiteral && f.FieldType == typeof(string) && f.Name == "FeatureId" && (string)f.GetRawConstantValue() == id) == 1;
+
         static ContextSnapshot Snap(string process, AppCategory category, FullscreenKind fullscreen) =>
             ContextSnapshot.Empty with { ForegroundProcess = process ?? "", ForegroundCategory = category, Fullscreen = fullscreen };
+
+        sealed class FakeReportHost : IGameReportHost
+        {
+            public GameReport Report;
+            public int Shown;
+            public GameReport LastReport() => Report;
+            public void ShowReport(GameReport report) => Shown++;
+        }
 
         sealed class FakeGameHost : IGameHost
         {

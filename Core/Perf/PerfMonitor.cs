@@ -21,8 +21,6 @@ namespace WinNotch.Core.Perf
     /// </summary>
     public sealed class PerfMonitor : IDisposable
     {
-        public const string FeatureId = PerfRules.FeatureId;
-
         /// <summary>The app's instance; null in the helper modes and in the tests that do not need one.</summary>
         public static PerfMonitor Current { get; set; }
 
@@ -56,7 +54,7 @@ namespace WinNotch.Core.Perf
         /// <summary>One sample, just taken, on the timer's thread.</summary>
         public event Action<PerfSample> Sampled;
 
-        /// <param name="flags">The feature switches; the monitor starts and stops with <see cref="FeatureId"/>.</param>
+        /// <param name="flags">The feature switches; the monitor starts and stops with <c>PerfRules.FeatureId</c>.</param>
         /// <param name="makeSampler">Builds a sampler when one is needed. Called outside both locks.</param>
         /// <param name="clock">UTC now; injected so the tests can run an hour in a millisecond.</param>
         public PerfMonitor(FeatureFlags flags, Func<IPerfSampler> makeSampler, Func<DateTime> clock = null)
@@ -123,9 +121,9 @@ namespace WinNotch.Core.Perf
         {
             // The direction is never assumed: two changes from two threads can arrive in any order, so the switch is
             // read inside Apply, under the lock that decides (CLAUDE.md, "Cum declari o funcție nouă").
-            if (!string.Equals(id, FeatureId, StringComparison.Ordinal)) return;
+            if (!string.Equals(id, PerfRules.FeatureId, StringComparison.Ordinal)) return;
             try { Apply(); }
-            catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
+            catch (Exception ex) { _flags.ReportError(PerfRules.FeatureId, ex); }
         }
 
         /// <summary>
@@ -147,7 +145,7 @@ namespace WinNotch.Core.Perf
                         if (_disposed) return;
                         // Read under the deciding lock: a switch flipped twice from two threads must not leave a
                         // running timer for a feature that is off (or the other way round).
-                        var want = PerfRules.Pick(_flags.IsEnabled(FeatureId), _viewers > 0, _game);
+                        var want = PerfRules.Pick(_flags.IsEnabled(PerfRules.FeatureId), _viewers > 0, _game);
                         if (want == _cadence) return;
                         _cadence = want;
                         need = PerfRules.SecondsFor(want) > 0;
@@ -180,7 +178,7 @@ namespace WinNotch.Core.Perf
                     }
                 }
             }
-            catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
+            catch (Exception ex) { _flags.ReportError(PerfRules.FeatureId, ex); }
             finally
             {
                 Close(drop);
@@ -191,7 +189,7 @@ namespace WinNotch.Core.Perf
         private void Close(IPerfSampler s)
         {
             if (s == null) return;
-            try { s.Dispose(); } catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
+            try { s.Dispose(); } catch (Exception ex) { _flags.ReportError(PerfRules.FeatureId, ex); }
         }
 
         // ------------------------------------------------------------------ the pass
@@ -205,7 +203,7 @@ namespace WinNotch.Core.Perf
         {
             if (!Monitor.TryEnter(_passGate)) return;
             try { RunPass(); }
-            catch (Exception ex) { try { _flags.ReportError(FeatureId, ex); } catch { } }
+            catch (Exception ex) { try { _flags.ReportError(PerfRules.FeatureId, ex); } catch { } }
             finally { Monitor.Exit(_passGate); }
         }
 
@@ -237,7 +235,7 @@ namespace WinNotch.Core.Perf
             }
 
             try { Sampled?.Invoke(sample); }
-            catch (Exception ex) { _flags.ReportError(FeatureId, ex); }
+            catch (Exception ex) { _flags.ReportError(PerfRules.FeatureId, ex); }
         }
 
         /// <summary>

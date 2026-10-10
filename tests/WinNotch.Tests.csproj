@@ -117,6 +117,7 @@
     <Compile Include="..\Core\Perf\GameSession.cs" />
     <Compile Include="..\Core\Perf\GameReportStore.cs" />
     <Compile Include="..\Features\GameMode\GameWatcher.cs" />
+    <Compile Include="..\Features\GameMode\GameActions.cs" />
     <!-- P52: only the pure layout rules (the window itself stays out) -->
     <Compile Include="..\Features\WindowV2\LayoutRules.cs" />
     <Compile Include="..\Features\WindowV2\SettingsMap.cs" />
