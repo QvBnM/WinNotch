@@ -169,9 +169,10 @@ namespace WinNotch
                   set.Contains("V2Controls.Toggle(") && set.Contains("V2Controls.Choice(") && set.Contains("V2Controls.Card("),
                   "a rămas conținut găzduit din fereastra clasică");
 
-            Check("WV27", "Setările se aplică pe loc: niciun buton de salvare, fiecare schimbare scrie și anunță notch-ul",
+            Check("WV27", "Setările se aplică pe loc: niciun buton de salvare sau de renunțare, fiecare schimbare scrie și anunță notch-ul",
                   set.Contains("_s.Save();") && set.Contains("_notch?.ApplySettings();") &&
-                  !set.Contains("Salvează\"") && !set.Contains("Renunță"));
+                  // nu în comentarii: un buton chiar etichetat „Salvează” sau „Renunță”
+                  !Regex.IsMatch(set, @"(PillBtn|Pill|Content\s*=)\s*\(?\s*""(Salvează|Renunță)"));
 
             Check("WV28", "Noutățile se citesc cu codul existent, temele trec prin ThemeEdits",
                   emb.Contains("Services.Updater.ParseNotes(Services.Updater.OwnNotes())") &&
