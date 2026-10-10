@@ -811,3 +811,10 @@ ieftine:
   dacă ieși din joc cu notch-ul deschis, și că un salt de ceas înainte se adună la durată.
 - **Teste:** GM1–GM53 (53), plus pasul de fum. Cele care prind regresiile reparate: GM19b (numitorul), GM13b (ceasul),
   GM15b (motorul 3D), GM20b–GM20d și GM35b–GM35c (numele târziu), GM29b (fișierul peste limită).
+
+### Publicare 0.6.26
+
+Autorul a cerut să testeze direct prin actualizare („Testez pe update. Trimite”), deci versiunea a crescut la 0.6.26 și
+ramura a intrat în `main`. Amândouă funcțiile noi sunt **experimentale și oprite implicit**, așa că notele de versiune
+spun pe prima linie a fiecăreia cum se pornesc — altfel actualizarea ar fi, pentru el, un non-eveniment, exact plângerea
+pe care auditul de comutatoare (FA1–FA6) există s-o prevină. P60 și P61 trecute pe „Gata (de testat pe Windows)”.

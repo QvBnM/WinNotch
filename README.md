@@ -16,6 +16,13 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.26
+
+- Secțiunea **„Performanță”** (experimentală, oprită): procesor, memorie, placă video, cine consumă acum și ce crește pe nesimțite în timp. Arată „—” unde nu știe, nu un zero inventat.
+- **Mod de joc** (experimental, oprit): la ieșirea dintr-un joc, un rezumat — durata, încărcarea, cât de cald a fost, memoria la vârf și ce din fundal ți-a luat resurse. Sesiunile se salvează, ca să le poți compara.
+- Widget „Ultimul joc” și cardul „Sesiuni de joc”.
+- Linia de progres a piesei de pe pastila mică se poate opri.
+
 ## Noutăți în 0.6.25
 
 - Pe monitoare 2K și 4K se mărește acum și pastila de standby: ora și data se citesc, nu mai rămân minuscule.

@@ -1,9 +1,12 @@
-# WinNotch 0.6.25
+# WinNotch 0.6.26
 
-## Reparat
-- Pe un monitor 2K sau 4K, ora, data și tot ce ai pus în standby erau prea mici ca să se citească. Notch-ul deschis și alertele se măreau singure pe ecranele mari, dar **pastila de standby rămânea la mărimea ei** — exact lucrul la care te uiți cel mai des. Acum se mărește și ea, odată cu restul (și cu „Mărimea notch-ului” din Setări, dacă o alegi manual). Pe un ecran 1080p nu se schimbă nimic.
+## Nou
+- **Secțiunea „Performanță”** — o filă nouă în fereastra WinNotch: cât se folosește din procesor, memorie și placă video, **cine consumă acum** (procesele adunate după nume, deci un browser cu patruzeci de procese e un singur rând) și **ce crește pe nesimțite în timp**, adică scurgerile de memorie. Arată „—” unde nu știe, niciodată un zero inventat. *Experimentală și oprită:* pornește-o din Setări → „Funcții noi”, împreună cu „Fereastra WinNotch v2”, fiindcă fila e acolo.
+- **Mod de joc** — când intri într-un joc pe tot ecranul, WinNotch măsoară mai des, iar la ieșire îți dă un rezumat: cât a durat, procesorul și placa video (mediu și maxim), cât de cald a fost, memoria la vârf și **ce din fundal ți-a luat resurse**. Fiecare sesiune se salvează, ca să poți compara aceeași sesiune peste o lună. *Experimentală și oprită:* cere „Motorul de context” și „Performanță” pornite.
+- Cât joci, WinNotch se dă la o parte: își coboară prioritatea propriului proces și amână vremea și calendarul, ca niciun sughiț de-al lui să nu cadă la mijlocul unui meci. Nu umblă la nimic din sistem.
+- Widget nou **„Ultimul joc”** (categoria Sistem, 3×1 sau 3×2) și cardul „Sesiuni de joc” în fila Performanță: rezumatul e unde te uiți, nu doar zece secunde într-o alertă.
+- **Linia de progres a piesei de pe pastila mică se poate opri.** Setări → Standby → „Pastila mică”, sau scrie „dunga” în Command Bar. Oprită, pastila rămâne cu ora și data, la aceeași înălțime.
+- Două acțiuni noi pentru Command Bar și scurtături: „Deschide Performanță” și „Ultimul joc: rezumatul”.
 
 ## Modificat
-- În fereastra WinNotch v2 (experimentală), fila Workspace e **împărțită în două**: sus pagina pe care o aranjezi, jos widget-urile pe care le poți adăuga. Între ele e o linie pe care o poți trage, ca să dai mai mult loc uneia sau alteia.
-- Pagina din jumătatea de sus crește odată cu fereastra, în loc să rămână un dreptunghi mic într-o zonă goală.
-- Zona de jos e făcută pentru forma pe care o are: categoriile sunt jetoane pe un rând, iar widget-urile se derulează lateral (și cu rotița mouse-ului), nu într-o cutie înaltă și îngustă.
+- Dacă o verificare automată cade la construirea unei versiuni, se vede acum direct pe pagina rulării care anume a căzut — înainte trebuia căutat în jurnalul pasului, care nu e mereu accesibil.
