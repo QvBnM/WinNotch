@@ -65,6 +65,8 @@ namespace WinNotch.Core.Flags
         public const string WindowV2 = "window-v2";
         /// <summary>Core/Perf + Features/Performance: same id as PerfRules.FeatureId (the tests check they match).</summary>
         public const string PerfMonitor = "perf-monitor";
+        /// <summary>Core/Perf + Features/GameMode: same id as GameDetect.FeatureId (the tests check they match).</summary>
+        public const string GameSession = "game-session";
 
         public static readonly IReadOnlyList<FeatureInfo> All = new[]
         {
@@ -121,6 +123,9 @@ namespace WinNotch.Core.Flags
                             FeatureStage.Experimental, false),
 
             new FeatureInfo(PerfMonitor, "Performanță", "Fila „Performanță”: cât se folosește din procesor, memorie și placă video, cine consumă acum și ce crește pe nesimțite în timp (scurgeri de memorie), cu numere de dinainte și de după la fiecare schimbare. Se vede în fereastra WinNotch, fila „Performanță”, și doar cu „Fereastra WinNotch v2” pornită; măsoară numai cât o ai deschisă, nu în fundal.",
+                            FeatureStage.Experimental, false),
+
+            new FeatureInfo(GameSession, "Mod de joc", "Când pornește un joc pe tot ecranul, WinNotch măsoară mai des (procesor, placă video, memorie, temperaturi) și la ieșire îți arată un rezumat: cât a durat, cât de cald a fost și ce din fundal ți-a luat resurse. Fiecare sesiune se salvează, ca să le poți compara între ele. Merge doar cu „Motorul de context” și „Performanță” pornite (de acolo vin toate numerele); se vede la ieșirea dintr-un joc care a ținut peste două minute.",
                             FeatureStage.Experimental, false),
         };
 

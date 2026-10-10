@@ -32,6 +32,7 @@
     <Compile Include="PillSizeTests.cs" />
     <Compile Include="FeatureAuditTests.cs" />
     <Compile Include="PerfTests.cs" />
+    <Compile Include="GameModeTests.cs" />
     <Compile Include="..\Services\BrowserBridge.cs" />
     <Compile Include="..\Services\NetService.cs" />
     <Compile Include="..\Services\NetSafety.cs" />
@@ -110,6 +111,12 @@
     <Compile Include="..\Core\Perf\IPerfSampler.cs" />
     <Compile Include="..\Core\Perf\PerfMonitor.cs" />
     <Compile Include="..\Features\Performance\PerfActions.cs" />
+    <!-- P61: the game session end to end (no WPF: the context engine, the monitor and the store are all testable) -->
+    <Compile Include="..\Core\Perf\GameDetect.cs" />
+    <Compile Include="..\Core\Perf\GameReport.cs" />
+    <Compile Include="..\Core\Perf\GameSession.cs" />
+    <Compile Include="..\Core\Perf\GameReportStore.cs" />
+    <Compile Include="..\Features\GameMode\GameWatcher.cs" />
     <!-- P52: only the pure layout rules (the window itself stays out) -->
     <Compile Include="..\Features\WindowV2\LayoutRules.cs" />
     <Compile Include="..\Features\WindowV2\SettingsMap.cs" />
