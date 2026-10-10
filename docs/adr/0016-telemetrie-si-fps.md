@@ -123,6 +123,18 @@ R² ≥ 0,80): o aplicație folosită normal crește repede dar în zig-zag și 
 - **Buton „eliberează RAM” cu un număr mare.** Respinsă: e exact lucrul pe care autorul l-a interzis. Numărul se întoarce
   în 30 de secunde, deci nu e o măsurătoare, e o reclamă.
 
+## Adăugat la P61 — ce nu intră în modul de joc
+
+Cererea spunea „să tacă, să amâne alertele”. Nu am scris nimic pentru asta, pentru că există: `fullscreen-hide` (P53)
+decide deja ce trece peste un joc pe tot ecranul (`HiddenAlert.Show` / `Defer` / `Drop`), ține ce e amânat și îl arată
+o dată după ieșire. O a doua poartă ar fi un sistem paralel — exact ce interzice `CLAUDE.md` („Nu duplica sisteme”) —
+cu propriile lui reguli de prioritate care ar intra în conflict cu primele la prima alertă importantă.
+
+Ce **face** modul de joc automat se limitează la lucruri care sunt ale noastre: ritmul de măsurare, prioritatea
+propriului proces și amânarea celor două aduceri din rețea. Nimic nu atinge sistemul, deci nu există stare de curățat
+după o închidere bruscă și nu e nevoie de jurnal de revenire. Jurnalul apare la P64, când se schimbă planul de
+alimentare — adică primul lucru care supraviețuiește procesului nostru.
+
 ## Consecințe
 
 - Mai ușor: orice funcție nouă de performanță are deja eșantioane, istoric, atribuire și percentile, toate testate fără

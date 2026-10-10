@@ -492,3 +492,26 @@ nu există niciun buton de salvare, așa că nu era de găsit):
 | MP.2 | Oprită | Fereastra v2: Setări → Standby → „Pastila mică” → oprește „Linia de progres a piesei”. Fereastra clasică: Setări → „Linia de progres a piesei pe pastila mică”, apoi „Salvează”. | Linia dispare imediat (nu trebuie să repornești aplicația, nici să schimbi piesa). Pastila mică rămâne cu ora și data, de aceeași înălțime — nu sare și nu se strâmbă. |
 | MP.3 | Rămâne oprită | Repornește WinNotch, pune o piesă. | Linia tot nu apare. |
 | MP.4 | Din Command Bar | `Win+Alt+Space` → „dunga” sau „linia piesei” → `Enter`. | Se deschide Setări exact la opțiunea asta. |
+
+### P61 — Mod de joc
+
+Pornește din Setări → „Funcții noi”: **„Motorul de context”**, **„Performanță”** și **„Mod de joc”** (în fereastra
+clasică apasă și „Salvează”; în v2 se aplică pe loc).
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P61.1 | Nu pornește fără dependențe | Oprește „Performanță”, lasă „Mod de joc” pornit. Intră într-un joc pe tot ecranul, ieși. | Nu apare niciun rezumat. Descrierea din Setări spune de ce (ambele comutatoare trebuie pornite). |
+| P61.2 | Lansatoarele nu sunt joc | Deschide Steam (chiar maximizat) și stai în el două minute. | Nicio sesiune: la ieșire nu apare niciun rezumat, iar în `log.txt` nu e „Mod de joc: pornit.”. |
+| P61.3 | Un joc pornește sesiunea | Intră într-un joc pe tot ecranul. Verifică `log.txt`. | Un rând „Mod de joc: pornit.” (fără numele jocului). În Task Manager, prioritatea WinNotch e „Sub normal”. |
+| P61.4 | Alt-tab nu rupe sesiunea | Cât joci, alt-tab la Discord pentru ~30 s, apoi înapoi în joc. | La final apare **un singur** rezumat, cu durata întreagă — nu două sesiuni scurte. |
+| P61.5 | Rezumatul la ieșire | Joacă cel puțin 3 minute, apoi ieși din joc complet și așteaptă ~90 s. | Alertă în notch: titlul „joc · durata”, sub el încărcarea și temperaturile, plus butonul „Detalii”. Prioritatea procesului a revenit la „Normal”. |
+| P61.6 | Numerele au sens | Compară cu ce ai văzut în joc (un overlay, MSI Afterburner, orice). | Procesorul și placa video (mediu/maxim) și temperatura maximă se potrivesc rezonabil. Memoria la vârf e plauzibilă. |
+| P61.7 | Cine fura | Înainte de joc lasă pornit ceva care consumă (un browser cu multe tab-uri, o descărcare). | În rezumat apare „Din fundal îți luau: …” cu programul și procentul. Dacă nimic nu consuma, scrie că nimic nu ți-a luat resurse. |
+| P61.8 | Sesiune prea scurtă | Intră într-un joc, ieși după ~30 de secunde, așteaptă răgazul. | Niciun rezumat. În `log.txt`: „sesiune prea scurtă pentru un raport”. |
+| P61.9 | Widget-ul | Pune widget-ul „Ultimul joc” pe o pagină din notch (3×1 și apoi 3×2). | 3×1: titlul și un rând. 3×2: tot rezumatul. Înainte de prima sesiune scrie că nu e niciuna, nu zerouri. |
+| P61.10 | Acțiunea | `Win+Alt+Space` → „ultimul joc” → `Enter`. | Rezumatul apare din nou. Fără nicio sesiune încă, jos scrie că nu există una măsurată. |
+| P61.11 | Fila Performanță | Deschide fereastra WinNotch → Performanță, cardul „Sesiuni de joc”. | Ultimele sesiuni, cea nouă prima, cu dată, durată și numerele. După a doua sesiune a aceluiași joc le poți compara. |
+| P61.12 | Fișierul | Deschide `%AppData%\WinNotch\game-sessions.jsonl`. | O linie pe sesiune, lizibilă, cu numele jocului. Verifică apoi `log.txt`: numele jocului **nu** apare acolo nicăieri. |
+| P61.13 | Oprit la mijloc | Cât ești în joc, oprește „Mod de joc” din Setări. | Sesiunea se abandonează: niciun raport, prioritatea revine la „Normal”, și nimic nu mai măsoară la 1 s. |
+| P61.14 | Vremea și calendarul se amână | Cât joci, uită-te la widget-ul Vremea după ce ieși. | Nu s-a actualizat în timpul jocului; se actualizează la prima trecere după ieșire. |
+| P61.15 | Mod sigur | Pornește cu `--safe-mode` și intră într-un joc. | Nicio sesiune, niciun rezumat (funcția e Experimental). |

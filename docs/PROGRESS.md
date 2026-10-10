@@ -721,3 +721,39 @@ trecut (revizorul a recalculat de mână 17 din cele 37 de teste), securitatea e
 - **Teste:** PF38–PF65 (28 noi, total 65), plus testul de fum „Performanță”. Cele care prind regresiile reparate: PF42
   (axa de timp), PF51 (treceri suprapuse), PF45–PF49 (ciclul de viață și eliberarea samplerului), PF50 (o trecere care
   crapă nu dărâmă monitorul și se numără ca eroare a funcției), PF64–PF65 (pid-uri imposibile, motor „” în loc de null).
+
+## P61 — Mod de joc (10 oct 2026)
+
+- **Cerut (din cererea inițială, punctele 2 și 3):** „mod de joc adevărat: când pornește un joc, WinNotch să știe ce
+  rulează, să-mi arate FPS, frametime / 1% low, temperaturi, încărcare GPU/CPU, și să facă automat ce are sens” plus
+  „un rezumat după joc”. FPS-ul e P62 (ETW în serviciul SYSTEM); P61 face restul.
+- **Ce am refuzat să dublez.** Cererea spunea „să tacă, să amâne alertele”. Asta **există deja**: `fullscreen-hide`
+  (P53) ascunde notch-ul peste un joc pe tot ecranul, lasă să treacă doar ce e important, ține restul și le arată o
+  dată după ieșire. O a doua poartă de alerte ar fi fost un sistem paralel cu bug-urile lui, ceea ce `CLAUDE.md`
+  interzice explicit. Deci modul de joc nu atinge alertele, și am scris de ce în ADR și în documentație, ca să nu pară
+  o funcție lipsă.
+- **Ce înseamnă „liniște”, cinstit.** Peste un joc pe tot ecranul notch-ul e deja ascuns și munca lui pe cadru e deja
+  oprită, deci n-a mai rămas mult de stins. Două lucruri sunt reale și măsurabile: prioritatea procesului nostru coboară
+  (se vede în Task Manager) și cele două aduceri din rețea (vremea, calendarul) se amână. Atât pretinde. Să fi scris
+  „eliberează resurse” ar fi fost exact snake oil-ul interzis.
+- **Detectarea.** Un joc trebuie să fie **și** în față **și** pe tot ecranul — cerința cu ecranul e cea care ține
+  lansatoarele afară, fiindcă a sta în Steam nu e a juca. Alt-tab nu e ieșire: răgaz de 90 s, altfel o seară s-ar rupe
+  în fragmente de trei minute. **Un joc în fereastră nu e detectat,** limită asumată: n-am cum să-l deosebesc cinstit de
+  lansatorul lui, iar o sesiune pornită greșit ar strica exact numerele pe care trebuie să le explice.
+- **O decizie de corectitudine a numerelor.** Mediile pentru programele din fundal sunt pe **toată** sesiunea, nu doar
+  pe măsurătorile în care au apărut: un descărcător care a mers două minute dintr-o seară de două ore nu ți-a luat 40%
+  din mașină. Testul GM19 fixează asta, fiindcă e genul de greșeală care ar produce un raport convingător și fals.
+- **Fișierul de sesiuni** (`game-sessions.jsonl`) conține numele jocului, cu acordul autorului, fiindcă fără el nu
+  există comparația care chiar găsește probleme. În `log.txt` nu ajunge: `GameReport.ToLogString` nu-l scrie, și testul
+  GM23 verifică exact asta.
+- **Unde se vede** (autorul a cerut să fie și în notch): alerta la ieșire cu „Detalii”, widget-ul „Ultimul joc” (3×1 și
+  3×2), cardul „Sesiuni de joc” din fila Performanță, și acțiunea `game.last-report` — pentru momentele în care alerta
+  de la ieșire a trecut neobservată, adică de obicei.
+- **Un bug latent găsit de CI, nu de mine.** FA1 a picat pe `game-session`: auditul caută prin reflexie tipul care
+  declară id-ul comutatorului, iar eu declarasem același id în două clase (`GameWatcher` și `GameDetect`, la fel
+  `PerfMonitor` și `PerfRules` la P60). Cu două declarații, tipul ales depinde de ordinea membrilor — deci
+  „perf-monitor” trecea testul **doar din noroc**. Acum fiecare comutator e declarat o singură dată, iar GM40 verifică
+  unicitatea, nu doar valoarea.
+- **Teste:** GM1–GM46 (46 noi), inclusiv watcher-ul pe motorul real de context cu ceasul și sursele false din P12, și
+  alerta nouă adăugată în tabelul de caracterizare (29 de alerte, cu fișierul ei scanat de AC2).
+- **Stare:** ramura `claude/upbeat-gates-qn0thi`. Versiunea nu a crescut, fără merge în `main`.

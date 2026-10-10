@@ -1036,7 +1036,47 @@ sarcină separată, de făcut după ce secțiunea se așază — vezi ADR 0016, 
   poate fi prins de niciun `catch`, și aplicația s-a închis fără un rând în log. Ce cere biblioteca de senzori vine din
   serviciul SYSTEM, în procesul lui, unde o moarte nu ne costă nimic.
 
-### Acțiunea
+### Mod de joc
+
+**Comutator:** „Mod de joc” (`game-session`), Experimental, **oprit implicit**. Cere și „Motorul de context” și
+„Performanță” pornite — de acolo vine tot ce se măsoară.
+
+**Ce e o sesiune.** Un joc trebuie să fie **și** în față **și** pe tot ecranul. Cerința cu ecranul e cea care ține
+lansatoarele afară: Steam, Battle.net și restul sunt în categoria „Game”, dar a sta într-o fereastră Steam nu e a juca.
+Un joc exclusiv pe care tabelul de aplicații nu-l știe tot se prinde, pentru că Windows îl raportează ca atare.
+**Un joc în fereastră nu e detectat** — limită asumată, nu omisiune: n-am cum să-l deosebesc cinstit de lansatorul lui
+sau de o pagină despre el, iar o sesiune pornită greșit ar strica exact numerele pe care trebuie să le explice.
+
+**Alt-tab nu e ieșire.** Pleci la Discord sau pe desktop și sesiunea ține încă 90 de secunde. Fără răgazul ăsta, fiecare
+alt-tab ar rupe o seară în fragmente de trei minute. Sub două minute de joc nu se scrie niciun raport.
+
+**Ce face automat.** Doar lucruri care sunt ale noastre și reversibile: măsoară la 1 s (singurul ritm sub două secunde
+din aplicație), coboară prioritatea propriului proces (se vede în Task Manager) și amână cele două aduceri din rețea
+(vremea, calendarul), ca niciun sughiț de-al nostru să nu cadă la mijlocul unui meci. **Nimic nu schimbă sistemul**,
+deci o închidere bruscă în joc nu poate lăsa mașina modificată — de aceea aici nu e nevoie de un jurnal de revenire.
+Planul de alimentare și prioritățile altor programe sunt P64, cu comutatorul lor și cu drum de întoarcere.
+
+**Tăcerea nu e scrisă aici.** Ascunderea notch-ului peste un joc pe tot ecranul, amânarea alertelor neimportante și
+afișarea lor o dată după aceea sunt deja „Ascuns pe tot ecranul” (P53). Modul de joc le moștenește; o a doua poartă de
+alerte ar fi un sistem paralel cu bug-urile lui.
+
+**Rezumatul la ieșire:** durata, procesorul și placa video (mediu și maxim), cât de cald a fost, memoria (mediu și
+vârf, plus memoria video la vârf) și **ce din fundal ți-a luat resurse**. Mediile pentru programele din fundal sunt pe
+toată sesiunea, nu doar pe măsurătorile în care au apărut: un descărcător care a mers două minute dintr-o seară de două
+ore nu ți-a luat 40% din mașină, și a spune altfel ar fi o minciună cu un număr pe ea. FPS-ul nu e încă aici (P62);
+până atunci rândul lui lipsește, nu arată zero.
+
+**Unde îl vezi:** alerta la ieșirea din joc (cu „Detalii”), widget-ul „Ultimul joc” (3×1 sau 3×2, categoria Sistem),
+cardul „Sesiuni de joc” din fila Performanță, și acțiunea `game.last-report`.
+
+**Fișierul de sesiuni:** `game-sessions.jsonl`, lângă `settings.json`, o linie pe sesiune. **Numele jocului e acolo** —
+și doar acolo: fără el nu există comparația care chiar găsește probleme („același joc mergea mai bine luna trecută, și
+placa e cu 9°C mai caldă”). În `log.txt` nu ajunge niciodată. Fișierul se scurtează singur la 500 de sesiuni.
+
+### Acțiunile
+
+`game.last-report` („Ultimul joc: rezumatul”, aliasuri „ultimul joc”, „cum a mers”, „game report”): arată din nou
+ultima sesiune, pentru momentele în care alerta de la ieșire a trecut neobservată — adică de obicei.
 
 `perf.open` („Deschide Performanță”, aliasuri „performanță”, „cine consumă”, „performance”, „monitor”): deschide
 fereastra direct pe filă, din Command Bar sau de pe o scurtătură. Cu „Fereastra WinNotch v2” oprită spune ce lipsește,
@@ -1067,6 +1107,7 @@ Niciun nume de proces, nicio cale, niciun titlu de fereastră. Un eșantion scri
 - **Raft (experimental):** pastila închisă nu primește fișiere (lasă click-urile să treacă): tragi peste ea și aștepți ca la hover, ori deschizi notch-ul înainte (dacă dai drumul înainte să se deschidă, fișierul ajunge la fereastra de dedesubt, ca fără raft); deasupra unei ferestre maximizate se deschide doar la marginea de sus a ecranului, ca la hover. O tragere de fereastră sau o selecție de text adusă peste pastilă o deschide și ea (se închide singură când pleci). Din aplicații pornite ca administrator Windows nu lasă tragerea spre WinNotch. Un `.lnk` fără informații locale (de exemplu spre „Acest PC” sau spre o aplicație din Store) e refuzat. OCR-ul și conversia citesc doar primul cadru și nu aplică rotirea EXIF a fotografiilor; o imagine e micșorată la 3000 px pentru OCR.
 - **Smart Clipboard (experimental):** chip-urile sunt doar pentru ultimul text copiat (nu pentru cele mai vechi din istoric) și doar în widget-ul Clipboard, nu și în lista paginii Unelte; după o repornire nu e niciun text până la prima copiere; un text de peste 64 KB nu e analizat; „Deschide folderul” nu selectează fișierul în Explorer, doar deschide folderul lui.
 - **Pagina după context (experimental):** decide doar la deschiderea notch-ului (nu schimbă pagina cât e deschis); alegerea manuală de 10 minute nu se păstrează după repornire; fără „Motorul de context” (sau în `--safe-mode`) nu face nimic. Paginile ascunse nu sunt alese, chiar dacă sunt în mapare.
+- **Mod de joc (experimental):** un joc în fereastră nu e detectat (vezi secțiunea 17); o sesiune sub două minute nu produce raport; mediile pentru fundal sunt pe toată sesiunea, deci un program care a rulat scurt poate să nu apară deloc; FPS-ul lipsește până la P62; dacă oprești comutatorul în mijlocul unei sesiuni, ea se abandonează fără raport (un raport pe jumătate ar fi un număr în care nu poți avea încredere).
 - **Performanță (experimental):** măsoară doar cât ai fila deschisă (sau cât rulează un joc, mai târziu): închizi fereastra, se oprește tot, iar istoricul și trendurile pornesc de la zero la următoarea deschidere. Contoarele plăcii video au nevoie de o trecere ca să dea prima valoare, deci în prima secundă placa video arată `—`. Memoria video n-are procent (nu citim cât are placa). Temperaturile nu sunt încă în filă. Un „1% low” are nevoie de cel puțin 500 de cadre, iar „0.1% low” de 5000; sub atât scrie `—` în loc de un număr. Pastila notch-ului își citește încă CPU-ul și RAM-ul separat (vezi secțiunea 17), deci cu fila deschisă aceleași două valori se măsoară de două ori.
 - **Detectarea se bazează pe reporniri apropiate:** după o închidere bruscă WinNotch nu repornește singur; protecția reacționează când îl pornești din nou (3 porniri în 5 minute). Un WinNotch blocat, dar încă deschis, nu e detectat.
 
