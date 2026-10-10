@@ -121,5 +121,7 @@
     <!-- P52: only the pure layout rules (the window itself stays out) -->
     <Compile Include="..\Features\WindowV2\LayoutRules.cs" />
     <Compile Include="..\Features\WindowV2\SettingsMap.cs" />
+    <!-- P70: where the preview pill lands and how the footer writes a change (no WPF: the drawing stays out) -->
+    <Compile Include="..\Features\WindowV2\PreviewModel.cs" />
   </ItemGroup>
 </Project>

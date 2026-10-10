@@ -27,9 +27,12 @@ namespace WinNotch.Features.WindowV2
         private readonly AppSettings _s;
         private readonly NotchWindow _notch;
 
-        private readonly Path _headerShape = new Path { IsHitTestVisible = false, UseLayoutRounding = false, SnapsToDevicePixels = false };
+        /// <summary>P70: the little monitor in the bezel, with the notch on it, kept in step with the settings.</summary>
+        private readonly NotchPreview _preview = new NotchPreview();
         private readonly StackPanel _tabs = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
         private readonly TextBlock _clock = Ui.T("--:--", 12, "MutedBrush", false, true);
+        /// <summary>P70: the footer's line — what the window just wrote, since there is no "Save" button to press.</summary>
+        private readonly TextBlock _status = Ui.T("", 11.5, "MutedBrush", false, true);
         private readonly Border _bodyHost = new Border();
         private readonly TextBox _command = new TextBox { FontSize = 13.5, BorderThickness = new Thickness(0), Background = Brushes.Transparent };
         private readonly TextBlock _hint = Ui.T("", 12, "MutedBrush");
@@ -73,7 +76,7 @@ namespace WinNotch.Features.WindowV2
             _clockTick.Tick += (o, e) => OnClock();
             _live.Tick += (o, e) => LiveTick();
             _soonTimer.Tick += (o, e) => { _soonTimer.Stop(); var a = _pending; _pending = null; Guarded(() => a?.Invoke()); };
-            Loaded += (o, e) => { OnClock(); _clockTick.Start(); _live.Start(); Relayout(); };
+            Loaded += (o, e) => { OnClock(); _clockTick.Start(); _live.Start(); V2Controls.Report = Changed; Relayout(); };
             StateChanged += (o, e) =>
             {
                 bool off = WindowState == WindowState.Minimized;
@@ -92,6 +95,7 @@ namespace WinNotch.Features.WindowV2
                 if (Application.Current is App app && ReferenceEquals(app.HostedWorkspace, _workspace)) app.HostedWorkspace = null;
                 if (_flagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _flagHandler;
                 _flagHandler = null;
+                V2Controls.Report = null;                  // the controls must not keep a closed window alive
                 _s.Save();
             };
             // The switch can be turned off from Settings while the window is open: then it closes, like any feature stopping.
@@ -156,32 +160,54 @@ namespace WinNotch.Features.WindowV2
 
         private UIElement BuildShell()
         {
-            var root = Ui.Rows(Ui.Px(LayoutRules.HeaderHeight), Ui.Star(), Ui.Auto);
-            root.Put(BuildHeader());
-            root.Put(_bodyHost, 0, 1);
-            root.Put(BuildCommandBar(), 0, 2);
+            var root = Ui.Rows(Ui.Px(LayoutRules.BezelHeight), Ui.Px(LayoutRules.HeaderHeight), Ui.Star(), Ui.Auto);
+            root.Put(BuildBezel());
+            root.Put(BuildTabStrip(), 0, 1);
+            root.Put(_bodyHost, 0, 2);
+            root.Put(BuildCommandBar(), 0, 3);
             return root;
         }
 
-        /// <summary>The header is the notch, unfolded: the same silhouette as P50, with the window's four tabs on it.</summary>
-        private UIElement BuildHeader()
+        /// <summary>
+        /// P70: the window's bezel — a slice of a monitor with the real notch on it. The window stops describing the
+        /// notch and shows it: change where it sits, how round it is or what you keep in standby, and the thing at the
+        /// top of the window changes with it. The outline is P50's, through the same translator (NotchPreview).
+        /// </summary>
+        private UIElement BuildBezel()
         {
-            var host = new Grid();
-            _headerShape.SetResourceReference(Shape.FillProperty, "NotchBrush");
-            _headerShape.HorizontalAlignment = HorizontalAlignment.Center;
-            _headerShape.VerticalAlignment = VerticalAlignment.Top;
-            host.Children.Add(_headerShape);
+            var band = new Border { Padding = new Thickness(LayoutRules.Pad, 0, LayoutRules.Pad, 0) };
+            band.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
 
-            var row = Ui.Cols(Ui.Auto, Ui.Star(), Ui.Auto);
-            row.Margin = new Thickness(LayoutRules.Pad, 0, LayoutRules.Pad, 0);
+            var row = Ui.Cols(Ui.Star(), Ui.Auto, Ui.Star());
             row.VerticalAlignment = VerticalAlignment.Center;
-            row.Put(_tabs);
-            var right = Ui.H(10, Ui.IconBtn("", ToggleTheme, "Schimbă tema", 28, 13), _clock);
+
+            var mark = V2Controls.Eyebrow("WinNotch");
+            mark.VerticalAlignment = VerticalAlignment.Center;
+            mark.HorizontalAlignment = HorizontalAlignment.Left;
+            row.Put(mark);
+
+            _preview.HorizontalAlignment = HorizontalAlignment.Center;
+            row.Put(_preview, 1);
+
+            var right = Ui.H(10, ThemeButton(), _clock);
+            right.HorizontalAlignment = HorizontalAlignment.Right;
             right.VerticalAlignment = VerticalAlignment.Center;
             row.Put(right, 2);
-            host.Children.Add(row);
+
+            band.Child = row;
+            return band;
+        }
+
+        /// <summary>The one navigation: the window's tabs, on a strip between the bezel and the page.</summary>
+        private UIElement BuildTabStrip()
+        {
+            var strip = new Border { Padding = new Thickness(LayoutRules.Pad, 0, LayoutRules.Pad, 0), BorderThickness = new Thickness(0, 1, 0, 1) };
+            strip.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
+            strip.SetResourceReference(Border.BorderBrushProperty, "TrackBrush");
+            _tabs.VerticalAlignment = VerticalAlignment.Center;
+            strip.Child = _tabs;
             BuildTabs();
-            return host;
+            return strip;
         }
 
         private void BuildTabs()
@@ -225,11 +251,20 @@ namespace WinNotch.Features.WindowV2
             var box = new Border { Child = field, Padding = new Thickness(12, 8, 8, 8), CornerRadius = new CornerRadius(LayoutRules.ChipRadius), MaxWidth = 720 };
             box.SetResourceReference(Border.BackgroundProperty, "TrackBrush");
 
-            var rows = Ui.Rows(Ui.Auto, Ui.Auto);
+            var rows = Ui.Rows(Ui.Auto, Ui.Auto, Ui.Auto);
             rows.Put(box);
             _hint.Margin = new Thickness(4, 6, 0, 0);
             _hint.TextWrapping = TextWrapping.Wrap;
             rows.Put(_hint, 0, 1);
+
+            // P70: no "Save" button to press, so the window says what it wrote instead.
+            var live = new Border { Width = 5, Height = 5, CornerRadius = new CornerRadius(2.5), VerticalAlignment = VerticalAlignment.Center };
+            live.SetResourceReference(Border.BackgroundProperty, "OkBrush");
+            var applies = V2Controls.Eyebrow("se aplică pe loc");
+            var strip = Ui.H(8, live, applies, _status);
+            strip.Margin = new Thickness(4, 8, 0, 0);
+            rows.Put(strip, 0, 2);
+
             bar.Child = rows;
             return bar;
         }
@@ -319,7 +354,9 @@ namespace WinNotch.Features.WindowV2
         private void OnClock() => Guarded(() =>
         {
             if (!IsVisible || WindowState == WindowState.Minimized) return;
-            _clock.Text = DateTime.Now.ToString("HH:mm");
+            string now = DateTime.Now.ToString("HH:mm");
+            _clock.Text = now;
+            _preview.SetClock(now);
         });
 
         /// <summary>The live page in the workspace keeps itself fresh, as it does in the notch.</summary>
@@ -366,20 +403,32 @@ namespace WinNotch.Features.WindowV2
             _hint.Text = LayoutRules.Hint(FeatureFlags.Current?.IsEnabled(Features.CommandBar.CommandBarRules.FeatureId) ?? false);
             _workspace?.Relayout(w);
             _settings?.Relayout(w);
-            DrawHeader(w);
+            RefreshPreview();
         });
 
-        /// <summary>The header's silhouette: the anchored notch's shape (P50), through the one shared translator.</summary>
-        private void DrawHeader(double windowWidth)
+        /// <summary>
+        /// P70: the monitor in the bezel is redrawn from the settings themselves — where the pill sits, how round it
+        /// is, whether it is anchored to the edge, and what the user keeps in standby. Nothing is invented here: the
+        /// outline comes from P50's translator, the placing from <see cref="PreviewModel"/>.
+        /// </summary>
+        private void RefreshPreview() => _preview.Render(
+            _s.Position, false, _s.CornerRadius,
+            FeatureFlags.Current?.IsEnabled(AnchoredGeometry.FeatureId) ?? false,
+            NotchPreview.ItemsLine(_s.Standby));
+
+        /// <summary>The light/dark switch in the bezel.</summary>
+        private Button ThemeButton() => Ui.IconBtn("\uE793", ToggleTheme, "Schimbă tema", 28, 13);
+
+        /// <summary>
+        /// P70: a control reported what the user just changed. The window applies on the spot, so the footer says what
+        /// it wrote instead of offering a button to press — and the monitor above redraws, in case it was about the
+        /// notch itself.
+        /// </summary>
+        private void Changed(string what, string value) => Guarded(() =>
         {
-            double w = Math.Max(240, windowWidth - 2 * LayoutRules.Pad);
-            double h = LayoutRules.HeaderHeight;
-            double r = AnchoredGeometry.Radius(_s.CornerRadius);
-            double e = AnchoredGeometry.Ear(_s.CornerRadius, w, windowWidth, h);
-            _headerShape.Width = w + 2 * Math.Max(0, e);
-            _headerShape.Height = h;
-            _headerShape.Data = AnchoredShape.Silhouette(w, h, r, e);
-        }
+            _status.Text = PreviewModel.LastChange(what, value);
+            RefreshPreview();
+        });
 
         private void OnKey(object sender, KeyEventArgs e)
         {

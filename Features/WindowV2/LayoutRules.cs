@@ -147,6 +147,13 @@ namespace WinNotch.Features.WindowV2
         /// <summary>Geometry and spacing (the brief's scale: 4 / 8 / 12 / 16 / 24 / 32).</summary>
         public const double HeaderHeight = 56, CardRadius = 18, ChipRadius = 12, Gap = 12, Pad = 24;
 
+        /// <summary>
+        /// P70: the band above the tabs — the window's own bezel, with the little monitor and the live notch on it.
+        /// It costs this much height once, at the top, and pays for it by making every setting under it visible
+        /// instead of described.
+        /// </summary>
+        public const double BezelHeight = 132;
+
         /// <summary>The line in the bottom bar, beside the command field.</summary>
         public static string Hint(bool commandBarOn) => commandBarOn
             ? "Scrie ce vrei să faci, de exemplu „volum 30” sau „captură”."

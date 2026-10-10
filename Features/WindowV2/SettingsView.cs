@@ -103,7 +103,7 @@ namespace WinNotch.Features.WindowV2
         private void BuildLeft()
         {
             _left.Children.Clear();
-            _left.Children.Add(Ui.Cap("SETĂRI"));
+            _left.Children.Add(V2Controls.Eyebrow("SETĂRI"));
             foreach (var sec in LayoutRules.Sections)
             {
                 var s = sec;
@@ -146,7 +146,7 @@ namespace WinNotch.Features.WindowV2
             _extStatus = null;
             _body.Children.Clear();
             var sec = LayoutRules.FindSection(_section);
-            _body.Children.Add(Ui.T(sec?.Title ?? "Setări", 20, "InkBrush", true));
+            _body.Children.Add(V2Controls.Title(sec?.Title ?? "Setări"));
             var intro = Ui.T(SectionHint(_section), 13, "MutedBrush");
             intro.TextWrapping = TextWrapping.Wrap;
             intro.MaxWidth = 760;
@@ -196,7 +196,7 @@ namespace WinNotch.Features.WindowV2
                                   new[] { ("0", "Automat (după monitor)"), ("1", "100%"), ("1.1", "110%"), ("1.2", "120%"), ("1.3", "130%"), ("1.45", "145%"), ("1.6", "160%") },
                                   _s.UiScale.ToString(CultureInfo.InvariantCulture),
                                   v => { _s.UiScale = double.Parse(v, CultureInfo.InvariantCulture); Save(); }),
-                V2Controls.SliderRow("Se deschide la hover după", 0, 1000, 50, _s.DwellMs, v => Math.Round(v) + " ms",
+                V2Controls.SliderRow("Se deschide la hover după", 0, 1000, 50, _s.DwellMs, v => PreviewModel.Value(v, "ms"),
                                      v => { _s.DwellMs = (int)Math.Round(v); _soon(Save); },
                                      "0 = se deschide imediat ce treci cu mouse-ul peste pastilă."),
                 V2Controls.Choice("Se micșorează singur după",
@@ -633,7 +633,7 @@ namespace WinNotch.Features.WindowV2
                     SetRow(card, row);
                     grid.Children.Add(card);
                 }
-                box.Children.Add(Ui.Cap(group.Key.ToUpperInvariant()));
+                box.Children.Add(V2Controls.Eyebrow(group.Key.ToUpperInvariant()));
                 box.Children.Add(grid);
             }
         }

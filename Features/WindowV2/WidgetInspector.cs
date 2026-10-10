@@ -70,7 +70,7 @@ namespace WinNotch.Features.WindowV2
             _body.Children.Add(desc);
 
             // size
-            _body.Children.Add(Ui.Cap("MĂRIME"));
+            _body.Children.Add(V2Controls.Eyebrow("MĂRIME"));
             var sizes = Gallery.SizePreviews(def, (slot.W, slot.H), size =>
             {
                 _flush();
@@ -85,7 +85,7 @@ namespace WinNotch.Features.WindowV2
             // options
             if (def.Options.Length > 0)
             {
-                _body.Children.Add(Ui.Cap("OPȚIUNI"));
+                _body.Children.Add(V2Controls.Eyebrow("OPȚIUNI"));
                 foreach (var o in def.Options) _body.Children.Add(OptionEditor(page, slot, o));
             }
             else
@@ -149,7 +149,7 @@ namespace WinNotch.Features.WindowV2
                 }
                 case OptionKind.Choice:
                 {
-                    var combo = new ComboBox { Padding = new Thickness(6, 4, 6, 4) };
+                    var combo = new ComboBox { Style = Ui.S("V2Combo") };
                     foreach (var (v, label) in o.Choices) combo.Items.Add(new ComboBoxItem { Content = label, Tag = v });
                     combo.SelectedItem = combo.Items.Cast<ComboBoxItem>().FirstOrDefault(i => (string)i.Tag == cur)
                                          ?? combo.Items.Cast<ComboBoxItem>().FirstOrDefault();

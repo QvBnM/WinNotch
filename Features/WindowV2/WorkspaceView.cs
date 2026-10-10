@@ -165,7 +165,7 @@ namespace WinNotch.Features.WindowV2
         private void BuildLeft()
         {
             _left.Children.Clear();
-            _left.Children.Add(Ui.Cap("PAGINILE MELE"));
+            _left.Children.Add(V2Controls.Eyebrow("PAGINILE MELE"));
             if (_s.Pages.Count == 0)
             {
                 var none = Ui.T("Nicio pagină încă. Fă una goală sau copiază una standard.", 12, "DimBrush");
@@ -184,7 +184,7 @@ namespace WinNotch.Features.WindowV2
             add.Margin = new Thickness(0, 6, 0, 0);
             _left.Children.Add(add);
 
-            _left.Children.Add(Ui.Cap("STANDARD"));
+            _left.Children.Add(V2Controls.Eyebrow("STANDARD"));
             foreach (var (id, name, icon) in Catalog.Standard)
             {
                 var sid = id;
@@ -233,7 +233,7 @@ namespace WinNotch.Features.WindowV2
         private UIElement IconPicker(UserPage pg)
         {
             var box = new StackPanel();
-            box.Children.Add(Ui.Cap("ICONIȚA PAGINII"));
+            box.Children.Add(V2Controls.Eyebrow("ICONIȚA PAGINII"));
             var wrap = new WrapPanel();
             foreach (var ic in new[] { "star", "bolt", "game", "music", "work", "heart", "home", "system", "devices", "tools" })
             {
@@ -310,7 +310,7 @@ namespace WinNotch.Features.WindowV2
         /// </summary>
         private UIElement BuildEditor(UserPage pg)
         {
-            var rows = Ui.Rows(Ui.Auto, Ui.Star());
+            var rows = Ui.Rows(Ui.Auto, Ui.Star(), Ui.Auto);
 
             var nameBox = V2Controls.Field(pg.Name);
             nameBox.FontSize = 18;
@@ -339,9 +339,11 @@ namespace WinNotch.Features.WindowV2
             var surface = new Border
             {
                 Width = PageWidth, CornerRadius = new CornerRadius(Math.Clamp(_s.CornerRadius, 12, 28)),
-                Padding = new Thickness(20, 10, 20, 18), Child = _page,
+                Padding = new Thickness(20, 10, 20, 18), Child = _page, BorderThickness = new Thickness(1),
             };
             surface.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
+            // P70: a hairline so the page reads as the notch it is, not as a dark area of the window.
+            surface.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
             // Uniform in both directions: it shrinks on a small window and grows on a wide one, up to the cap, so the
             // page is never a small rectangle floating in an empty half.
             rows.Put(new Viewbox
@@ -350,6 +352,30 @@ namespace WinNotch.Features.WindowV2
                 MaxWidth = PageWidth * MaxZoom, HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 0, LayoutRules.Gap),
             }, 0, 1);
+
+            // P70: the page is the inside of the notch, so the window says how tall the notch will really grow — four
+            // segments, lit as the rows fill up. Nobody could tell that before without opening the notch and looking.
+            var meter = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var line = V2Controls.Mono("", 11.5, "DimBrush");
+            void Meter()
+            {
+                meter.Children.Clear();
+                int used = Layout.UsedRows(pg.Widgets);
+                for (int i = 0; i < Layout.MaxRows; i++)
+                {
+                    var seg = new Border { Width = 44, Height = 4, CornerRadius = new CornerRadius(2), Margin = new Thickness(0, 0, 4, 0) };
+                    seg.SetResourceReference(Border.BackgroundProperty, i < used ? "AccentBrush" : "TrackBrush");
+                    meter.Children.Add(seg);
+                }
+                line.Text = PreviewModel.RowsLine(used, Layout.MaxRows);
+            }
+            Meter();
+            _page.Changed += Meter;
+
+            var foot = Ui.H(12, V2Controls.Eyebrow("rânduri"), meter, line);
+            foot.HorizontalAlignment = HorizontalAlignment.Center;
+            foot.Margin = new Thickness(0, 0, 0, LayoutRules.Gap);
+            rows.Put(foot, 0, 2);
             return rows;
         }
 
@@ -379,7 +405,7 @@ namespace WinNotch.Features.WindowV2
             btns.HorizontalAlignment = HorizontalAlignment.Left;
             box.Children.Add(btns);
 
-            box.Children.Add(Ui.Cap("CE CONȚINE COPIA"));
+            box.Children.Add(V2Controls.Eyebrow("CE CONȚINE COPIA"));
             var list = new StackPanel();
             foreach (var w in Catalog.StandardLayout(id))
             {

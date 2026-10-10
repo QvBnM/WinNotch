@@ -17,7 +17,61 @@ namespace WinNotch
         {
             V2Tabs();
             V2Sections();
+            V2Preview();
             V2SourcePins();
+        }
+
+        /// <summary>
+        /// P70: the window's signature — the little monitor in the bezel with the real notch on it — and the footer
+        /// that says what was just written. Only the maths is here; the drawing is WPF.
+        /// </summary>
+        static void V2Preview()
+        {
+            bool Same(PillBox b, double x, double w, double h) =>
+                Math.Abs(b.X - x) < 0.01 && Math.Abs(b.Width - w) < 0.01 && Math.Abs(b.Height - h) < 0.01;
+
+            var centre = PreviewModel.Pill("center", false);
+            var left = PreviewModel.Pill("left", false);
+            var right = PreviewModel.Pill("right", false);
+            Check("PV01", "Pastila stă unde spune setarea: la mijloc, lipită de marginea din stânga sau de cea din dreapta",
+                  Same(centre, (PreviewModel.FrameWidth - PreviewModel.FullWidth) / 2, PreviewModel.FullWidth, PreviewModel.FullHeight) &&
+                  Same(left, PreviewModel.Margin, PreviewModel.FullWidth, PreviewModel.FullHeight) &&
+                  Same(right, PreviewModel.FrameWidth - PreviewModel.FullWidth - PreviewModel.Margin, PreviewModel.FullWidth, PreviewModel.FullHeight) &&
+                  left.X < centre.X && centre.X < right.X);
+
+            var mini = PreviewModel.Pill("right", true);
+            Check("PV02", "Forma mică e mai mică și rămâne lipită de aceeași margine",
+                  Same(mini, PreviewModel.FrameWidth - PreviewModel.MiniWidth - PreviewModel.Margin, PreviewModel.MiniWidth, PreviewModel.MiniHeight) &&
+                  mini.Width < PreviewModel.FullWidth && mini.Height < PreviewModel.FullHeight);
+
+            var tight = PreviewModel.Pill("left", false, 200);
+            Check("PV03", "Pe un cadru îngust pastila se strânge și nu trece niciodată de margini",
+                  tight.Width <= 200 - 2 * PreviewModel.Margin + 0.01 &&
+                  tight.X >= PreviewModel.Margin - 0.01 &&
+                  tight.X + tight.Width <= 200 - PreviewModel.Margin + 0.01);
+
+            Check("PV04", "O poziție necunoscută sau lipsă e citită ca „centru”, nu aruncă",
+                  PreviewModel.Normalize(null) == "center" && PreviewModel.Normalize("") == "center" &&
+                  PreviewModel.Normalize("CENTRU") == "center" && PreviewModel.Normalize(" Left ") == "left" &&
+                  Same(PreviewModel.Pill(null, false), centre.X, centre.Width, centre.Height) &&
+                  PreviewModel.PositionName("left") == "stânga" && PreviewModel.PositionName("right") == "dreapta" &&
+                  PreviewModel.PositionName("nu.exista") == "centru");
+
+            Check("PV05", "Rândul din subsol spune ce s-a scris, iar fără o schimbare nu spune nimic",
+                  PreviewModel.LastChange("Poziție", "Centru") == "Poziție → Centru" &&
+                  PreviewModel.LastChange("Poziție", "") == "Poziție" &&
+                  PreviewModel.LastChange("", "Centru") == "" && PreviewModel.LastChange(null, null) == "");
+
+            Check("PV06", "Indicatorul de rânduri numără corect, la singular și la plural",
+                  PreviewModel.RowsLine(1, 4) == "1 rând din 4 folosit" &&
+                  PreviewModel.RowsLine(3, 4) == "3 rânduri din 4 folosite" &&
+                  PreviewModel.RowsLine(0, 4) == "0 rânduri din 4 folosite" &&
+                  PreviewModel.RowsLine(9, 4) == "4 rânduri din 4 folosite" &&
+                  PreviewModel.RowsLine(1, 0) == "");
+
+            Check("PV07", "Numerele se scriu la fel peste tot: cu unitatea lor, fără zecimale inutile",
+                  PreviewModel.Value(400, "ms") == "400 ms" && PreviewModel.Value(10, "s") == "10 s" &&
+                  PreviewModel.Value(80, "%") == "80%" && PreviewModel.Value(1.15, "") == "1.15");
         }
 
         static void V2Tabs()
@@ -57,6 +111,7 @@ namespace WinNotch
             Check("WV6", "Mărimile și geometria: scara din brief (raza 18, 12 pentru controale mici, spațieri de 4)",
                   LayoutRules.CardRadius == 18 && LayoutRules.ChipRadius == 12 &&
                   LayoutRules.Gap == 12 && LayoutRules.Pad == 24 && LayoutRules.HeaderHeight == 56 &&
+                  LayoutRules.BezelHeight == 132 && LayoutRules.BezelHeight > PreviewModel.FrameHeight &&
                   LayoutRules.MinWidth == 900 && LayoutRules.MinHeight == 600 &&
                   LayoutRules.LeftWidth == 212 && LayoutRules.InspectorWidth == 300);
 
@@ -105,7 +160,8 @@ namespace WinNotch
                    work = Src("Features/WindowV2/WorkspaceView.cs"), insp = Src("Features/WindowV2/WidgetInspector.cs"),
                    set = Src("Features/WindowV2/SettingsView.cs"), wid = Src("Features/WindowV2/WidgetsView.cs"),
                    ctl = Src("Features/WindowV2/V2Controls.cs"), lib = Src("Features/WindowV2/WidgetLibrary.cs"),
-                   emb = Src("Features/WindowV2/EmbeddedPages.cs"), ed = Src("EditorWindow.cs");
+                   emb = Src("Features/WindowV2/EmbeddedPages.cs"), ed = Src("EditorWindow.cs"),
+                   prev = Src("Features/WindowV2/NotchPreview.cs");
 
             Check("WV13", "Non-regresie: cu comutatorul oprit se deschide fereastra veche, iar o eroare în v2 cade pe ea",
                   app.Contains("if (OpenWindowV2(pageId, slotId)) return;") &&
@@ -127,15 +183,20 @@ namespace WinNotch
                   !app.Contains("OpenClassicEditor"));
 
             Check("WV16", "Tema aplicației peste tot: pensule prin DynamicResource, nicio culoare scrisă în cod în afara paletei temei",
-                  new[] { win, work, insp, set, wid, ctl, lib }.All(f =>
+                  new[] { win, work, insp, set, wid, ctl, lib, prev }.All(f =>
                       !Regex.IsMatch(f, @"Color\.From|Brushes\.(?!Transparent)") &&
                       Count(f, "new SolidColorBrush") == Count(f, "new SolidColorBrush(ThemeManager.Parse")) &&
                   Count(emb, "new SolidColorBrush") == Count(emb, "new SolidColorBrush(ThemeManager.Parse") &&
                   win.Contains("SetResourceReference") && work.Contains("SetResourceReference") && insp.Contains("SetResourceReference"));
 
-            Check("WV17", "Antetul refolosește geometria notch-ului ancorat (P50) prin același traducător, nu una nouă",
-                  win.Contains("AnchoredGeometry.Radius(") && win.Contains("AnchoredGeometry.Ear(") &&
-                  win.Contains("AnchoredShape.Silhouette(") && !win.Contains("new StreamGeometry()"));
+            // P70: antetul nu mai e o siluetă desenată degeaba, ci monitorul cu notch-ul pe el — dar tot prin
+            // traducătorul lui P50: forma din fereastră și forma din marginea ecranului nu pot să se despartă.
+            Check("WV17", "Previzualizarea din ramă refolosește geometria notch-ului ancorat (P50) prin același traducător, nu una nouă",
+                  prev.Contains("AnchoredGeometry.Radius(") && prev.Contains("AnchoredGeometry.Ear(") &&
+                  prev.Contains("AnchoredShape.Silhouette(") && !prev.Contains("new StreamGeometry()") &&
+                  !win.Contains("new StreamGeometry()") &&
+                  // unde stă pastila e o regulă pură, testată, nu un număr scris în desen
+                  prev.Contains("PreviewModel.Pill(") && win.Contains("_preview.Render("));
 
             Check("WV18", "Acțiunile pornesc doar prin registru, cu confirmare pentru ce nu e sigur, și în bara de comandă",
                   set.Contains("ActionRegistry.Current?.InvokeAsync(") && set.Contains("ActionInvoker.UI, default, confirmed") &&
@@ -228,6 +289,25 @@ namespace WinNotch
                   navButton.Contains("<Trigger Property=\"IsKeyboardFocused\" Value=\"True\">", StringComparison.Ordinal) &&
                   navButton.Contains("{DynamicResource AccentBrush}", StringComparison.Ordinal),
                   navButton.Length == 0 ? "stilul lipsește din Theme.xaml" : "");
+
+            // P70: fereastra a fost redesenată ca un aparat — etichete gravate peste rânduri despărțite de o linie de
+            // un pixel și numere monospațiate, în locul cardurilor rotunjite unul într-altul.
+            Check("WV33", "Desenul nou: grupurile sunt etichete peste rânduri cu linie de 1 px, fără carduri",
+                  ctl.Contains("internal static TextBlock Eyebrow(") && ctl.Contains("internal static Border Rule(") &&
+                  ctl.Contains("internal static TextBlock Mono(") && ctl.Contains("internal static TextBlock Title(") &&
+                  // „Card” a rămas numele din API, ca paginile să nu fie rescrise, dar nu mai desenează un card
+                  !ctl.Contains("Ui.Card(") && !ctl.Contains("Ui.Chip(") &&
+                  new[] { win, work, insp, set }.All(f => !f.Contains("Ui.Cap(")) &&
+                  Src("Theme.xaml").Contains("x:Key=\"LabelFont\"") &&
+                  Src("Themes.cs").Contains("P(\"Aparat\", false,"));
+
+            Check("WV34", "Se aplică pe loc și se vede: controalele spun ce au schimbat, iar fereastra taie legătura la închidere",
+                  ctl.Contains("internal static Action<string, string> Report;") && ctl.Contains("Report?.Invoke(") &&
+                  win.Contains("V2Controls.Report = Changed;") && win.Contains("V2Controls.Report = null;") &&
+                  win.Contains("PreviewModel.LastChange("));
+
+            Check("WV35", "Workspace spune cât de înalt va crește notch-ul: un indicator de rânduri sub pagină",
+                  work.Contains("PreviewModel.RowsLine(") && work.Contains("Layout.UsedRows(") && work.Contains("Layout.MaxRows"));
         }
     }
 }
