@@ -428,9 +428,10 @@ namespace WinNotch.Features.WindowV2
         {
             bool armed = false;
             Button b = null;
-            b = Ui.PillBtn("Șterge pagina", () =>
+            b = V2Controls.Danger("Șterge pagina", () =>
             {
-                if (!armed) { armed = true; b.Content = "Sigur? Apasă din nou"; return; }
+                // the button's content is a TextBlock in the danger colour: replacing it with a string would lose that
+                if (!armed) { armed = true; if (b.Content is TextBlock t) t.Text = "Sigur? Apasă din nou"; return; }
                 _s.Pages.Remove(pg);
                 if (VisibleCount == 0) _s.HiddenPages.Remove("home");
                 PagesEdited();

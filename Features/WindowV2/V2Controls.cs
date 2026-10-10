@@ -291,6 +291,14 @@ namespace WinNotch.Features.WindowV2
             return frame;
         }
 
+        /// <summary>A whole row for a number: the name on the left, the stepper at the right edge.</summary>
+        internal static FrameworkElement StepRow(string label, double value, double min, double max, double step,
+                                                 Func<double, string> format, Action<double> set, string hint = null)
+        {
+            void Pick(double v) { set(v); Report?.Invoke(label, format(v)); }
+            return Row(label, Stepper(value, min, max, step, format, Pick, label), hint);
+        }
+
         /// <summary>Something that cannot be undone: said in the danger colour, and never the first thing you reach.</summary>
         internal static Button Danger(string text, Action click)
         {

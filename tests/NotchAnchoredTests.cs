@@ -111,15 +111,19 @@ namespace WinNotch
             Check("NA12", "Zona de hover rămâne dreptunghiul pastilei: racordările nu primesc mouse-ul",
                   part.Contains("IsHitTestVisible = false") && !part.Contains("PillScreenRect"));
 
-            string shape = Src("Features/NotchAnchored/AnchoredShape.cs"), v2 = Src("Features/WindowV2/WindowV2.cs");
-            Check("NA16", "Forma desenată vine din geometria pură printr-un singur traducător, folosit și de notch și de antetul ferestrei",
+            string shape = Src("Features/NotchAnchored/AnchoredShape.cs"), v2 = Src("Features/WindowV2/WindowV2.cs"),
+                   prev = Src("Features/WindowV2/NotchPreview.cs");
+            // P70: în fereastră forma nu mai e o siluetă de antet, ci pastila din previzualizarea de pe „monitorul”
+            // din ramă — dar tot prin traducătorul ăsta, ca forma din fereastră și cea din marginea ecranului să nu
+            // se poată despărți niciodată.
+            Check("NA16", "Forma desenată vine din geometria pură printr-un singur traducător, folosit și de notch și de fereastră",
                   shape.Contains("AnchoredGeometry.PillOnly(") && shape.Contains("AnchoredGeometry.Outline(") &&
                   shape.Contains("internal static StreamGeometry Build(") && shape.Contains("g.Freeze();") &&
                   part.Contains("AnchoredShape.Build(") && part.Contains("AnchoredShape.Silhouette(") &&
-                  v2.Contains("AnchoredShape.Silhouette(") &&
+                  prev.Contains("AnchoredShape.Silhouette(") &&
                   // nicio a doua copie scrisă de mână: un singur loc deschide un StreamGeometry
                   System.Text.RegularExpressions.Regex.Matches(shape, @"new StreamGeometry\(\)").Count == 1 &&
-                  !part.Contains("new StreamGeometry()") && !v2.Contains("new StreamGeometry()") && !v2.Contains("c.ArcTo("));
+                  new[] { part, v2, prev }.All(f => !f.Contains("new StreamGeometry()") && !f.Contains("c.ArcTo(")));
 
             Check("NA17", "Forma se reconstruiește doar când s-a schimbat ceva (nu la fiecare cadru al animației)",
                   part.Contains("if (Near(w, _shapeW) && Near(h, _shapeH) && Near(r, _shapeR) && Near(e, _shapeE)) return true;") &&
