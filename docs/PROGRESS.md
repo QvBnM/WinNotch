@@ -854,3 +854,22 @@ teza propunerii („nu e o gaură, e un instrument”).
 - **Înălțimea** e un singur rând în `ApplyMode`, ca celelalte legături P50.
 - **Teste:** NA22–NA27 (6), plus NA17 actualizat (fixa linia de cache, schimbată de P70 — exact de-asta există ancorele).
   **Nerulate:** containerul nu are .NET SDK.
+
+### P71 — Bulina de stare (0.6.27)
+
+Cerută de autor pe planșele de design: „o bulină lângă notch — cântă muzică, se încarcă laptopul, e microfonul pornit,
+merge o acțiune”. În revizie a mai cerut două lucruri, amândouă corecte: să fie pusă în context adevărat (pe muchia
+ecranului, nu plutind pe planșă) și să aibă pictogramă, nu doar culoare. La 10 px nu încape nicio glifă, deci discul a
+crescut la 20 și e din aceeași culoare ca notch-ul, cu glifa în culoarea stării — nu o pată colorată.
+
+- **O singură stare odată,** cu confidențialitatea prima. Un șir de buline ar fi un semafor pe care nu-l citește nimeni.
+- **Inelul = firul pastilei, îndoit în cerc:** aceeași informație, altă scară. Ascultatul n-are inel, și tocmai lipsa lui
+  îl deosebește — singura stare fără progres e și singura care contează imediat.
+- **Nicio sursă nouă:** totul din `ContextEngine` (regula 5 din CLAUDE.md), iar progresul piesei din aceeași citire ca
+  linia de pe pastila mică. Testul SD15 refuză o a doua citire a microfonului în fișierul funcției.
+- **Fără cronometru:** se mișcă pe `Changed` din motor și pe `ApplyMode`; poziția se animează cu aceeași curbă ca
+  pastila, deci nu rămâne în urmă cât pastila crește. Deplasarea e **aceeași instanță** cu a pastilei, deci peste un joc
+  pe tot ecranul pleacă de pe ecran cu ea (SD19).
+- **Rămas de legat:** starea „lucrează” are regulile și testele, dar încă niciun apelant — `StatusDotWork` așteaptă
+  primul (actualizarea sau testul de viteză). Scris în ROADMAP, ca să nu se piardă.
+- **Teste:** SD1–SD20 (20). **Nerulate:** containerul nu are .NET SDK.

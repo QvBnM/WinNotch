@@ -167,6 +167,7 @@ namespace WinNotch
             StartOverlays();                // P51 hook (Features/Overlays): closing panels the same way; a no-op with the switch off
             StartAlertInterrupt();          // P51b hook (Features/AlertInterrupt): the switch's copy and the primary mouse button
             StartAnchored();                // P50 hook (Features/NotchAnchored): the look; a no-op with the switch off
+            StartStatusDot();               // P71 hook (Features/StatusDot): the dot beside the pill; a no-op with the switch off
             // Per-frame work and the 400 ms per-app audio scan only run while the notch is open (see Expand/Collapse).
 
             ApplySettings();
@@ -199,6 +200,7 @@ namespace WinNotch
             StopOverlays();                 // P51 hook (Features/Overlays)
             StopAlertInterrupt();           // P51b hook (Features/AlertInterrupt)
             StopAnchored();                 // P50 hook (Features/NotchAnchored)
+            StopStatusDot();                // P71 hook (Features/StatusDot)
             StopActivities();
             StopCommandBar();
             StopQuickActions();
@@ -534,6 +536,7 @@ namespace WinNotch
             Pill.BeginAnimation(HeightProperty, new DoubleAnimation(h, dur) { EasingFunction = Spring });
             BeginAnimation(RadiusProperty, new DoubleAnimation(r, TimeSpan.FromMilliseconds(380)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
             Pill.BeginAnimation(MarginProperty, new ThicknessAnimation(new Thickness(0, top, 0, 0), TimeSpan.FromMilliseconds(300)));
+            StatusDotLayout(w, h, top, dur);      // P71 hook (Features/StatusDot): the dot follows the pill, same animation
 
             FadeLayer(IdleLayer, _mode == Mode.Idle && !mini, 120);
             FadeLayer(MiniLayer, mini, 140);

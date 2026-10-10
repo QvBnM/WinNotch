@@ -54,6 +54,8 @@ au acum sensul din plan. Fiecare sarcină se face într-o rulare de pilot automa
 | P46 | Activități live din browser: Glovo, Bolt Food, Tazz, Flashscore, LiveScore, ca activitate persistentă | `browser-live` | De făcut |
 | P70 | Colțuri continue: colțurile de jos ale siluetei se rotunjesc treptat (o cubică pe colț, `SmoothCorner` pur — curba pornește de la 1,6 × raza pe fiecare latură și e limitată de jumătatea laturii și de latura rămasă sub racordare), în loc să intre dintr-odată în arc de cerc. `Seg` capătă varianta „curbă”, iar traducătorul unic spre WPF o desenează; aceeași formă pentru siluetă, pentru decupajul conținutului și pentru antetul ferestrei v2. Se vede doar cu P50 pornită (singura siluetă desenată de noi; pastila plutitoare rămâne un `Border`) | `colturi-continue` (Experimental, oprit) | Gata (de testat pe Windows) |
 
+| P71 | Bulina de stare: un disc de 20 px lângă pastilă, cu o singură glifă din fontul existent pentru ce e pornit acum (microfon/cameră, o treabă a utilizatorului, media, încărcare) și un inel de progres — firul pastilei, îndoit în cerc. Prioritate fixă, cu confidențialitatea prima; la hover toate stările deodată. Reguli pure (`StatusDotRules`), stările citite **doar** din `ContextEngine`, progresul piesei din aceeași sursă ca linia pastilei mici; aceeași deplasare ca pastila (pleacă de pe ecran cu ea), fără cronometru propriu, fără culori scrise în cod. Contopită în sertar cât e lipit de ramă. Rămâne de legat: starea „lucrează” n-are încă apelant (`StatusDotWork`) | `bulina-de-stare` (Experimental, oprit) | Gata (de testat pe Windows) |
+
 După P46: oprire. Autorul folosește aplicația 2 săptămâni, apoi alegem din „Idei pentru mai târziu”.
 
 ## Secțiunea de performanță (cerută 10 oct 2026)

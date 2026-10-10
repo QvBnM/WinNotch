@@ -362,6 +362,7 @@ namespace WinNotch
             InterruptTests();
             NotchAnchoredTests();
             SmoothCornerTests();
+            StatusDotTests();
             WindowV2Tests();
             FeatureAuditTests();
             PillSizeTests();

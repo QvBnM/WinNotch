@@ -606,6 +606,33 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   - un semn portocaliu **„mic”** apare cât microfonul e folosit.
 - **Ecran ocupat.** Pe un monitor ocupat, pastila se ascunde în sus, cu animație.
 
+### Bulina de stare (din P71, experimental)
+
+Comutatorul „Bulina de stare” (Setări › Funcții noi, oprit implicit). Lângă pastilă, la 8 px în dreapta și pe mijlocul
+ei, apare un disc de 20 px din aceeași culoare ca notch-ul, cu **o singură pictogramă** de 11 px în culoarea stării:
+
+| Stare | Pictogramă | Inel | Culoare |
+|---|---|---|---|
+| Te ascultă (microfon sau cameră) | microfon | — | „Pericol” |
+| Lucrează (o treabă pornită de tine) | sincronizare | progresul ei | Accent |
+| Cântă | sunet | progresul piesei | Accent |
+| Se încarcă | fulger | nivelul bateriei | „Informație” |
+
+- **O singură stare odată,** după o ordine fixă: *te ascultă* bate *lucrează*, care bate *cântă*, care bate *se încarcă*.
+  Microfonul e primul din principiu: o stare de confidențialitate n-are voie să fie ascunsă de o piesă care cântă. Un șir
+  de buline colorate ar fi un semafor pe care nu-l mai citește nimeni.
+- **Inelul e firul, îndoit în cerc:** aceeași informație ca linia de pe muchia de jos a pastilei, la altă scară. Pornește
+  din vârf și merge în sensul acelor de ceasornic. Ascultatul n-are inel — tocmai lipsa lui îl deosebește dintr-o privire.
+  Fără o valoare bună (piesă fără durată, procent necunoscut) nu se desenează niciun inel, niciodată unul gol sau plin.
+- **La hover** apare lângă ea o pastilă mică cu toate stările, în aceeași ordine, fără să se deschidă notch-ul.
+- **Unde se vede:** în standby și pe pastila mică, doar cât chiar se întâmplă ceva. Cu notch-ul deschis dispare (aceleași
+  lucruri sunt înăuntru), peste o alertă la fel, iar peste un joc pe tot ecranul pleacă de pe ecran odată cu pastila.
+- **De unde știe:** din `ContextEngine` și numai de acolo (microfon, cameră, media, alimentare). Funcția nu citește ea
+  microfonul și nu deschide nicio sursă nouă; cu „Motorul de context” oprit, snapshot-ul e gol și nu apare nicio bulină.
+  Progresul piesei e citit din aceeași sursă ca linia de pe pastila mică.
+- Lipită de ramă, bulina nu plutește lângă sertar, ci se contopește în capătul lui din dreapta: cu silueta crescută din
+  ramă, un cerc care plutește ar fi singurul lucru din scenă care nu atinge marginea.
+
 ---
 
 ## 5. Alerte scurte (live activities)

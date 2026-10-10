@@ -29,6 +29,7 @@
     <Compile Include="InterruptTests.cs" />
     <Compile Include="NotchAnchoredTests.cs" />
     <Compile Include="SmoothCornerTests.cs" />
+    <Compile Include="StatusDotTests.cs" />
     <Compile Include="WindowV2Tests.cs" />
     <Compile Include="PillSizeTests.cs" />
     <Compile Include="FeatureAuditTests.cs" />
@@ -103,6 +104,8 @@
     <Compile Include="..\Features\Fullscreen\FullscreenRules.cs" />
     <!-- P50: only the pure geometry (the notch's partial, with the WPF drawing, stays out) -->
     <Compile Include="..\Features\NotchAnchored\AnchoredGeometry.cs" />
+    <!-- P71: the dot's rules (the notch's partial, with the WPF drawing, stays out) -->
+    <Compile Include="..\Features\StatusDot\StatusDotRules.cs" />
     <!-- P60: the performance maths and rules (the sampler, the counters and the tab stay out: Windows and WPF) -->
     <Compile Include="..\Core\Perf\PerfRules.cs" />
     <Compile Include="..\Core\Perf\PerfSample.cs" />

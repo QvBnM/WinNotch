@@ -542,3 +542,24 @@ colțuri le desenează Windows ca arce.
 | P50.22 | Mai scundă cu 4 px | Compară pastila de standby lipită cu cea plutitoare (oprește și pornește comutatorul). | Lipită e vizibil mai scundă, dar textul și iconițele încap la fel. Nu se taie nimic. |
 | P50.23 | Doar standby-ul se scurtează | Lasă să treacă la forma mică, apoi declanșează o alertă (schimbă volumul), apoi deschide notch-ul. | Forma mică, alerta și panoul deschis au exact înălțimile de dinainte. |
 | P50.24 | Dunga dispare la oprire | Debifează „Notch lipit de ramă”. | Pastila plutește din nou, fără dungă pe muchie, exact ca înainte. |
+
+### P71 — Bulina de stare
+
+Comutatorul `bulina-de-stare` (Setări → Funcții noi, Experimental, oprit implicit). Cere și „Motorul de context” pornit
+(e pornit implicit).
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P71.1 | Nu apare degeaba | Pornește comutatorul pe un calculator liniștit: fără muzică, fără microfon, pe baterie. | Nicio bulină lângă pastilă. |
+| P71.2 | Cântă | Pornește o piesă. | Lângă pastilă, la dreapta, un disc cu pictograma de sunet în culoarea de accent, cu un inel care crește odată cu piesa. |
+| P71.3 | Te ascultă bate muzica | Cu piesa pornită, intră într-un apel (sau pornește Înregistrator de voce). | Bulina trece pe microfon, în culoarea de pericol, **fără inel**. La închiderea microfonului revine pe muzică. |
+| P71.4 | Se încarcă | Oprește muzica și bagă încărcătorul. | Bulina arată fulgerul, cu inelul la nivelul bateriei. Scoate încărcătorul: bulina dispare (descărcarea nu e o stare de arătat). |
+| P71.5 | Hover | Cu microfonul pornit și muzica pornită, ține mouse-ul pe bulină. | Apare textul cu toate stările, în ordine: „te ascultă · cântă”. Notch-ul **nu** se deschide. |
+| P71.6 | Dispare deschis | Deschide notch-ul (hover pe pastilă sau `Win+Alt+N`). | Bulina dispare cât e deschis și revine la închidere. |
+| P71.7 | Dispare peste alertă | Cu muzica pornită, schimbă volumul ca să apară alerta. | Cât ține alerta, nicio bulină. După ce trece, revine. |
+| P71.8 | Pleacă cu pastila | Cu „Peste jocuri / fullscreen” pe „ascuns”, intră într-un joc pe tot ecranul, cu muzica pornită. | Bulina pleacă de pe ecran odată cu pastila: nu rămâne singură, agățată de marginea de sus. |
+| P71.9 | Lipită de ramă | Pornește și „Notch lipit de ramă”. | Bulina nu mai plutește lângă sertar: glifa stă în capătul lui din dreapta. |
+| P71.10 | Temele | Schimbă pe o temă luminoasă și înapoi. | Discul ia culoarea notch-ului, glifa pe cea a stării, la ambele teme. Nicio culoare rămasă din tema dinainte. |
+| P71.11 | Oprit curat | Debifează comutatorul cât cântă ceva. | Bulina dispare pe loc. În `log.txt` nu apare nicio eroare, iar la bifare din nou revine. |
+| P71.12 | Fără motorul de context | Oprește „Motorul de context”, lasă bulina pornită, pornește o piesă. | Nicio bulină (snapshot gol). Descrierea din Setări spune de ce. |
+| P71.13 | Mod sigur | Pornește cu `--safe-mode`. | Nicio bulină (funcția e Experimental). |
