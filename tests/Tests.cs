@@ -20,6 +20,22 @@ namespace WinNotch
             lines.Add((ok ? "PASS" : "FAIL") + "  " + id + "  " + name + (ok || detail == "" ? "" : "  -> " + detail));
         }
 
+        /// <summary>
+        /// Waits for something that travels through a socket, instead of sleeping a fixed amount: polls until the
+        /// condition holds or the time is up, then returns whatever it has (so the test fails, not the whole run).
+        /// </summary>
+        static TR Await<TR>(Func<TR> read, Func<TR, bool> ready, int msMax = 5000, int msStep = 25)
+        {
+            var until = DateTime.UtcNow.AddMilliseconds(msMax);
+            var value = read();
+            while (!ready(value) && DateTime.UtcNow < until)
+            {
+                Thread.Sleep(msStep);
+                value = read();
+            }
+            return value;
+        }
+
         static readonly Dictionary<Socket, List<byte>> Pending = new Dictionary<Socket, List<byte>>();
 
         static (Socket s, string status) Connect(string origin)
@@ -132,8 +148,9 @@ namespace WinNotch
             var tabs = Enumerable.Range(1, 80).Select(i => new { id = i, title = "(3) Melodie " + i + " - YouTube", url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ", audible = i == 1, muted = false, vol = 1,
                 media = new { playing = i == 1, title = i == 1 ? "Melodie" : "", artist = "", art = "", duration = 200.5, position = 10, age = 0 } }).ToArray();
             SendText(ok, JsonSerializer.Serialize(new { t = "tabs", browser = "chrome", v = "1.3", tabs }));
-            Thread.Sleep(400);
-            var got = bridge.TabsFor("chrome");
+            // The 80 tabs travel through a real socket: on a busy runner a fixed wait is sometimes too short, and the
+            // whole run died on the first test that used them. Wait for them to arrive instead, up to 5 seconds.
+            var got = Await(() => bridge.TabsFor("chrome"), list => list.Count >= 60);
             Check("B6", "Tab-urile trimise de extensie sunt primite", got.Count > 0, "count=" + got.Count);
             Check("B7", "Maximum 60 de tab-uri dintr-un mesaj", got.Count == 60, "count=" + got.Count);
             var t1 = got.FirstOrDefault(t => t.Id == 1);
@@ -144,8 +161,8 @@ namespace WinNotch
             Check("B11", "ConnectedBrowsers include chrome", bridge.ConnectedBrowsers().Contains("chrome"));
 
             // command goes out to the extension
-            bridge.Mute(t1, true);
-            string cmd = ReadFrame(ok) ?? "";
+            string cmd = "";
+            if (t1 != null) { bridge.Mute(t1, true); cmd = ReadFrame(ok) ?? ""; }
             Check("B12", "Comanda „mute” ajunge la extensie", cmd.Contains("\"mute\"") && cmd.Contains("\"id\":1"), cmd);
 
             // second connection for the same browser replaces the first
