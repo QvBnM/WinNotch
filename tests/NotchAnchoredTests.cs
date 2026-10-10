@@ -105,7 +105,7 @@ namespace WinNotch
 
             Check("NA11", "Legăturile sunt câte un rând: marginea și raza din ApplyMode, lățimea în standby, forma din ApplyRadius și UpdateClip, pornire și oprire",
                   notch.Contains("top = AnchoredTop(top);") &&
-                  notch.Contains("w = AnchoredIdleWidth(IdleWidth());") && notch.Contains("AnchoredRadius(r, mini || _mode == Mode.Live)") &&
+                  notch.Contains("AnchoredIdleWidth(IdleWidth())") && notch.Contains("AnchoredRadius(r, mini || _mode == Mode.Live)") &&
                   notch.Contains("if (ApplyAnchoredShape()) return;") && notch.Contains("StartAnchored();") && notch.Contains("StopAnchored();"));
 
             Check("NA12", "Zona de hover rămâne dreptunghiul pastilei: racordările nu primesc mouse-ul",

@@ -117,7 +117,7 @@ namespace WinNotch
                   !win.Contains("EditorWindow") && !work.Contains("EditorWindow") && !emb.Contains("EditorWindow") &&
                   !ed.Contains("internal FrameworkElement TakeContent(Window host)") &&
                   !ed.Contains("internal void DetachContent()") &&
-                  work.Contains("new WidgetPage(") && work.Contains("new Gallery("),
+                  work.Contains("new WidgetPage(") && work.Contains("new WidgetLibrary("),
                   "a rămas o legătură cu EditorWindow");
 
             Check("WV15", "Niciun card „se deschide în fereastra clasică”, nicio funcție desenată degeaba",
