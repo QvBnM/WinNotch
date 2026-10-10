@@ -555,9 +555,14 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
     Workspace.
   - **Teme** — modul (întunecat / luminos / ca Windows), temele gata făcute și ale tale, culorile temei folosite,
     rotunjirea și opacitatea, și salvarea unei teme noi.
-  - **Sistem** — în stânga, secțiunile: Acțiuni, Sistem, Clipboard, Captură, Sunet, Setări, Noutăți. Primele cinci sunt
-    carduri construite din **acțiunile care există** în aplicație (fiecare pornită prin registrul de acțiuni, cu
-    confirmare pentru ce nu se poate anula); ultimele două sunt paginile de dinainte, neschimbate.
+  - **Setări** — toate opțiunile aplicației, desenate cu jetoanele temei. În stânga, secțiunile: Notch, Standby,
+    Acasă și sănătate, Browser, Sistem, Spații de lucru, Pagina după context, Funcții noi, Acțiuni, Noutăți.
+    „Acțiuni” arată carduri construite din **acțiunile care există** (fiecare pornită prin registrul de acțiuni, cu
+    confirmare pentru ce nu se poate anula). **Nu există buton de „Salvează”:** fiecare schimbare se scrie și se aplică
+    pe loc, ca peste tot în fereastră; ce scrii (link-ul de calendar, orașul, numele unui spațiu) se salvează la scurt
+    timp după ce te oprești din scris. Opțiunile sunt aceleași ca în fereastra clasică, în aceleași câmpuri din
+    `settings.json`; acțiunile `settings.*` (P14) deschid secțiunea în care a ajuns fiecare opțiune
+    (`Features/WindowV2/SettingsMap.cs`, pur și testat).
   - **Jos**, câmpul de comandă: scrii numele unei acțiuni și `Enter` o pornește, tot prin registru. `Ctrl + K` duce
     focusul acolo. Rezultatul acțiunii (sau motivul pentru care a fost refuzată) apare pe rândul de sub el.
   Fereastra ia tema aplicației (butonul de temă e în antet), minimul e 900 × 600; sub 1120 px se strânge inspectorul,

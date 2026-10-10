@@ -556,3 +556,40 @@
   neschimbat al `SettingsWindow`). Din mockup nu am desenat microfonul, avatarul de cont și comutatoarele care nu au
   funcție în aplicație, la cererea autorului.
 - **Stare:** ramura `p52-redesign`, pornită din `main`.
+
+
+## „Sistem” devine „Setări”, rescrisă nativ (raportat de autor pe 0.6.23, cu captură, 10 oct 2026)
+
+- **Raportat:** „Sistem, ar trb sa devina Setari. Trebuie o reimplementare si aici sa fie fit cu noul look si tema. Acum
+  arată ca nuca în perete.” Captura arăta pagina de setări: foaia albă a ferestrei clasice (carduri albe, text negru,
+  butoane „Renunță / Salvează”) lipită într-o fereastră pe temă întunecată.
+- **Cauza, și e a mea:** am refolosit `SettingsWindow.TakeContent()` — exact aceeași decizie pe care o retrăsesem cu o
+  zi înainte pentru editorul de pagini. Am și notat-o atunci ca „limită cunoscută, acceptată” în loc s-o repar. Nu era
+  o limită, era aceeași greșeală.
+- **Făcut:**
+  - Fila se numește **Setări** (`LayoutRules.Settings`), iar secțiunile ei nu mai sunt categorii de acțiuni, ci grupuri
+    de opțiuni: Notch, Standby, Acasă și sănătate, Browser, Sistem, Spații de lucru, Pagina după context, Funcții noi,
+    Acțiuni, Noutăți.
+  - `Features/WindowV2/V2Controls.cs` (nou): cardul, rândul cu etichetă, **comutatorul**, lista de alegeri, sliderul,
+    câmpul de text — toate pe jetoanele temei. Asta lipsea și de-asta părea mai ieftin să găzduiesc foaia veche.
+  - `Features/WindowV2/SettingsView.cs` (nou): toate cele zece secțiuni, inclusiv bucățile care nu sunt simple câmpuri
+    — lista de standby cu ordinea și limita de 5, culorile accent, starea extensiei de browser (cu pollingul ei de 2 s,
+    oprit când pleci de pe filă), spațiile de lucru, pagina după context, comutatoarele funcțiilor, serviciul de
+    temperatură și căutarea de versiuni noi.
+  - `Features/WindowV2/SettingsMap.cs` (pur): unde a ajuns fiecare opțiune a paginii vechi, ca cele 23 de acțiuni
+    `settings.*` (P14) să cadă în continuare pe secțiunea ei. Testul refuză o acțiune rămasă fără secțiune.
+  - **Fără „Salvează”:** fiecare schimbare scrie în `AppSettings` și cheamă `ApplySettings()` pe loc, ca în restul
+    ferestrei; textul se scrie la scurt timp după ce te oprești din scris. Asta rezolvă și nemulțumirea de la auditul
+    comutatoarelor („bifez și nu se întâmplă nimic până la Salvează”).
+  - `SystemView.cs` a dispărut; `EmbeddedPages` nu mai găzduiește nimic din fereastra clasică (îi rămân notele de
+    versiune și pagina de teme, amândouă construite din cod existent).
+- **Duplicare, spus pe față:** maparea opțiune → câmp din `AppSettings` există acum în două locuri, fiindcă fereastra
+  clasică își păstrează XAML-ul ei cât comutatorul `window-v2` e oprit. Testele WV10/WV11 leagă cele două liste prin
+  `SettingsMap`, deci o opțiune adăugată într-una și uitată în cealaltă pică la CI. A doua copie dispare odată cu
+  fereastra clasică, la anunțarea comutatorului.
+- **Teste:** WV1–WV28. WV23 refuză orice `TakeContent` sau `SettingsWindow` în fereastra nouă, WV27 refuză un buton
+  „Salvează” / „Renunță”, WV16 refuză orice culoare din afara paletei temei în toate fișierele ferestrei.
+- **Greșeală prinsă la CI:** WV27 se potrivea pe propriul comentariu de documentație („There is no "Salvează" button”),
+  nu pe cod. Acum caută un buton chiar etichetat așa.
+- **CI:** rularea 95 verde (build + 841 teste C# + 16 + 3 extensie + ambele drumuri de fum).
+- **Stare:** ramura `p52-settings-native`, pornită din `main`.
