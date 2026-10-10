@@ -449,3 +449,26 @@ clasică) și apasă „Salvează”, apoi deschide fereastra din notch sau din 
 | FA.4 | Descrierile spun condiția | Citește descrierea fiecărei funcții. | Fiecare spune unde sau când se vede (scurtătura, pagina Acasă, widget-ul Clipboard, tragerea de fișiere, „Motorul de context” pornit…) sau că e pornită implicit. |
 | FA.5 | Ascuns pe tot ecranul, condițiile | Setări → „Peste jocuri / fullscreen” pe „ascuns”. Pe un **singur** monitor, pornește un video pe tot ecranul în browser. | Notch-ul dispare complet în ~1 s. Cu două monitoare, notch-ul se mută pe cel liber în loc să dispară (și asta scrie în descriere). |
 | FA.6 | Oprirea curată | Pornește pe rând „Raft”, „Căști/boxe”, „Quick Actions”, „Smart Clipboard” (cu „Salvează”), verifică efectul, apoi debifează-le și salvează. | Fiecare dispare complet: fără buton rămas lângă volum, fără butoane sub pastilă, fără jetoane în Clipboard, fără drop pe notch. Nimic în log în afară de rândurile normale. |
+
+### P60 — Fila „Performanță”
+
+Întâi pornește din Setări → „Funcții noi” **și** „Fereastra WinNotch v2” **și** „Performanță”, apoi „Salvează”.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P60.1 | Fila apare doar cu comutatorul pornit | Cu „Performanță” oprită, deschide fereastra WinNotch. Apoi pornește-o și deschide din nou. | Oprită: patru file (Workspace, Widgeturi, Teme, Setări), nicio filă goală. Pornită: a cincea, „Performanță”, la dreapta. |
+| P60.2 | Valorile de sus | Deschide fila și lasă-o 10 secunde. | Procesor și memorie arată numere care se mișcă la ~2 s, cu bară. Placa video arată un procent după prima-a doua secundă (contoarele au nevoie de o trecere). Memoria video arată MB **fără** bară. |
+| P60.3 | Comparație cu Task Manager | Deschide Task Manager lângă fereastră, pe fila Performanță. | Procesorul și memoria se potrivesc în câteva procente. Placa video se potrivește cu „GPU” din Task Manager (motorul cel mai încărcat). |
+| P60.4 | Nu știu ≠ zero | — | Nicăieri un `0` acolo unde valoarea lipsește: scrie `—`. |
+| P60.5 | Memorie angajată | Citește cardul „Memorie angajată”. | Două numere: commit (GB din GB, cu procent) și RAM. Pe 32 GB, commit-ul e de obicei mai mare decât RAM-ul folosit — e normal și textul explică de ce ăsta e numărul care contează. |
+| P60.6 | Cine consumă acum | Pornește un joc sau un browser cu multe tab-uri, apoi uită-te în card. Dă click pe „Placă video” și pe „Memorie”. | Procesele apar adunate după nume, cu numărul lor în paranteză (ex. `chrome (41)`), nu câte un rând pe proces. Sortarea se schimbă la click și butonul apăsat e îngroșat. |
+| P60.7 | Procentul e din toată mașina | Pune ceva să încarce un singur nucleu (o buclă într-un script). | Procesul arată ~6% pe un 5800X3D (un nucleu din 16 fire), nu 100% — aceeași scară ca în Task Manager. |
+| P60.8 | Ce crește în timp, la început | Deschide fila pe un sistem pornit de curând. | Scrie „Urmăresc de N min; sub 20 nu spun nimic, ca să nu dau alarme false.” Niciun nume listat. |
+| P60.9 | Ce crește în timp, după o oră | Lasă fereastra deschisă pe fila Performanță o oră, cu Chrome / Discord deschise. | Dacă nimic nu curge: „Nimic nu crește suspect de N min încoace.” Dacă ceva apare, are `+X MB/h` și minutele; repornește acel program și verifică la următoarea oră că a dispărut. |
+| P60.10 | Măsoară doar cât e deschisă | Mergi pe altă filă (Teme), stai un minut, întoarce-te. | Textul de jos spune cât de des măsoară. Pe altă filă nu măsoară nimic: la întoarcere istoricul și minutele urmărite au pornit de la zero. |
+| P60.11 | Nimic în fundal | Închide fereastra WinNotch complet și lasă PC-ul în repaus 10 minute. Deschide `log.txt`. | Niciun rând nou legat de performanță. În Task Manager, WinNotch nu are activitate periodică nouă. |
+| P60.12 | Nimic personal în log | Caută în `log.txt` după numele unui joc, un titlu de fereastră sau o cale. | Nu apar. (Un eșantion scris în log, dacă apare, are doar numere.) |
+| P60.13 | Temele | Apasă butonul de temă din antet, de două ori, cu fila deschisă. | Totul rămâne lizibil în ambele teme: barele, numerele, textele de ajutor. Niciun card alb pe fundal întunecat. |
+| P60.14 | Lățimea | Trage fereastra de la lat la îngust (până la minim). | Cele patru valori de sus rămân pe un rând și se îngustează; barele se redesenează la mărimea nouă, nu rămân late sau tăiate. |
+| P60.15 | Oprirea curată | Cu fila deschisă, du-te în Setări → „Funcții noi”, oprește „Performanță”. | Fila dispare din antet și fereastra sare pe Workspace. Nimic nu mai măsoară (Task Manager: fără activitate periodică). |
+| P60.16 | Mod sigur | Pornește WinNotch cu `--safe-mode`. | Fila „Performanță” nu există (funcția e Experimental), chiar dacă e bifată în setări. |

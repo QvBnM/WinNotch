@@ -30,8 +30,9 @@ Documentul descrie tot ce e implementat în cod până la versiunea 0.6.13: pagi
 14. Securitate
 15. Calitate, teste și audit
 16. Widget-uri, pagini și teme
-17. Limitări cunoscute
-18. Istoricul versiunilor
+17. Performanță: monitorizare și optimizare
+18. Limitări cunoscute
+19. Istoricul versiunilor
 
 ---
 
@@ -975,7 +976,67 @@ Detaliile sunt în `AUDIT.md`. Pe scurt:
 
 ---
 
-## 17. Limitări cunoscute
+## 17. Performanță: monitorizare și optimizare
+
+**Comutator:** „Performanță” (`perf-monitor`), Experimental, **oprit implicit**. Se vede în fereastra WinNotch, fila
+„Performanță” — deci cere și „Fereastra WinNotch v2” pornită.
+
+### Principiul secțiunii
+
+Nimic din secțiunea asta nu există dacă nu se poate măsura. Fiecare lucru pe care îl arată sau îl schimbă trebuie să
+poată pune un număr înainte și după. Două reguli care vin din asta:
+
+- **Nu știu ≠ zero.** Unde lipsește o valoare (contoarele plăcii video nu răspund, prea puține cadre pentru un „1% low”)
+  scrie `—`, nu `0`.
+- **„Eliberarea de RAM” nu e aici.** Golirea working set-ului mută paginile în fișierul de paginare și ele se întorc la
+  prima atingere: pe 32 GB nu câștigă nimic și poate costa micro-stutter. Butonul vechi ⚡ din widget-ul Memorie rămâne
+  neatins, dar secțiunea nu se sprijină pe el. Ce ajută măsurabil e altceva: să vezi **cine** consumă și **ce crește în
+  timp**.
+
+### Cât de des măsoară
+
+| Stare | Ritm | De ce |
+|---|---|---|
+| Fila închisă, fără joc | **niciun cronometru** | Nu există un timer lent, nu există deloc. |
+| Fila deschisă | 2 s | Minimul din `CLAUDE.md`; nimic mai des în standby. |
+| Joc pornit | 1 s | Singura excepție, și doar cât rulează jocul. |
+| Trecerea prin toate procesele | 4 s, oricum | Costă zeci de milisecunde; într-un joc asta se simte. |
+
+Regula e într-un singur loc (`Core/Perf/PerfRules.cs`) și e verificată de teste, inclusiv cea care spune că un ritm sub
+2 s nu e permis fără un joc pornit.
+
+### Ce arată fila
+
+- **Patru valori sus:** procesor, memorie (GB folosiți și procentul), placă video, memorie video. Memoria video n-are
+  bară: citim cât se folosește, nu cât are placa, iar o bară fără maxim ar fi un număr inventat.
+- **Memorie angajată** (commit): cât au cerut toate programele de la Windows, RAM plus fișierul de paginare. Ăsta e
+  numărul care spune dacă mașina a rămas fără memorie — nu „RAM liber”.
+- **Cine consumă acum:** procesele adunate **după nume** (un browser cu patruzeci de procese e un program, nu patruzeci
+  de lucruri mici; numărul lor apare în paranteză), sortabile după procesor, placă video sau memorie. Procentul de
+  procesor e din toată mașina, ca în Task Manager.
+- **Ce crește în timp:** o scurgere de memorie crește drept și constant. Un program apare aici doar dacă depășește toate
+  pragurile: peste 50 MB/h, de cel puțin 20 de minute, cu cel puțin 150 MB adunați, și cu o linie care se potrivește
+  (R² ≥ 0,80). Un browser folosit normal crește repede, dar în zig-zag, deci nu apare.
+
+### De unde vin numerele
+
+- **Procesor, memorie, commit:** `GetSystemTimes` și `GlobalMemoryStatusEx`. Ieftine, neprivilegiate.
+- **Placă video (încărcare, memorie video), pe proces:** contoarele de performanță ale Windows-ului (`GPU Engine`,
+  `GPU Process Memory`), citite prin PDH cu nume englezești, deci la fel pe un Windows în română. Fără bibliotecă de la
+  producător, fără drepturi speciale.
+- **Temperatura, puterea și ceasurile plăcii video nu se citesc în procesul WinNotch.** Decizia vine din P51c: un handle
+  de placă video murit la o schimbare de monitoare a aruncat un `AccessViolationException` din NVML, care în .NET 8 nu
+  poate fi prins de niciun `catch`, și aplicația s-a închis fără un rând în log. Ce cere biblioteca de senzori vine din
+  serviciul SYSTEM, în procesul lui, unde o moarte nu ne costă nimic.
+
+### Ce nu scrie în log
+
+Niciun nume de proces, nicio cale, niciun titlu de fereastră. Un eșantion scris în log are doar numere rotunde
+(`cpu 42%, ram 16,0/32,0 GB, commit 50%, gpu 88%`).
+
+---
+
+## 18. Limitări cunoscute
 
 - **Notificările Windows** (WhatsApp, Outlook etc.) nu sunt preluate: Windows le dă doar aplicațiilor împachetate ca MSIX.
 - **Temperatura procesorului** cere driverul gratuit PawnIO și activarea o singură dată a serviciului de temperatură (confirmare UAC).
@@ -993,11 +1054,12 @@ Detaliile sunt în `AUDIT.md`. Pe scurt:
 - **Raft (experimental):** pastila închisă nu primește fișiere (lasă click-urile să treacă): tragi peste ea și aștepți ca la hover, ori deschizi notch-ul înainte (dacă dai drumul înainte să se deschidă, fișierul ajunge la fereastra de dedesubt, ca fără raft); deasupra unei ferestre maximizate se deschide doar la marginea de sus a ecranului, ca la hover. O tragere de fereastră sau o selecție de text adusă peste pastilă o deschide și ea (se închide singură când pleci). Din aplicații pornite ca administrator Windows nu lasă tragerea spre WinNotch. Un `.lnk` fără informații locale (de exemplu spre „Acest PC” sau spre o aplicație din Store) e refuzat. OCR-ul și conversia citesc doar primul cadru și nu aplică rotirea EXIF a fotografiilor; o imagine e micșorată la 3000 px pentru OCR.
 - **Smart Clipboard (experimental):** chip-urile sunt doar pentru ultimul text copiat (nu pentru cele mai vechi din istoric) și doar în widget-ul Clipboard, nu și în lista paginii Unelte; după o repornire nu e niciun text până la prima copiere; un text de peste 64 KB nu e analizat; „Deschide folderul” nu selectează fișierul în Explorer, doar deschide folderul lui.
 - **Pagina după context (experimental):** decide doar la deschiderea notch-ului (nu schimbă pagina cât e deschis); alegerea manuală de 10 minute nu se păstrează după repornire; fără „Motorul de context” (sau în `--safe-mode`) nu face nimic. Paginile ascunse nu sunt alese, chiar dacă sunt în mapare.
+- **Performanță (experimental):** măsoară doar cât ai fila deschisă (sau cât rulează un joc, mai târziu): închizi fereastra, se oprește tot, iar istoricul și trendurile pornesc de la zero la următoarea deschidere. Contoarele plăcii video au nevoie de o trecere ca să dea prima valoare, deci în prima secundă placa video arată `—`. Memoria video n-are procent (nu citim cât are placa). Temperaturile nu sunt încă în filă. Un „1% low” are nevoie de cel puțin 500 de cadre, iar „0.1% low” de 5000; sub atât scrie `—` în loc de un număr.
 - **Detectarea se bazează pe reporniri apropiate:** după o închidere bruscă WinNotch nu repornește singur; protecția reacționează când îl pornești din nou (3 porniri în 5 minute). Un WinNotch blocat, dar încă deschis, nu e detectat.
 
 ---
 
-## 18. Istoricul versiunilor
+## 19. Istoricul versiunilor
 
 | Versiune | Ce a adus |
 |---|---|

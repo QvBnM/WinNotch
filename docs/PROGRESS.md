@@ -630,3 +630,47 @@
   testele picaseră înaintea pasului de publicare.
 - **CI:** rularea 100 verde (build + 852 teste C# + 16 + 3 extensie + ambele drumuri de fum).
 - **Stare:** ramura `p52-workspace-split`, pornită din `main`.
+
+## P60 — Fundația secțiunii de performanță (cerere nouă, 10 oct 2026)
+
+- **Cerut:** o secțiune serioasă de optimizare și monitorizare — memorie care chiar face ceva, mod de joc adevărat (FPS,
+  frametime, 1% low, temperaturi, automatizări), rezumat după joc. Reguli nenegociabile din cerere: fără snake oil
+  (orice funcție trebuie să poată arăta înainte/după cu un număr real), nimic elevat, nimic care riscă un ban (fără
+  injecție, fără hooking), fără polling sub 2 s în standby, cod nou doar în `Core/` și `Features/`, comutator propriu
+  oprit implicit, logică pură separată de WPF. Autorul a cerut explicit întrebările înainte de cod, și le-a răspuns:
+  (1) da la extinderea serviciului SYSTEM pentru FPS; (2) raportul de joc să se vadă și în notch; (3) da la managerul de
+  aplicații de pornire; (4) planul de alimentare se face (îl va folosi și pe laptop); (5) are 2–3 monitoare.
+- **Decizia de arhitectură:** `docs/adr/0016-telemetrie-si-fps.md`. Trei surse, în ordinea riscului: apeluri de sistem
+  ieftine pentru procesor/memorie; contoarele de performanță Windows pentru placa video (prin PDH, nume englezești, deci
+  la fel pe un Windows în română); serviciul SYSTEM, în procesul lui, pentru tot ce cere biblioteca de senzori și pentru
+  FPS-ul din ETW. **Regula care iese de aici: nicio bibliotecă de senzori nu se mai încarcă vreodată în procesul
+  WinNotch** — P51c a dovedit că un `AccessViolationException` din NVML nu poate fi prins de niciun `catch`.
+- **FPS-ul (planificat, P62):** sesiunea ETW se deschide în serviciul SYSTEM care există deja, iar serviciul publică doar
+  numere pe pipe-ul lui **unidirecțional** — nu primește nimic, deci granița de securitate de azi nu se mișcă. Serviciul
+  n-are desktop, deci nu știe ce fereastră e în față și nici nu trebuie: publică statisticile pentru PID-ul care a
+  prezentat cele mai multe cadre, iar aplicația le potrivește cu procesul din față din `ContextEngine`. Nimic nu atinge
+  procesul jocului.
+- **Făcut, pur și testat (`Core/Perf/`):** `PerfRules` (cadențele și regula „nimic sub 2 s în standby”, cu
+  `AllowedInStandby` verificată de test); `PerfSample` (un moment al mașinii, imutabil, cu `ToLogString` fără nume de
+  procese); `SampleRing` (fereastră fixă de istoric, nu crește niciodată); `FrameStats` (FPS mediu ca „cadre împărțite la
+  timp”, 1% / 0.1% low ca media celor mai lente cadre — definiția CapFrameX — percentila simplă separat ca să nu fie
+  confundate, stutter peste dublul medianei și cel puțin 8 ms peste ea, pauzele de peste 2 s numărate separat);
+  `MemoryTrend` (pantă MB/h plus R², cu praguri sfioase: 50 MB/h, 20 min, 150 MB, R² ≥ 0,80); `ProcessRollup` (procesele
+  adunate după nume, procentul din toată mașina, și `Blame` pentru „cine mi-a furat resursele”); `GpuInstance` (numele
+  instanțelor contoarelor GPU, cu `_Total` și formele stricate refuzate).
+- **Făcut, legat de Windows (`Features/Performance/`):** `GpuCounters` (PDH, buffer refolosit, `Disable` prin
+  `ReportError` la o eroare, reîncercare la 60 s pe o mașină fără contoarele alea); `PerfSampler` (o trecere de
+  măsurare); `PerfMonitor` (singurul loc care măsoară: pornește pe comutator și pe cerere cu `AddViewer`/`RemoveViewer`,
+  se dezabonează la `Dispose`, istoricul ține doar totalurile — o oră de liste pe proces ar fi costat megabytes, ceea ce
+  ar fi fost o ironie pentru partea care urmărește memoria); `PerfView` (fila, pe jetoanele temei, cu `—` unde nu știe).
+- **Două lucruri la care am spus „nu”:** (1) butonul de „eliberare de RAM” — golirea working set-ului mută paginile în
+  fișierul de paginare și ele se întorc la prima atingere; pe 32 GB e zero câștig și micro-stutter câștigat. Butonul vechi
+  ⚡ rămâne neatins pentru non-regresie, dar secțiunea nu se sprijină pe el. (2) bara fără maxim pentru memoria video —
+  citim cât se folosește, nu cât are placa, deci arată MB fără procent, nu un procent inventat.
+- **Fila a cincea:** regula ferestrei v2 e „o singură navigare”, nu „exact patru uși”. `LayoutRules.Tabs` rămâne cele
+  patru permanente, iar `TabsFor(bool)` adaugă Performanță doar cu comutatorul pornit — o funcție oprită nu lasă o filă
+  goală în urmă. Dacă se oprește cât e fila deschisă, fereastra sare pe Workspace.
+- **Teste:** PF1–PF37 (noi), toate pure.
+- **Stare:** ramura `claude/upbeat-gates-qn0thi`, pornită din `main` (0.6.25). Versiunea **nu** a fost crescută și nu se
+  face merge până testează autorul. Urmează P61 (modul de joc), P62 (FPS), P63 (memorie), P64 (plan de alimentare),
+  P65 (verificare sistem).
