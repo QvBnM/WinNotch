@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using WinNotch.Panes;
 using WinNotch.Widgets;
 
 namespace WinNotch.Features.WindowV2
