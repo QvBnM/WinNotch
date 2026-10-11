@@ -136,7 +136,7 @@ namespace WinNotch.Features.NotchAnchored
         }
 
         /// <summary>
-        /// Whether the concave fillets are drawn. False since 0.6.27: on a MacBook the image really does flow around a
+        /// Whether the concave fillets are drawn. False since 0.6.28: on a MacBook the image really does flow around a
         /// hole in the panel, which is what a fillet promises — Windows has no such hole, so the promise is false and
         /// the shape reads as sitting unnaturally on the edge (the author's words). What is drawn instead is a drawer:
         /// square shoulders, rounded only at the bottom, with a hairline of light along the top edge, so it reads as an

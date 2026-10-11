@@ -9,7 +9,7 @@ namespace WinNotch
     public static partial class T
     {
         /// <summary>
-        /// P71: the dot beside the pill. What it shows, in what order, with what ring — and that a privacy state is
+        /// P73: the dot beside the pill. What it shows, in what order, with what ring — and that a privacy state is
         /// never hidden behind music. Everything is read from the context snapshot: no second source.
         /// </summary>
         static void StatusDotTests()

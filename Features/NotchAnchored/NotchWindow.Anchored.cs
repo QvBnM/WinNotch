@@ -27,7 +27,7 @@ namespace WinNotch
         /// </summary>
         private Path _anchoredShape;
         /// <summary>
-        /// The hairline of light along the top edge (0.6.27): it makes the drawer read as an object hanging from the
+        /// The hairline of light along the top edge (0.6.28): it makes the drawer read as an object hanging from the
         /// bezel instead of a hole cut into it, now that the concave fillets are gone. It lives inside the pill's
         /// content, so the pill's own clip, width, height, margin, opacity and shift carry it — no bindings of its own.
         /// </summary>
@@ -176,7 +176,7 @@ namespace WinNotch
             // Radius is the animated value (already scaled), so the shape follows the animation instead of jumping.
             double scale = Math.Max(0.01, UiScale);
             double r = Math.Min(Radius, Math.Min(w / 2, h / 2));
-            // 0.6.27: the drawer has square shoulders (AnchoredGeometry.DrawEars), so the ears are not drawn any more.
+            // 0.6.28: the drawer has square shoulders (AnchoredGeometry.DrawEars), so the ears are not drawn any more.
             double e = AnchoredGeometry.DrawEars
                 ? AnchoredGeometry.Ear(Radius / scale, w / scale, Width / scale, h / scale) * scale
                 : 0;

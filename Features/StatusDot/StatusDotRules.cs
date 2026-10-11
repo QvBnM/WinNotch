@@ -21,7 +21,7 @@ namespace WinNotch.Features.StatusDot
     }
 
     /// <summary>
-    /// P71: a small disc beside the pill that says what is going on right now, with one glyph — music, charger,
+    /// P73: a small disc beside the pill that says what is going on right now, with one glyph — music, charger,
     /// microphone, a task in progress. Asked for by the author while reviewing the notch's design: on the small form
     /// the pill is only the time and the date, so there is nothing left to tell him his microphone is live.
     ///

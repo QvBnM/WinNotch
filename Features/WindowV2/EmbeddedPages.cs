@@ -34,7 +34,7 @@ namespace WinNotch.Features.WindowV2
             foreach (var group in items.GroupBy(i => i.Kind))
             {
                 var list = new StackPanel();
-                list.Children.Add(Ui.Cap(group.Key.ToUpperInvariant()));
+                list.Children.Add(V2Controls.Eyebrow(group.Key.ToUpperInvariant()));
                 foreach (var (_, text) in group)
                 {
                     var row = Ui.Cols(Ui.Px(18), Ui.Star());

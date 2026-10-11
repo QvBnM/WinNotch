@@ -11,7 +11,7 @@ using WinNotch.Features.StatusDot;
 namespace WinNotch
 {
     /// <summary>
-    /// P71: the small disc beside the pill — what is going on right now, as one glyph. Everything it shows is read from
+    /// P73: the small disc beside the pill — what is going on right now, as one glyph. Everything it shows is read from
     /// the context engine's snapshot (never from the microphone or the media itself), and what to show is decided by
     /// <see cref="StatusDotRules"/> (pure, tested). Here we only draw it and move it with the pill.
     /// </summary>
@@ -189,7 +189,7 @@ namespace WinNotch
         }
 
         /// <summary>
-        /// P71 hook in ApplyMode: the dot sits to the right of the pill, on its middle line, and moves with the same
+        /// P73 hook in ApplyMode: the dot sits to the right of the pill, on its middle line, and moves with the same
         /// animation — so it never lags behind while the pill grows or shrinks.
         /// </summary>
         private void StatusDotLayout(double pillWidth, double pillHeight, double top, TimeSpan dur)

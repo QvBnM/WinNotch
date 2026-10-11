@@ -59,6 +59,11 @@ namespace WinNotch
             P("Luminos", true, "Notch","#F4F5F7","Chip","#FFFFFF","ChipHover","#ECEEF1","Ink","#15171A","Muted","#4F5661","Dim","#6B7280",
               "Accent","#C2410C","Track","#E3E6EA","Ok","#15803D","Warn","#B45309","Hot","#B91C1C","Info","#1D63C9",
               "Seg","#E7E9ED","Border","#E3E6EA","OnAccent","#FFFFFF","Hover","#E2E5EA"),
+            // P70: the theme the WinNotch window was redrawn for — an instrument panel, not a settings sheet: a near
+            // black bezel, a slightly lighter screen, hairlines instead of cards, and one amber light for the accent.
+            P("Aparat", false, "Notch","#07080A","Chip","#0C0E11","ChipHover","#181B20","Ink","#E9EBEE","Muted","#A2AAB6","Dim","#7B838F",
+              "Accent","#F5A524","Track","#1F232A","Ok","#4CC38A","Warn","#FFB454","Hot","#FF6B6B","Info","#6FB1FF",
+              "Seg","#121418","Border","#2A2F37","OnAccent","#0A0A0A","Hover","#22262D"),
             P("Hârtie", true, "Notch","#F5F0E6","Chip","#FFFAF0","ChipHover","#EFE7D8","Ink","#2B2620","Muted","#5E554A","Dim","#776C5F",
               "Accent","#B4532A","Track","#E6DCCB","Ok","#3F7D3A","Warn","#A15C0A","Hot","#A8322D","Info","#2F5F8A",
               "Seg","#ECE4D4","Border","#E6DCCB","OnAccent","#FFFFFF","Hover","#E9E0CF"),

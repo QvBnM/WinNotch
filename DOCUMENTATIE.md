@@ -534,7 +534,7 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
 - **Click prin notch.** Dacă dai click cât mouse-ul stă pe pastilă, click-ul era pentru fereastra de sub ea: notch-ul nu se mai deschide până nu ieși cu mouse-ul de pe el.
 - **Notch lipit de ramă (P50, comutatorul „Notch lipit de ramă”, oprit implicit).** Cu el pornit, notch-ul nu mai plutește:
   atinge marginea de sus a ecranului și e rotunjit doar jos (raza din Setări, între 12 și 28) — un **sertar** agățat de ramă,
-  cu umeri drepți și o dungă subțire de lumină pe muchia de sus. Din 0.6.27 **nu mai are racordări concave**: pe un MacBook
+  cu umeri drepți și o dungă subțire de lumină pe muchia de sus. Din 0.6.28 **nu mai are racordări concave**: pe un MacBook
   imaginea chiar curge în jurul unui decupaj din panou, iar racordarea îl anunță; un ecran de Windows n-are niciun decupaj,
   deci racordarea promitea o tăietură care nu există și forma se citea nefiresc așezată pe margine. Geometria lor rămâne
   întreagă și testată, doar că nu se mai desenează. Lipită de ramă, pastila de standby e cu 4 px mai scundă: plutitoare se
@@ -545,28 +545,40 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   Silueta e **o singură suprafață pictată**: cât e ancorat, pastila nu-și mai desenează fundalul, ci doar taie conținutul
   după același contur, iar umbra stă pe siluetă. Două suprafețe cu aceeași pensulă semitransparentă dădeau corpului două
   straturi de culoare (deci altă nuanță decât racordările, vizibil pe tema luminoasă) și o îmbinare în colțurile de jos.
-  Geometria trece printr-un singur traducător (`Features/NotchAnchored/AnchoredShape.cs`), folosit și de antetul ferestrei v2.
-- **Colțuri continue (P70, comutatorul „Colțuri continue”, oprit implicit).** Colțurile de jos ale siluetei nu mai intră
+  Geometria trece printr-un singur traducător (`Features/NotchAnchored/AnchoredShape.cs`), folosit și de felia de
+  monitor din fereastra v2.
+- **Colțuri continue (P72, comutatorul „Colțuri continue”, oprit implicit).** Colțurile de jos ale siluetei nu mai intră
   dintr-odată în arc de cerc: curba pleacă mai devreme de pe laterală (de la 1,6 ori raza) și iese mai departe pe muchia
   de jos, deci curbura crește treptat și nu se mai vede punctul în care începe rotunjirea — forma pictogramelor de pe
   telefon. Raza din Setări rămâne parametrul: la 12 colțul e discret, la 28 e rotund. Curba e limitată de jumătatea
   laturii (ca două colțuri de pe aceeași muchie să nu se suprapună) și de latura rămasă sub racordare, ca pe forma mică
   să nu se îndoaie conturul peste el însuși. Se vede **doar cu „Notch lipit de ramă” pornită** — acolo silueta e un
-  contur desenat de noi — și în antetul ferestrei v2, prin același traducător; pastila plutitoare e un `Border`, ale
+  contur desenat de noi — și în felia de monitor din fereastra v2, prin același traducător; pastila plutitoare e un `Border`, ale
   cărui colțuri le desenează Windows ca arce. Geometria e pură și testată (`Core/Ui/SmoothCorner.cs`), iar forma se
   reface doar când se schimbă mărimea sau comutatorul, nu la fiecare cadru.
-- **Fereastra WinNotch v2 (P52, comutatorul „Fereastra WinNotch v2”, oprit implicit).** Cu el pornit, din notch se
-  deschide fereastra nouă. Antetul e notch-ul desfăcut: aceeași siluetă ca la „Notch lipit de ramă” (aceeași rază,
-  aceiași umeri drepți, același cod de desenare), ca să recunoști obiectul din marginea ecranului.
-  **Are o singură navigare: patru file în antet** — Workspace, Widgeturi, Teme, Sistem. Coloana din stânga nu e o a
+- **Fereastra WinNotch v2 (P52 + P70, comutatorul „Fereastra WinNotch v2”, oprit implicit).** Cu el pornit, din notch
+  se deschide fereastra nouă. **Sus e rama ferestrei, iar pe ea o felie de monitor cu notch-ul desenat pe margine**
+  (P70): nu e o imagine, ci conturul adevărat (aceeași rază pe care ai ales-o, aceiași umeri drepți dacă „Notch lipit de
+  ramă” e pornit, același cod de desenare ca al notch-ului), cu lucrurile pe care le ții în standby scrise pe pastilă.
+  Muți poziția și se mută; schimbi rotunjirea și se rotunjește. Nu mai trebuie să închizi fereastra ca să vezi ce ai
+  făcut.
+  **Are o singură navigare: patru file sub ramă** — Workspace, Widgeturi, Teme, Setări. Coloana din stânga nu e o a
   doua navigare: aparține filei deschise și se schimbă cu ea.
+  - **Cum arată (P70).** Un grup de opțiuni e o etichetă gravată peste un șir de rânduri despărțite de o linie de un
+    pixel — fără carduri unul într-altul. Fiecare rând are numele setării, o singură linie de explicație și controlul
+    lui la marginea din dreapta. Două sau trei variante se văd toate deodată; de la patru în sus se strâng într-o
+    listă (care acum e pe tema aplicației, nu dreptunghiul alb al Windows-ului). Orice număr, cale sau scurtătură e
+    scris monospațiat, ca o coloană de valori să se alinieze și să nu tremure cât o schimbi. Jos, lângă „se aplică pe
+    loc”, scrie **ce tocmai s-a schimbat** („Poziție → Centru”): fereastra nu are buton de salvare, deci spune ea ce a
+    scris. Tema **„Aparat”** (Teme → întunecate) e paleta pentru care a fost desenată.
   - **Workspace** — pagina pe care o construiești. În stânga, paginile tale și cele standard (cu ochiul care le ascunde
     din notch și cu duplicarea), iar sub ele iconița paginii pe care ești. În dreapta, inspectorul widget-ului ales:
     mărimile lui, opțiunile lui și „Scoate widget-ul”. **Mijlocul e împărțit în două**, cu un separator pe care îl poți
     trage: sus pagina **vie** (aceeași grilă 6×4 pe care o vezi în notch, cu drag, redimensionare și selecție), care
     crește până la 1,7× ca să umple jumătatea ei pe un ecran lat; jos biblioteca de widget-uri — categoriile ca jetoane
     pe orizontală și widget-urile într-un rând care se derulează lateral (și cu rotița). O pagină standard nu are
-    bibliotecă: nu se editează.
+    bibliotecă: nu se editează. Sub pagină, **indicatorul de rânduri** (P70): patru segmente, aprinse cât rânduri
+    folosești, adică exact cât de înalt se va deschide notch-ul — altfel nu puteai afla decât deschizându-l.
   - **Widgeturi** — catalogul întreg, pe toată înălțimea, cu categoriile lui. Ce alegi se adaugă pe pagina deschisă în
     Workspace.
   - **Teme** — modul (întunecat / luminos / ca Windows), temele gata făcute și ale tale, culorile temei folosite,
@@ -606,7 +618,7 @@ Prima dată, build-ul descarcă pachetele NuGet (1–2 minute). SmartScreen poat
   - un semn portocaliu **„mic”** apare cât microfonul e folosit.
 - **Ecran ocupat.** Pe un monitor ocupat, pastila se ascunde în sus, cu animație.
 
-### Bulina de stare (din P71, experimental)
+### Bulina de stare (din P73, experimental)
 
 Comutatorul „Bulina de stare” (Setări › Funcții noi, oprit implicit). Lângă pastilă, la 8 px în dreapta și pe mijlocul
 ei, apare un disc de 20 px din aceeași culoare ca notch-ul, cu **o singură pictogramă** de 11 px în culoarea stării:
@@ -1158,6 +1170,8 @@ Niciun nume de proces, nicio cale, niciun titlu de fereastră. Un eșantion scri
 
 | Versiune | Ce a adus |
 |---|---|
+| 0.6.28 | **Bulina de stare** (`bulina-de-stare`, experimental, oprit): un disc de 20 px lângă pastilă, cu o singură glifă pentru ce e pornit acum (microfon sau cameră, o treabă a ta, media, încărcarea) și un inel de progres — firul pastilei, îndoit în cerc; prioritate fixă, cu confidențialitatea prima, toate stările la hover; stările vin **doar** din motorul de context, progresul piesei din aceeași citire ca linia pastilei mici, fără cronometru propriu și cu aceeași deplasare ca pastila. **Notch-ul lipit de ramă devine sertar:** racordările concave au fost scoase (imită un decupaj care pe Windows nu există), umeri drepți, o dungă de lumină pe muchia de sus și pastila de standby cu 4 px mai scundă. **Colțuri continue** (`colturi-continue`, experimental, oprit): colțurile de jos sunt câte o curbă cubică a cărei curbură crește treptat, în loc de arc de cerc — curba pleacă de la 1,6 ori raza pe fiecare latură și e limitată de jumătatea laturii și de latura rămasă sub colț, ca pe forma mică conturul să nu se îndoaie peste el însuși; matematica e pură și testată (`Core/Ui/SmoothCorner.cs`), `Seg` capătă varianta „curbă”, iar singurul traducător spre WPF o desenează, deci silueta, decupajul conținutului și antetul ferestrei v2 rămân aceeași formă |
+| 0.6.27 | Fereastra WinNotch v2 (experimentală), redesenată din temelii (P70, ADR 0017): sus, pe rama ferestrei, **o felie de monitor cu notch-ul pe ea**, desenat cu conturul adevărat (aceeași rază, aceleași racordări, același traducător ca al notch-ului) și ținut în pas cu setările — muți poziția, se mută. Grupurile de opțiuni sunt etichete gravate peste rânduri despărțite de o linie de un pixel, fără carduri; numerele, căile și scurtăturile sunt monospațiate; două-trei variante se văd toate deodată, de la patru în sus se strâng într-o listă — iar listele nu mai sunt dreptunghiuri albe de Windows, ci au stilul temei. Jos scrie ce tocmai s-a schimbat, fiindcă fereastra nu are buton de salvare. În Workspace, un indicator arată cât de înalt va crește notch-ul. Tema nouă **„Aparat”** |
 | 0.1 | Prima variantă: pastilă, hover, muzică cu volum, standby personalizabil, temperaturi, monitoare și fullscreen, mod mic peste ferestre maximizate, tray, setări |
 | 0.2 | Reproiectare completă după schițele aprobate: Acasă (versuri, vizualizator, surse audio, calendar, vreme), Sistem (grafic CPU, internet, test viteză), Dispozitive (microfon/cameră, conectate), Unelte (lansator, spații de lucru, fereastra activă, clipboard 20, notiță), pastila mică, pauza pentru ochi |
 | 0.2.1 | Conflictul de pachete NU1605 rezolvat |
@@ -1179,7 +1193,6 @@ Niciun nume de proces, nicio cale, niciun titlu de fereastră. Un eșantion scri
 | 0.6.18 | Reparația B1: notch-ul deschis gol și pastila doar cu ora — o animație veche de ascundere nu mai colapsează un strat arătat între timp (jetoane per strat), iconița vremii ia culorile temei pe temele luminoase, forma mică are mereu „ora · data”; plasa de siguranță „notch-guard” (Stabil, pornită): verificare la 300 ms după deschidere și la 450 ms după schimbarea pastilei, pagina curentă refăcută, apoi Acasă, rândul „B1 recover” în log (fără date personale) |
 | 0.6.25 | **Tot** notch-ul se mărește pe ecrane mari, inclusiv pastila de standby: până acum doar panoul deschis și alertele urmau scara, iar pastila rămânea la 34 px cu text de 11 px, deci pe 1440p/4K ora și data abia se vedeau (regula, pură și testată, în `Core/Ui/PillSize.cs`; straturile de standby au transformarea lor, ca panoul și alertele). Fereastra WinNotch v2 (experimentală): fila Workspace e împărțită în două, cu separator tras de utilizator — pagina vie sus (crește până la 1,7× ca să umple jumătatea ei), biblioteca de widget-uri jos, făcută pentru o bandă largă (categorii pe orizontală, carduri derulate lateral); gestul de tragere s-a extras o dată în `Core/Ui/WidgetDrag.cs`, folosit și de galerie și de bibliotecă |
 | 0.6.26 | Secțiunea de performanță, pe pași. **P60, fundația** (`perf-monitor`, experimental, oprit): `Core/Perf` pur și testat — cadențele cu regula „nimic sub 2 s în standby” (fila închisă și fără joc = niciun cronometru, nu unul lent), eșantionul, istoricul cu fereastră fixă, percentilele de frametime cu 1% / 0.1% low, trendul de scurgere de memorie (pantă plus cât de dreaptă e linia) și adunarea proceselor după nume; placa video din contoarele Windows prin PDH, **niciodată NVML în procesul nostru** (P51c), ce cere biblioteca de senzori vine din serviciul SYSTEM; fila a cincea „Performanță”, cu „—” unde nu știe. **P61, modul de joc** (`game-session`, experimental, oprit): sesiunea din motorul de context (joc în față **și** pe tot ecranul, deci lansatoarele rămân afară; alt-tab nu e ieșire, răgaz de 90 s; un joc în fereastră nu e detectat, limită asumată), telemetrie la 1 s doar cât rulează, automatizări **doar ale noastre** și reversibile (prioritatea propriului proces, vremea și calendarul amânate — tăcerea și amânarea alertelor sunt deja `fullscreen-hide`, nu se dublează), rezumat la ieșire (alertă, widget „Ultimul joc”, cardul din filă, acțiunea `game.last-report`) și `game-sessions.jsonl` pentru comparație în timp — numele jocului e acolo și doar acolo, niciodată în `log.txt`. ADR 0016. Plus: linia de progres a piesei din pastila mică are comutator (`MiniProgress`, pornit implicit) și acțiunea `settings.mini-progress`; verificările picate din CI apar ca adnotări GitHub. Două revizii R1 (1 Critic, 7 Majore, 15 Medii reparate), 99 de teste noi și două drumuri de fum noi |
-| 0.6.27 | **Bulina de stare** (`bulina-de-stare`, experimental, oprit): un disc de 20 px lângă pastilă, cu o singură glifă pentru ce e pornit acum (microfon sau cameră, o treabă a ta, media, încărcarea) și un inel de progres — firul pastilei, îndoit în cerc; prioritate fixă, cu confidențialitatea prima, toate stările la hover; stările vin **doar** din motorul de context, progresul piesei din aceeași citire ca linia pastilei mici, fără cronometru propriu și cu aceeași deplasare ca pastila. **Notch-ul lipit de ramă devine sertar:** racordările concave au fost scoase (imită un decupaj care pe Windows nu există), umeri drepți, o dungă de lumină pe muchia de sus și pastila de standby cu 4 px mai scundă. **Colțuri continue** (`colturi-continue`, experimental, oprit): colțurile de jos sunt câte o curbă cubică a cărei curbură crește treptat, în loc de arc de cerc — curba pleacă de la 1,6 ori raza pe fiecare latură și e limitată de jumătatea laturii și de latura rămasă sub colț, ca pe forma mică conturul să nu se îndoaie peste el însuși; matematica e pură și testată (`Core/Ui/SmoothCorner.cs`), `Seg` capătă varianta „curbă”, iar singurul traducător spre WPF o desenează, deci silueta, decupajul conținutului și antetul ferestrei v2 rămân aceeași formă |
 | 0.6.24 | Fereastra WinNotch v2 (experimentală): fila „Sistem” devine **„Setări”** și e rescrisă nativ, pe jetoanele temei (`Features/WindowV2/V2Controls.cs` + `SettingsView.cs`) — nimic din fereastra clasică nu mai e găzduit nicăieri; zece secțiuni (Notch, Standby, Acasă și sănătate, Browser, Sistem, Spații de lucru, Pagina după context, Funcții noi, Acțiuni, Noutăți); **fără buton de salvare**, fiecare schimbare se scrie și se aplică pe loc, iar textul la scurt timp după ce te oprești din scris; `SettingsMap` (pur, testat) duce cele 23 de acțiuni `settings.*` la secțiunea în care a ajuns opțiunea |
 | 0.6.23 | Fereastra WinNotch v2 (experimentală) regândită: **o singură navigare** — patru file în antet (Workspace, Widgeturi, Teme, Sistem), iar coloana din stânga aparține filei, nu ferestrei (paginile și iconița în Workspace, secțiunile în Sistem), inspectorul doar în Workspace. Nu mai găzduiește fereastra clasică: editorul de pagini și inspectorul sunt scrise nativ, pe jetoanele temei, refolosind `WidgetPage`, `Gallery` și definițiile widget-urilor; setările și noutățile rămân conținutul existent, temele trec prin `Core/Ui/ThemeEdits`. Jos, câmpul de comandă pornește acțiuni prin registru (`Ctrl + K`) |
 | 0.6.22 | Fereastra WinNotch v2 (experimentală) devine o singură fereastră: paginile, temele, setările și noutățile se construiesc înăuntru cu exact același cod (`SettingsWindow.TakeContent`, `Updater.ParseNotes`, `Core/Ui/ThemeEdits` folosit de ambele ferestre, `EditorWindow.TakeContent` pentru editorul de widget-uri), deci nicio categorie nu mai trimite la fereastra clasică; `Esc` închide întâi panoul de peste pagină, iar redeschiderea pe aceeași pagină nu o reconstruiește. P50 (experimental): o singură suprafață pictată — pastila nu-și mai desenează fundalul cât e ancorată, deci dispar nuanța diferită și îmbinarea din colțurile de jos; racordarea e limitată și de înălțime; un singur traducător geometrie→WPF, folosit și de antetul ferestrei; pensulele se reconstruiesc la pornirea comutatorului. Audit al comutatoarelor: marcajul „pornită implicit” în Setări, condiția de vizibilitate în fiecare descriere, teste care refuză un comutator rămas fără cititor în cod |

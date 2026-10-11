@@ -9,7 +9,7 @@ namespace WinNotch
     public static partial class T
     {
         /// <summary>
-        /// P70: the bottom corners curve gradually instead of entering a circular arc all at once (reported by the
+        /// P72: the bottom corners curve gradually instead of entering a circular arc all at once (reported by the
         /// author: "s-ar putea face marginile mai smooth"). The maths, the outline with the switch on and the
         /// non-regression with it off — the shape must come out exactly as before.
         /// </summary>

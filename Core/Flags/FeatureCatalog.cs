@@ -126,11 +126,11 @@ namespace WinNotch.Core.Flags
             new FeatureInfo(WindowV2, "Fereastra WinNotch v2", "Fereastra nouă: antetul e notch-ul desfăcut, o coloană cu categorii, carduri pentru acțiunile care există și o coloană cu clipboard și confidențialitate. Se vede la următoarea deschidere a ferestrei WinNotch (din notch sau din meniul iconiței).",
                             FeatureStage.Experimental, false),
 
-            // P70: off by default until it is announced; off = the bottom corners are arcs, exactly as before
+            // P72: off by default until it is announced; off = the bottom corners are arcs, exactly as before
             new FeatureInfo(SmoothCorners, "Colțuri continue", "Colțurile de jos ale notch-ului se rotunjesc treptat, ca pictogramele de pe telefon, în loc să intre dintr-odată în arc de cerc. Se vede doar cu „Notch lipit de ramă” pornită (acolo silueta e desenată de noi) și în antetul ferestrei v2; pastila plutitoare rămâne cu colțurile ei.",
                             FeatureStage.Experimental, false),
 
-            // P71: off by default until it is announced; off = nothing beside the pill, nothing subscribed
+            // P73: off by default until it is announced; off = nothing beside the pill, nothing subscribed
             new FeatureInfo(StatusDot, "Bulina de stare", "Lângă notch apare o bulină cu o singură pictogramă pentru ce e pornit acum: microfonul care te ascultă, piesa care cântă, încărcătorul, o treabă în lucru. Un inel în jurul ei arată progresul, iar la hover le vezi pe toate. Se vede în standby și pe pastila mică, doar când chiar se întâmplă ceva; cu notch-ul deschis sau peste o alertă dispare. Merge doar cu „Motorul de context” pornit — de acolo vin toate stările.",
                             FeatureStage.Experimental, false),
 

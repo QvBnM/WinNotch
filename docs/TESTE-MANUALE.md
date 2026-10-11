@@ -516,7 +516,30 @@ clasică apasă și „Salvează”; în v2 se aplică pe loc).
 | P61.14 | Vremea și calendarul se amână | Cât joci, uită-te la widget-ul Vremea după ce ieși. | Nu s-a actualizat în timpul jocului; se actualizează la prima trecere după ieșire. |
 | P61.15 | Mod sigur | Pornește cu `--safe-mode` și intră într-un joc. | Nicio sesiune, niciun rezumat (funcția e Experimental). |
 
-### P70 — Colțuri continue
+### P70 — Fereastra WinNotch, redesenată
+
+Pornește din Setări → „Funcții noi” → **„Fereastra WinNotch v2”**, apoi deschide fereastra din notch (rotița) sau din
+meniul iconiței. Pentru paleta pentru care a fost desenată: fila Teme → modul întunecat → **„Aparat”**.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P72.1 | Monitorul din ramă | Deschide fereastra. | Sus, pe banda neagră, o felie de monitor cu o pastilă neagră lipită de marginea lui de sus. Pe pastilă: ce ții în standby (ex. „Muzică · Ora · Vremea”) și ora, la dreapta. |
+| P72.2 | Poziția se vede, nu se citește | Setări → Notch → „Poziție” → apasă „Stânga”, apoi „Dreapta”, apoi „Centru”. | Pastila de sus se mută la fiecare apăsare, în partea potrivită a monitorului. Jos, în subsol, scrie „Poziție → Stânga” (apoi Dreapta, apoi Centru). |
+| P72.3 | Rotunjirea se vede | Fila Teme → trage de „Colțuri”. | Colțurile de jos ale pastilei din ramă se schimbă odată cu ale notch-ului adevărat. |
+| P72.4 | Racordările lui P50 | Pornește „Notch lipit de ramă” din „Funcții noi”, apoi uită-te din nou la previzualizare. | Pastila din ramă capătă racordările concave în stânga și în dreapta, ca notch-ul adevărat. Oprește funcția: dispar. |
+| P72.5 | Standby-ul se vede | Setări → Standby → scoate „Vremea”, adaugă „Baterie”. | Textul de pe pastila din ramă se schimbă odată cu lista. |
+| P72.6 | Rândurile, nu cardurile | Uită-te la orice secțiune din Setări. | Un titlu mic cu majuscule, sub el rânduri despărțite de o linie subțire. Niciun dreptunghi rotunjit în jurul grupului. Controlul fiecărui rând e lipit la dreapta. |
+| P72.7 | Două-trei variante se văd toate | Setări → Notch → „Poziție”. | Cele trei variante sunt butoane alăturate, cea aleasă pe culoarea accentului. „Se micșorează singur după” (cinci variante) rămâne listă. |
+| P72.8 | Listele sunt pe temă | Deschide „Se micșorează singur după”. | Lista care se deschide e întunecată, cu contur subțire și colțuri rotunjite — **nu** un dreptunghi alb de Windows. Varianta de sub mouse se luminează. |
+| P70.9 | Numerele nu tremură | Setări → Notch → „Se deschide la hover după” → apasă de câteva ori − și +. | Valoarea („400 ms”) stă pe loc, nu se mișcă stânga-dreapta la fiecare cifră. Notch-ul chiar își schimbă întârzierea. |
+| P70.10 | Subsolul spune ce s-a scris | Schimbă orice setare (un comutator, o listă, un număr). | Jos, lângă bulina verde și „SE APLICĂ PE LOC”, apare numele setării și noua valoare. Nu există niciun buton „Salvează” sau „Renunță”. |
+| P70.11 | Indicatorul de rânduri | Workspace → o pagină de-a ta. Adaugă un widget pe rândul al treilea. | Sub pagină se aprind trei din cele patru segmente și scrie „3 rânduri din 4 folosite”. Scoate widget-ul: revine. |
+| P70.12 | Ștergerea e roșie | Workspace → „Șterge pagina”. | Butonul e în culoarea de pericol, cu contur. La prima apăsare scrie „Sigur? Apasă din nou”, tot roșu. |
+| P70.13 | Tastatura | Apasă `Tab` repetat prin fereastră. | Se vede clar unde ești: contur pe culoarea accentului pe file, pe rândurile din stânga, pe comutatoare și pe liste. |
+| P70.14 | Orice temă | Fila Teme → treci pe „Luminos”, apoi pe „Hârtie”, apoi înapoi pe „Aparat”. | Fereastra se recolorează întreagă, inclusiv previzualizarea, rândurile și listele. Nicio bucată nu rămâne întunecată pe tema luminoasă (sau invers). |
+| P70.15 | Comutatorul oprit | Oprește „Fereastra WinNotch v2” cât fereastra e deschisă. | Fereastra se închide. Deschide-o din nou din notch: apare fereastra clasică, neschimbată. |
+| P70.16 | Nimic nu rămâne agățat | Deschide și închide fereastra de câteva ori, apoi schimbă setări din fereastra clasică. | Nicio eroare, nimic în `log.txt` despre „window-v2”, iar aplicația merge mai departe. |
+### P72 — Colțuri continue
 
 Comutatorul `colturi-continue` (Setări → Funcții noi, Experimental, oprit implicit). Silueta notch-ului e desenată de
 noi doar cât „Notch lipit de ramă” e pornită, deci acolo se vede schimbarea; pastila plutitoare e un `Border`, ale cărui
@@ -524,16 +547,16 @@ colțuri le desenează Windows ca arce.
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
-| P70.1 | Oprit, nimic nu se schimbă | Pornește „Notch lipit de ramă”, lasă „Colțuri continue” oprită. Fă o captură cu pastila în standby. | Forma e exact cea de până acum: colțurile de jos sunt arce de cerc cu raza din Setări. |
-| P70.2 | Pornit, colțurile se rotunjesc treptat | Bifează „Colțuri continue”, salvează. Fă aceeași captură și compar-o cu prima. | Colțul începe mai sus pe laterală și se termină mai departe pe muchia de jos; nu se mai vede punctul în care începe rotunjirea. Lățimea și înălțimea pastilei sunt neschimbate. |
-| P70.3 | Se aplică fără repornire | Cu notch-ul în standby, bifează și debifează comutatorul de câteva ori. | Forma se schimbă la fiecare apăsare, fără să clipească, fără să se mute pastila și fără rânduri de eroare în `log.txt`. |
-| P70.4 | Raza din Setări contează tot | Cu comutatorul pornit, mută rotunjirea din Teme de la 12 la 28. | Colțul crește odată cu raza, la fel ca pe arce; la 12 e discret, la 28 e vizibil rotund. |
-| P70.5 | Forma mică nu se strâmbă | Lasă notch-ul în pace 10 secunde, până trece la pastila mică (22 px), cu rotunjirea pe 28. | Racordările din stânga și dreapta se continuă lin în colțurile de jos; nicio îndoitură, nicio muchie care merge înapoi. |
-| P70.6 | Conținutul e tăiat cu aceeași formă | Pune o piesă cu copertă colorată și uită-te la colțurile de jos ale pastilei. | Fundalul colorat se oprește exact pe contur; nu iese în colț și nu lasă o felie de culoare în afara siluetei. |
-| P70.7 | Antetul ferestrei v2 | Pornește și „Fereastra WinNotch v2”, deschide fereastra. | Antetul are exact aceleași colțuri ca notch-ul din marginea ecranului — recunoști același obiect. |
-| P70.8 | Mod sigur | Pornește cu `--safe-mode`. | Colțurile sunt arce (funcția e Experimental, deci oprită în mod sigur). |
+| P72.1 | Oprit, nimic nu se schimbă | Pornește „Notch lipit de ramă”, lasă „Colțuri continue” oprită. Fă o captură cu pastila în standby. | Forma e exact cea de până acum: colțurile de jos sunt arce de cerc cu raza din Setări. |
+| P72.2 | Pornit, colțurile se rotunjesc treptat | Bifează „Colțuri continue”, salvează. Fă aceeași captură și compar-o cu prima. | Colțul începe mai sus pe laterală și se termină mai departe pe muchia de jos; nu se mai vede punctul în care începe rotunjirea. Lățimea și înălțimea pastilei sunt neschimbate. |
+| P72.3 | Se aplică fără repornire | Cu notch-ul în standby, bifează și debifează comutatorul de câteva ori. | Forma se schimbă la fiecare apăsare, fără să clipească, fără să se mute pastila și fără rânduri de eroare în `log.txt`. |
+| P72.4 | Raza din Setări contează tot | Cu comutatorul pornit, mută rotunjirea din Teme de la 12 la 28. | Colțul crește odată cu raza, la fel ca pe arce; la 12 e discret, la 28 e vizibil rotund. |
+| P72.5 | Forma mică nu se strâmbă | Lasă notch-ul în pace 10 secunde, până trece la pastila mică (22 px), cu rotunjirea pe 28. | Racordările din stânga și dreapta se continuă lin în colțurile de jos; nicio îndoitură, nicio muchie care merge înapoi. |
+| P72.6 | Conținutul e tăiat cu aceeași formă | Pune o piesă cu copertă colorată și uită-te la colțurile de jos ale pastilei. | Fundalul colorat se oprește exact pe contur; nu iese în colț și nu lasă o felie de culoare în afara siluetei. |
+| P72.7 | Antetul ferestrei v2 | Pornește și „Fereastra WinNotch v2”, deschide fereastra. | Antetul are exact aceleași colțuri ca notch-ul din marginea ecranului — recunoști același obiect. |
+| P72.8 | Mod sigur | Pornește cu `--safe-mode`. | Colțurile sunt arce (funcția e Experimental, deci oprită în mod sigur). |
 
-### P50 revizuit — sertarul (0.6.27)
+### P50 revizuit — sertarul (0.6.28)
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
@@ -543,23 +566,23 @@ colțuri le desenează Windows ca arce.
 | P50.23 | Doar standby-ul se scurtează | Lasă să treacă la forma mică, apoi declanșează o alertă (schimbă volumul), apoi deschide notch-ul. | Forma mică, alerta și panoul deschis au exact înălțimile de dinainte. |
 | P50.24 | Dunga dispare la oprire | Debifează „Notch lipit de ramă”. | Pastila plutește din nou, fără dungă pe muchie, exact ca înainte. |
 
-### P71 — Bulina de stare
+### P73 — Bulina de stare
 
 Comutatorul `bulina-de-stare` (Setări → Funcții noi, Experimental, oprit implicit). Cere și „Motorul de context” pornit
 (e pornit implicit).
 
 | # | Verificare | Pași | Rezultat așteptat |
 |---|---|---|---|
-| P71.1 | Nu apare degeaba | Pornește comutatorul pe un calculator liniștit: fără muzică, fără microfon, pe baterie. | Nicio bulină lângă pastilă. |
-| P71.2 | Cântă | Pornește o piesă. | Lângă pastilă, la dreapta, un disc cu pictograma de sunet în culoarea de accent, cu un inel care crește odată cu piesa. |
-| P71.3 | Te ascultă bate muzica | Cu piesa pornită, intră într-un apel (sau pornește Înregistrator de voce). | Bulina trece pe microfon, în culoarea de pericol, **fără inel**. La închiderea microfonului revine pe muzică. |
-| P71.4 | Se încarcă | Oprește muzica și bagă încărcătorul. | Bulina arată fulgerul, cu inelul la nivelul bateriei. Scoate încărcătorul: bulina dispare (descărcarea nu e o stare de arătat). |
-| P71.5 | Hover | Cu microfonul pornit și muzica pornită, ține mouse-ul pe bulină. | Apare textul cu toate stările, în ordine: „te ascultă · cântă”. Notch-ul **nu** se deschide. |
-| P71.6 | Dispare deschis | Deschide notch-ul (hover pe pastilă sau `Win+Alt+N`). | Bulina dispare cât e deschis și revine la închidere. |
-| P71.7 | Dispare peste alertă | Cu muzica pornită, schimbă volumul ca să apară alerta. | Cât ține alerta, nicio bulină. După ce trece, revine. |
-| P71.8 | Pleacă cu pastila | Cu „Peste jocuri / fullscreen” pe „ascuns”, intră într-un joc pe tot ecranul, cu muzica pornită. | Bulina pleacă de pe ecran odată cu pastila: nu rămâne singură, agățată de marginea de sus. |
-| P71.9 | Lipită de ramă | Pornește și „Notch lipit de ramă”. | Bulina nu mai plutește lângă sertar: glifa stă în capătul lui din dreapta. |
-| P71.10 | Temele | Schimbă pe o temă luminoasă și înapoi. | Discul ia culoarea notch-ului, glifa pe cea a stării, la ambele teme. Nicio culoare rămasă din tema dinainte. |
-| P71.11 | Oprit curat | Debifează comutatorul cât cântă ceva. | Bulina dispare pe loc. În `log.txt` nu apare nicio eroare, iar la bifare din nou revine. |
-| P71.12 | Fără motorul de context | Oprește „Motorul de context”, lasă bulina pornită, pornește o piesă. | Nicio bulină (snapshot gol). Descrierea din Setări spune de ce. |
-| P71.13 | Mod sigur | Pornește cu `--safe-mode`. | Nicio bulină (funcția e Experimental). |
+| P73.1 | Nu apare degeaba | Pornește comutatorul pe un calculator liniștit: fără muzică, fără microfon, pe baterie. | Nicio bulină lângă pastilă. |
+| P73.2 | Cântă | Pornește o piesă. | Lângă pastilă, la dreapta, un disc cu pictograma de sunet în culoarea de accent, cu un inel care crește odată cu piesa. |
+| P73.3 | Te ascultă bate muzica | Cu piesa pornită, intră într-un apel (sau pornește Înregistrator de voce). | Bulina trece pe microfon, în culoarea de pericol, **fără inel**. La închiderea microfonului revine pe muzică. |
+| P73.4 | Se încarcă | Oprește muzica și bagă încărcătorul. | Bulina arată fulgerul, cu inelul la nivelul bateriei. Scoate încărcătorul: bulina dispare (descărcarea nu e o stare de arătat). |
+| P73.5 | Hover | Cu microfonul pornit și muzica pornită, ține mouse-ul pe bulină. | Apare textul cu toate stările, în ordine: „te ascultă · cântă”. Notch-ul **nu** se deschide. |
+| P73.6 | Dispare deschis | Deschide notch-ul (hover pe pastilă sau `Win+Alt+N`). | Bulina dispare cât e deschis și revine la închidere. |
+| P73.7 | Dispare peste alertă | Cu muzica pornită, schimbă volumul ca să apară alerta. | Cât ține alerta, nicio bulină. După ce trece, revine. |
+| P73.8 | Pleacă cu pastila | Cu „Peste jocuri / fullscreen” pe „ascuns”, intră într-un joc pe tot ecranul, cu muzica pornită. | Bulina pleacă de pe ecran odată cu pastila: nu rămâne singură, agățată de marginea de sus. |
+| P73.9 | Lipită de ramă | Pornește și „Notch lipit de ramă”. | Bulina nu mai plutește lângă sertar: glifa stă în capătul lui din dreapta. |
+| P73.10 | Temele | Schimbă pe o temă luminoasă și înapoi. | Discul ia culoarea notch-ului, glifa pe cea a stării, la ambele teme. Nicio culoare rămasă din tema dinainte. |
+| P73.11 | Oprit curat | Debifează comutatorul cât cântă ceva. | Bulina dispare pe loc. În `log.txt` nu apare nicio eroare, iar la bifare din nou revine. |
+| P73.12 | Fără motorul de context | Oprește „Motorul de context”, lasă bulina pornită, pornește o piesă. | Nicio bulină (snapshot gol). Descrierea din Setări spune de ce. |
+| P73.13 | Mod sigur | Pornește cu `--safe-mode`. | Nicio bulină (funcția e Experimental). |
