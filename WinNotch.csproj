@@ -30,6 +30,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The plates' two faces (SIL OFL, see Fonts/LICENSE-OFL.txt): Archivo for words, Chivo Mono for every number.
+         Embedded, because neither ships with Windows and the plates are the specification. -->
+    <Resource Include="Fonts\*.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Browser extension (one entry per tab that plays sound); written to %AppData%\WinNotch\extension on start -->
     <EmbeddedResource Include="extension\*.*" LogicalName="ext/%(Filename)%(Extension)" />
     <!-- what this version brought: shown after an update and in the WinNotch window ("Noutăți") -->

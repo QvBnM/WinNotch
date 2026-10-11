@@ -27,6 +27,12 @@
          Windows 10/11; spaced out in caps it reads as engraving on a device, which Segoe cannot do. -->
     <FontFamily x:Key="LabelFont">Bahnschrift SemiBold, Bahnschrift, Segoe UI Semibold, Segoe UI</FontFamily>
     <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <!-- P75: the two faces of the design plates (docs/design), embedded from Fonts/ because neither ships with
+         Windows. Archivo carries the words; Chivo Mono carries every number and every engraved label, and its digits
+         are the same width, so a column of readings lines up and a row never twitches while its value changes.
+         The fallbacks after the '#' name are what Windows has, in case the resource cannot be loaded. -->
+    <FontFamily x:Key="PageFont">pack://application:,,,/Fonts/#Archivo, Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="PageMono">pack://application:,,,/Fonts/#Chivo Mono, Cascadia Mono, Consolas</FontFamily>
 
     <Style x:Key="Cap" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
