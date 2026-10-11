@@ -636,3 +636,20 @@ pornite implicit. Verificările P50.x, P72.x, P73.x și P74.x rămân valabile �
 | 32.2 | Se strânge la loc | Oprește piesa și scoate încărcătorul, cu microfonul închis. | Pastila revine la lățimea dinainte: nu rămâne o fâșie goală în dreapta. |
 | 32.3 | Fără „mic” dublat | Intră într-un apel și lasă pastila să treacă la forma mică. | Lângă ceas apare doar glifa de microfon a bulinei, **nu** și textul „· mic”. Oprește bulina din Setări: textul „· mic” revine. |
 | 32.4 | Ecran mare | Pe un monitor 1440p sau 4K (sau cu mărirea pusă manual pe 135%), lasă notch-ul în standby un minut, cu procentul de procesor între lucrurile afișate. | Pastila își păstrează lățimea; nu se strâmtează după o secundă și nu taie ultimul lucru din rând. |
+
+### P75 — Forma celor patru pagini
+
+Comutatorul `pagini-format` (Setări → Funcții noi, Experimental, oprit implicit). Planșele sunt în `docs/design`.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P75.1 | Oprit, nimic nu se schimbă | Lasă comutatorul oprit și deschide notch-ul pe fiecare dintre cele patru pagini. | Arată exact ca până acum. |
+| P75.2 | Acasă | Pornește o piesă cu copertă, apoi bifează comutatorul. | Muzica umple coloana din stânga, iar cardul ei ia culoarea copertei, stinsă spre dreapta. În dreapta: ceasul, evenimentul următor cu dunga albastră, vremea cu orele dedesubt. |
+| P75.3 | Versurile | Cu „Versuri” pornit în Setări și o piesă care are versuri. | Rândul curent apare în chihlimbar sub titlu, următorul mai stins, și se schimbă odată cu piesa. |
+| P75.4 | Sistem | Deschide Sistem și lasă-l un minut. | Graficul procesorului are două linii: încărcarea plină, în chihlimbar; temperatura punctată, în albastru. Memoria și placa video pe un rând, bateria dedesubt. În dreapta, internetul și „consumă acum”. |
+| P75.5 | Dispozitive | Intră într-un apel (microfon pornit). | Pătratul microfonului se aprinde în culoarea accentului, cu cine îl folosește și de cât timp. În dreapta, lista celor conectate, fiecare rând terminat cu ce știm despre el; căștile cu baterie au procentul în chihlimbar. |
+| P75.6 | Unelte | Scrie `= 250*1,19` în câmpul de căutare, apoi click pe rezultat. | Rezultatul apare în chihlimbar, la dreapta, cu „click = copiat”; clickul îl copiază. Scrie apoi un nume de aplicație: rezultatele au tipul gravat la capăt. |
+| P75.7 | Notița nu se pierde | Scrie în notiță și închide notch-ul imediat, fără pauză. | Textul e salvat: redeschide notch-ul, e acolo. |
+| P75.8 | Temele | Treci pe o temă luminoasă și înapoi. | Toate cele patru pagini iau culorile temei; nicio culoare rămasă din tema dinainte. Singura culoare din afara temei e tenta copertei. |
+| P75.9 | Se aplică fără repornire | Bifează și debifează comutatorul cu notch-ul deschis. | Paginile se reconstruiesc la fiecare apăsare, fără erori în `log.txt`, și rămâi pe aceeași pagină. |
+| P75.10 | Mod sigur | Pornește cu `--safe-mode`. | Paginile vechi (funcția e Experimental). |

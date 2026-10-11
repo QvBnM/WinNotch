@@ -31,8 +31,17 @@ namespace WinNotch
         };
         internal static string PageGlyph(string icon) => icon != null && PageGlyphs.TryGetValue(icon, out var g) ? g : "";
 
-        private Pane StandardPane(string id) => id switch { "home" => _home, "system" => _system, "devices" => _devices, "tools" => _tools, _ => null };
-        private string StandardId(Pane p) => p == _home || p == _sources ? "home" : p == _system ? "system" : p == _devices ? "devices" : p == _tools ? "tools" : null;
+        // P75 hook (Features/PagesFormat): the page in the form from the design plates when its switch is on and that
+        // page has been redrawn; otherwise the one the notch has always shown.
+        private Pane StandardPane(string id) => FormatPane(id) ?? id switch { "home" => _home, "system" => _system, "devices" => _devices, "tools" => _tools, _ => null };
+        // P75: a page can be either of its two forms, so both answer to the same id — otherwise rebuilding the pages
+        // (a theme change, the switch moving) would forget which one you were on.
+        private string StandardId(Pane p) =>
+            p == null ? null :
+            p == _home || p == _sources || p == _fmtHome ? "home" :
+            p == _system || p == _fmtSystem ? "system" :
+            p == _devices || p == _fmtDevices ? "devices" :
+            p == _tools || p == _fmtTools ? "tools" : null;
 
         internal WidgetPage UserPane(UserPage pg)
         {
@@ -376,6 +385,7 @@ namespace WinNotch
             _devices = new DevicesPane(this);
             _tools = new ToolsPane(this);
             _sources = new SourcesPane(this);
+            ForgetFormatPanes();                // P75: the pages are rebuilt in whatever form is on now
             _userPanes.Clear();
             var userPage = S.Pages.FirstOrDefault(p => p.Id == currentUser);
             ShowPane(userPage != null ? UserPane(userPage) : StandardPane(currentStd ?? "home") ?? _home);
