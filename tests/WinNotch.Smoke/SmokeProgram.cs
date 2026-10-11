@@ -242,10 +242,29 @@ namespace WinNotch.Smoke
             return WaitFor(ReadStatus, s => s.Mode == "Expanded" && s.Page.Length > 0, TimeSpan.FromSeconds(8), "notch-ul deschis (mode=Expanded, cu ;page=)");
         }
 
+        /// <summary>
+        /// Închide notch-ul cu scurtătura. Scurtătura e globală, deci o apăsare sintetică se poate pierde pe un runner
+        /// de CI — după o serie de clickuri sintetice, Windows o înghite din când în când, și atunci pasul pica fără ca
+        /// aplicația să aibă nimic. De-aceea se mai încearcă o dată înainte de a declara eșecul: tot o apăsare, doar
+        /// că nu una singură. Dacă nici a doua nu închide notch-ul, e o problemă a aplicației și testul pică.
+        /// </summary>
         private static void CloseNotchByHotkey()
         {
             Thread.Sleep(800);
-            Keyboard.TypeSimultaneously(VirtualKeyShort.LWIN, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+            for (int attempt = 1; ; attempt++)
+            {
+                Keyboard.TypeSimultaneously(VirtualKeyShort.LWIN, VirtualKeyShort.ALT, VirtualKeyShort.KEY_N);
+                if (attempt == 2) break;
+                var until = DateTime.UtcNow + TimeSpan.FromSeconds(4);
+                bool closed = false;
+                while (DateTime.UtcNow < until && !closed)
+                {
+                    Alive();
+                    try { closed = ReadStatus().Mode != "Expanded"; } catch (COMException) { } catch (TimeoutException) { } catch (ElementNotAvailableException) { }
+                    if (!closed) Thread.Sleep(100);
+                }
+                if (closed) return;
+            }
             WaitFor(ReadStatus, s => s.Mode != "Expanded", TimeSpan.FromSeconds(8), "notch-ul închis");
         }
 
