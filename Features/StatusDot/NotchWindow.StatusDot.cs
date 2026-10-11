@@ -25,6 +25,12 @@ namespace WinNotch
 
         /// <summary>The disc, its glyph and its ring, in the window's root grid. Null while the switch is off.</summary>
         private Grid _dotHost;
+        /// <summary>
+        /// Inside the host: everything that is drawn. Its opacity is the dot's own show/hide, while the host's opacity
+        /// follows the pill's — WPF multiplies the two down the visual tree, so the dot fades exactly as much as the
+        /// pill does and the two animations never fight over one property.
+        /// </summary>
+        private Grid _dotFade;
         private Border _dotDisc, _dotDivider;
         private TextBlock _dotGlyph;
         private Path _dotRing;
@@ -87,7 +93,7 @@ namespace WinNotch
                 {
                     UnsubscribeStatusDotContext();
                     if (_dotHost != null && Pill.Parent is Panel root) root.Children.Remove(_dotHost);
-                    _dotHost = null; _dotDisc = null; _dotDivider = null; _dotGlyph = null; _dotRing = null; _dotShift = null;
+                    _dotHost = null; _dotFade = null; _dotDisc = null; _dotDivider = null; _dotGlyph = null; _dotRing = null; _dotShift = null;
                     _dotKind = DotKind.None;
                 }
                 UpdateStatusDot();
@@ -115,19 +121,27 @@ namespace WinNotch
                 FontSize = StatusDotRules.GlyphSize,
                 HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
             };
+            _dotFade = new Grid { Opacity = 0 };
+            _dotFade.Children.Add(_dotRing);
+            _dotFade.Children.Add(_dotDisc);
+            _dotFade.Children.Add(_dotDivider);
+            _dotFade.Children.Add(_dotGlyph);
             _dotHost = new Grid
             {
                 HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Top,
-                IsHitTestVisible = false, Opacity = 0,
+                IsHitTestVisible = false,
                 // the same shift as the pill, so it leaves the screen with it over a fullscreen app, plus its own offset
                 RenderTransform = new TransformGroup { Children = { PillShift, _dotShift } },
                 Effect = Pill.Effect,
             };
-            _dotHost.Children.Add(_dotRing);
-            _dotHost.Children.Add(_dotDisc);
-            _dotHost.Children.Add(_dotDivider);
-            _dotHost.Children.Add(_dotGlyph);
+            _dotHost.Children.Add(_dotFade);
             _dotHost.SetBinding(VisibilityProperty, new System.Windows.Data.Binding("Visibility") { Source = Pill });
+            // Reported by the author (0.6.30): walking towards the notch left the music glyph alone on the wallpaper.
+            // The pill fades on hover (0.18) and vanishes entirely while it gets out of the way of a maximized window
+            // (Fade(Pill, 0, 90)); the dot had no part in that, so it stayed at full strength beside a pill nobody
+            // could see. The host simply wears the pill's opacity, so every one of those fades carries it along —
+            // without naming any of them here, and without a second copy of the rule to keep in step.
+            _dotHost.SetBinding(OpacityProperty, new System.Windows.Data.Binding("Opacity") { Source = Pill });
             root.Children.Add(_dotHost);
         }
 
@@ -155,7 +169,7 @@ namespace WinNotch
                     }
                 }
                 DrawStatusDotRing(StatusDotRules.Ring(kind, snap, MediaProgress(), _dotWorkProgress));
-                FadeLayer(_dotHost, visible, 140);
+                FadeLayer(_dotFade, visible, 140);     // the host carries the pill's opacity; this is the dot's own
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(StatusDotRules.FeatureId, ex); }
         }

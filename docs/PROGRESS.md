@@ -975,3 +975,23 @@ Windows, pentru un caz care acum se poartă corect.
   **Nerulate local:** containerul nu are .NET SDK (`dot.net` și `builds.dotnet.microsoft.com` sunt blocate de proxy);
   prima rulare reală e în CI.
 - **Verificări manuale noi:** 30.1–30.8 în `docs/TESTE-MANUALE.md`.
+
+### 0.6.31 — Bulina rămasă singură pe tapet
+
+Autorul, cu două capturi: „dacă mă duc spre notch, rămâne vizibil ăsta de muzică”. Pe una se vedea glifa de muzică
+singură pe tapet, fără nimic sub ea.
+
+Bulina avea deja legătura de `Visibility` la pastilă și aceeași deplasare (`PillShift`), deci peste un joc pe tot
+ecranul pleca de pe ecran cu ea (SD19). Dar pastila nu se ascunde doar prin `Visibility`: se **estompează**. La hover
+trece la 0,18 (`Fade(Pill, 0.18, 140)` din `PollTick`) și dispare cu totul, la 0, cât se dă la o parte peste o
+fereastră maximizată (`_dodging`). Bulina nu lua parte la niciuna dintre ele, fiindcă opacitatea ei era a ei: exact
+proprietatea pe care `FadeLayer` o anima pentru aprindere și stingere.
+
+Reparația nu numește niciuna dintre acele estompări: gazda poartă opacitatea pastilei (`SetBinding(OpacityProperty, …
+Source = Pill)`), iar aprinderea bulinei a coborât pe un strat dinăuntru (`_dotFade`). WPF înmulțește opacitățile pe
+arbore, deci cele două nu se mai bat pe o proprietate și orice estompare viitoare a pastilei o duce pe bulină cu ea,
+fără un al doilea loc de ținut în pas.
+
+- **Teste:** SD24 (nou, pica înainte de reparație). Ancorele SD19, SD22 și SD23 au rămas neatinse.
+  **Nerulate local:** containerul nu are .NET SDK; prima rulare e în CI.
+- **Verificări manuale noi:** 31.1–31.3.

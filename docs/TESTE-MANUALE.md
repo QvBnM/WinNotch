@@ -619,3 +619,11 @@ pornite implicit. Verificările P50.x, P72.x, P73.x și P74.x rămân valabile �
 | 30.6 | **Fereastra trasă sus nu mai deschide notch-ul** | Cu „Raft” **oprit** (implicit), trage o fereastră de bara ei de titlu până la marginea de sus a ecranului, peste notch, și ține-o acolo 2–3 secunde. | Notch-ul **nu** se deschide, iar peste o fereastră maximizată se dă la o parte ca înainte. Dă drumul: fereastra se lipește normal. |
 | 30.7 | Selecția de text nu dă alerta la o parte | Cu „Raft” oprit, schimbă volumul ca să apară alerta, apoi ține butonul stâng apăsat într-o aplicație și plimbă cursorul peste pastilă. | Alerta rămâne pe ecran până își termină timpul. În `log.txt` niciun rând „Alertă întreruptă”. |
 | 30.8 | Cu raftul pornit, tragerea merge ca înainte | Bifează „Raft”, Salvează. Trage un fișier din Explorer peste notch. | Notch-ul se deschide cât tragi, apare overlay-ul „Raft”, iar o alertă de pe pastilă se dă la o parte (rândul „Alertă întreruptă: … (tragere de fișiere)” în `log.txt`). |
+
+### 0.6.31 — Bulina se estompează cu pastila
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| 31.1 | Hover | Cu o piesă pornită, du mouse-ul încet spre pastilă și oprește-te pe ea, fără să aștepți deschiderea. | Pastila se estompează, iar bulina (sau glifa din capătul ei, dacă e lipită de ramă) se estompează odată cu ea. Nicio pictogramă rămasă aprinsă. |
+| 31.2 | Peste o fereastră maximizată | Maximizează un browser, cu muzica pornită, și plimbă mouse-ul peste notch fără să-l duci până la marginea de sus. | Notch-ul se dă la o parte complet: **nimic** nu rămâne pe ecran, nici glifa de muzică. Trage mouse-ul în jos: revin amândouă deodată. |
+| 31.3 | Nu s-a stricat aprinderea | Oprește piesa, apoi pornește-o din nou. | Bulina se stinge și se aprinde ca înainte, lin, fără să clipească. |

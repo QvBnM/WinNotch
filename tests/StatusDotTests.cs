@@ -152,6 +152,16 @@ namespace WinNotch
                   part.Contains("new TransformGroup { Children = { PillShift, _dotShift } }") &&
                   part.Contains("IsHitTestVisible = false"));
 
+            // Raportat de autor (0.6.30, cu două capturi): mergând spre notch, pastila se estompează, dar glifa de
+            // muzică rămânea singură pe tapet, la putere întreagă. Pastila se estompează la hover (0,18) și dispare cu
+            // totul cât se dă la o parte peste o fereastră maximizată (Fade(Pill, 0, 90)); bulina nu lua parte la
+            // niciuna. Acum gazda poartă opacitatea pastilei, iar stratul dinăuntru ține aprinderea ei — WPF le
+            // înmulțește, deci cele două animații nu se bat pe aceeași proprietate.
+            Check("SD24", "Bulina se estompează exact cât pastila: gazda e legată de opacitatea ei, iar aprinderea bulinei stă pe stratul dinăuntru",
+                  part.Contains("_dotHost.SetBinding(OpacityProperty, new System.Windows.Data.Binding(\"Opacity\") { Source = Pill });") &&
+                  part.Contains("FadeLayer(_dotFade, visible, 140);") && !part.Contains("FadeLayer(_dotHost") &&
+                  part.Contains("_dotHost.Children.Add(_dotFade);"));
+
             Check("SD22", "Lipit de ramă chiar se contopește: fără disc, fără inel, glifa intră în pastilă după o linie",
                   part.Contains("if (StatusDotRules.Fused(Anchored))") &&
                   part.Contains("_dotDisc.Visibility = Visibility.Collapsed;") &&
