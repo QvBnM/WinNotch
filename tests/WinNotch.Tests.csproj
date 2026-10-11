@@ -30,6 +30,7 @@
     <Compile Include="NotchAnchoredTests.cs" />
     <Compile Include="SmoothCornerTests.cs" />
     <Compile Include="StatusDotTests.cs" />
+    <Compile Include="PagesV2Tests.cs" />
     <Compile Include="WindowV2Tests.cs" />
     <Compile Include="PillSizeTests.cs" />
     <Compile Include="FeatureAuditTests.cs" />
@@ -104,6 +105,8 @@
     <Compile Include="..\Features\Fullscreen\FullscreenRules.cs" />
     <!-- P50: only the pure geometry (the notch's partial, with the WPF drawing, stays out) -->
     <Compile Include="..\Features\NotchAnchored\AnchoredGeometry.cs" />
+    <!-- P74: the standard pages' metrics and the measurement rule (the WPF pieces stay out) -->
+    <Compile Include="..\Features\PagesV2\PageStyle.cs" />
     <!-- P71: the dot's rules (the notch's partial, with the WPF drawing, stays out) -->
     <Compile Include="..\Features\StatusDot\StatusDotRules.cs" />
     <!-- P60: the performance maths and rules (the sampler, the counters and the tab stay out: Windows and WPF) -->

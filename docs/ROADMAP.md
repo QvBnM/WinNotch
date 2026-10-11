@@ -57,6 +57,8 @@ au acum sensul din plan. Fiecare sarcină se face într-o rulare de pilot automa
 
 | P73 | Bulina de stare: un disc de 20 px lângă pastilă, cu o singură glifă din fontul existent pentru ce e pornit acum (microfon/cameră, o treabă a utilizatorului, media, încărcare) și un inel de progres — firul pastilei, îndoit în cerc. Prioritate fixă, cu confidențialitatea prima; la hover toate stările deodată. Reguli pure (`StatusDotRules`), stările citite **doar** din `ContextEngine`, progresul piesei din aceeași sursă ca linia pastilei mici; aceeași deplasare ca pastila (pleacă de pe ecran cu ea), fără cronometru propriu, fără culori scrise în cod. Contopită în sertar cât e lipit de ramă. Rămâne de legat: starea „lucrează” n-are încă apelant (`StatusDotWork`) | `bulina-de-stare` (Experimental, oprit) | Gata (de testat pe Windows) |
 
+| P74 | Paginile standard în limbajul notch-ului: etichete gravate, toate măsurătorile în fontul monospațiat (regulă pură, scrisă de mână, reevaluată la fiecare schimbare de text printr-un `TextBlock` care-și alege singur fața), bare de 3 px și firul de pe muchia de jos a notch-ului deschis. Totul prin constructorii din `Ui.cs`, deci niciuna dintre cele patru pagini nu e rescrisă și niciuna nu citește comutatorul | `pagini-redesenate` (Experimental, oprit) | Gata (de testat pe Windows) |
+
 După P46: oprire. Autorul folosește aplicația 2 săptămâni, apoi alegem din „Idei pentru mai târziu”.
 
 ## Secțiunea de performanță (cerută 10 oct 2026)

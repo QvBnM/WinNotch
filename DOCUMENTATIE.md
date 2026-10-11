@@ -991,6 +991,22 @@ Detaliile sunt în `AUDIT.md`. Pe scurt:
 - rămân mereu la fel;
 - au buton de **vizibilitate** (se ascund din tab-uri) și de **duplicare**: copia e o pagină din widget-uri, cu același conținut, pe care o modifici cum vrei.
 
+**Paginile standard, redesenate (P74, comutatorul „Pagini redesenate”, oprit implicit).** Cu el pornit, cele patru
+pagini capătă limbajul notch-ului, fără ca vreuna să fie rescrisă — toate se construiesc prin aceiași constructori
+(`Ui.cs`), deci schimbarea se face într-un singur loc:
+- **numele grupurilor sunt gravate:** fontul de etichete, majuscule, mic și discret, ca un nume pe un sertar, nu un titlu
+  pe care-l citești;
+- **toate măsurătorile intră în fontul cu cifre de aceeași lățime** („28%”, „13,1 / 32 GB”, „54 °C”, „1:12”): o coloană
+  de numere se aliniază, iar rândul nu mai tremură când se schimbă valoarea. Decizia se ia la fiecare schimbare de text,
+  nu o dată la construirea paginii, fiindcă aproape fiecare valoare din notch se scrie într-un rând care există deja
+  („—” la pornire, „28%” o secundă mai târziu). Un text cu un cuvânt înaintea cifrei rămâne text: „CPU 28%” e o
+  propoziție, „28%” e un număr;
+- **barele sunt mai subțiri** (3 px în loc de 4): o bară e o citire, nu o bandă de culoare;
+- **un fir pe muchia de jos a notch-ului deschis** arată lucrul care rulează — același înțeles ca linia de pe pastila
+  mică, pe toate paginile. Fără nimic de arătat, firul lipsește.
+Regula care decide ce e măsurătoare e pură și testată (`Features/PagesV2/PageStyle.cs`), scrisă de mână, fără expresii
+regulate. Oprit, fiecare constructor întoarce exact ce întorcea înainte.
+
 **Paginile mele:** oricâte; goale, copie după altă pagină sau după una standard; se redenumesc, primesc iconiță, se reordonează, se ascund și se șterg (ștergerea cere a doua apăsare). Cu mai mult de 5 tab-uri, bara arată doar iconițe (numele apare la hover).
 
 **Editare direct în notch** (creionul din dreapta-sus):
@@ -1170,6 +1186,7 @@ Niciun nume de proces, nicio cale, niciun titlu de fereastră. Un eșantion scri
 
 | Versiune | Ce a adus |
 |---|---|
+| 0.6.29 | Paginile standard din notch în limbajul lui (`pagini-redesenate`, experimental, oprit): nume de grup gravate, toate măsurătorile în fontul monospațiat (regulă pură și testată, scrisă de mână, reevaluată la fiecare schimbare de text, fiindcă valorile se scriu în rânduri care există deja), bare de 3 px și un fir pe muchia de jos a notch-ului deschis pentru lucrul care rulează — totul prin constructorii din `Ui.cs`, deci niciuna dintre cele patru pagini nu e rescrisă. Bulina de stare împrumută forma și comportamentul pastilei: lipită de ramă se contopește în ea (regula exista din 0.6.28, dar desenul n-o folosea), iar discul urmează înălțimea pastilei |
 | 0.6.28 | **Bulina de stare** (`bulina-de-stare`, experimental, oprit): un disc de 20 px lângă pastilă, cu o singură glifă pentru ce e pornit acum (microfon sau cameră, o treabă a ta, media, încărcarea) și un inel de progres — firul pastilei, îndoit în cerc; prioritate fixă, cu confidențialitatea prima, toate stările la hover; stările vin **doar** din motorul de context, progresul piesei din aceeași citire ca linia pastilei mici, fără cronometru propriu și cu aceeași deplasare ca pastila. **Notch-ul lipit de ramă devine sertar:** racordările concave au fost scoase (imită un decupaj care pe Windows nu există), umeri drepți, o dungă de lumină pe muchia de sus și pastila de standby cu 4 px mai scundă. **Colțuri continue** (`colturi-continue`, experimental, oprit): colțurile de jos sunt câte o curbă cubică a cărei curbură crește treptat, în loc de arc de cerc — curba pleacă de la 1,6 ori raza pe fiecare latură și e limitată de jumătatea laturii și de latura rămasă sub colț, ca pe forma mică conturul să nu se îndoaie peste el însuși; matematica e pură și testată (`Core/Ui/SmoothCorner.cs`), `Seg` capătă varianta „curbă”, iar singurul traducător spre WPF o desenează, deci silueta, decupajul conținutului și antetul ferestrei v2 rămân aceeași formă |
 | 0.6.27 | Fereastra WinNotch v2 (experimentală), redesenată din temelii (P70, ADR 0017): sus, pe rama ferestrei, **o felie de monitor cu notch-ul pe ea**, desenat cu conturul adevărat (aceeași rază, aceleași racordări, același traducător ca al notch-ului) și ținut în pas cu setările — muți poziția, se mută. Grupurile de opțiuni sunt etichete gravate peste rânduri despărțite de o linie de un pixel, fără carduri; numerele, căile și scurtăturile sunt monospațiate; două-trei variante se văd toate deodată, de la patru în sus se strâng într-o listă — iar listele nu mai sunt dreptunghiuri albe de Windows, ci au stilul temei. Jos scrie ce tocmai s-a schimbat, fiindcă fereastra nu are buton de salvare. În Workspace, un indicator arată cât de înalt va crește notch-ul. Tema nouă **„Aparat”** |
 | 0.1 | Prima variantă: pastilă, hover, muzică cu volum, standby personalizabil, temperaturi, monitoare și fullscreen, mod mic peste ferestre maximizate, tray, setări |

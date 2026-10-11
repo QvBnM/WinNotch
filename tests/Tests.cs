@@ -363,6 +363,7 @@ namespace WinNotch
             NotchAnchoredTests();
             SmoothCornerTests();
             StatusDotTests();
+            PagesV2Tests();
             WindowV2Tests();
             FeatureAuditTests();
             PillSizeTests();

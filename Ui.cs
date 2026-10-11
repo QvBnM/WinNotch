@@ -24,7 +24,15 @@ namespace WinNotch
         public static Brush B(string key) => (Brush)Application.Current.FindResource(key);
         public static FontFamily Mono => (FontFamily)Application.Current.FindResource("MonoFont");
         public static FontFamily IconFont => (FontFamily)Application.Current.FindResource("IconFont");
+        public static FontFamily LabelFont => (FontFamily)Application.Current.FindResource("LabelFont");
         public static Style S(string key) => (Style)Application.Current.FindResource(key);
+
+        /// <summary>
+        /// P74: the standard pages' new look. Every page in the notch is built through the helpers below, so the switch
+        /// is read here once instead of in four page files. Off, every builder returns exactly what it used to.
+        /// </summary>
+        internal static bool NewPages =>
+            Core.Flags.FeatureFlags.Current?.IsEnabled(Features.PagesV2.PageStyle.FeatureId) ?? false;
 
         /// <summary>A frozen (immutable, cheaper to render) brush.</summary>
         public static SolidColorBrush Rgb(byte r, byte g, byte b, byte a = 255)
@@ -37,21 +45,38 @@ namespace WinNotch
         public static TextBlock T(string text, double size = 12, string brush = "InkBrush", bool bold = false, bool mono = false)
         {
             if (size < 11) size = 11;         // smaller text is hard to read on the transparent window
-            var t = new TextBlock
-            {
-                Text = text ?? "", FontSize = size, Foreground = B(brush),
-                TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center
-            };
+            // P74: a value that is a measurement ("28%", "13,1 / 32 GB", "1:12") goes in the monospaced face, so a
+            // column of numbers lines up and a row stops twitching while its value changes. The block decides again on
+            // every change, because nearly every value in the notch is written into a block that already exists.
+            var t = !mono && NewPages ? new Features.PagesV2.MeasureText(null, Mono) : new TextBlock();
+            t.FontSize = size;
+            t.Foreground = B(brush);
+            t.TextTrimming = TextTrimming.CharacterEllipsis;
+            t.VerticalAlignment = VerticalAlignment.Center;
             if (bold) t.FontWeight = FontWeights.SemiBold;
             if (mono) t.FontFamily = Mono;
+            t.Text = text ?? "";             // last: this is what makes a MeasureText choose its face
             return t;
         }
 
-        public static TextBlock Cap(string text) => new TextBlock
+        public static TextBlock Cap(string text)
         {
-            Text = text, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = B("DimBrush"),
-            VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis
-        };
+            // P74: a group's name is engraved — the label face, in capitals, small and quiet. It names a run of rows;
+            // it is not a heading you read. The same primitive the WinNotch window already uses for its groups.
+            if (NewPages)
+                return new TextBlock
+                {
+                    Text = Features.PagesV2.PageStyle.Eyebrow(text),
+                    FontFamily = LabelFont, FontSize = Features.PagesV2.PageStyle.EyebrowSize,
+                    FontWeight = FontWeights.SemiBold, Foreground = B("DimBrush"),
+                    VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis
+                };
+            return new TextBlock
+            {
+                Text = text, FontSize = 11, FontWeight = FontWeights.SemiBold, Foreground = B("DimBrush"),
+                VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis
+            };
+        }
 
         public static TextBlock Icon(string glyph, double size = 14, Brush brush = null) => new TextBlock
         {
@@ -91,6 +116,9 @@ namespace WinNotch
         /// <summary>Thin progress bar; set fill.ScaleX to 0..1.</summary>
         public static Grid Bar(out ScaleTransform fill, Brush fillBrush, double height = 4)
         {
+            // P74: thinner bars. A bar is a reading, not a block of colour; at 3 px it still reads and the row around
+            // it gets the room back.
+            if (NewPages && height == 4) height = Features.PagesV2.PageStyle.BarHeight;
             var g = new Grid { Height = height, VerticalAlignment = VerticalAlignment.Center };
             g.Children.Add(new Border { Background = B("TrackBrush"), CornerRadius = new CornerRadius(height / 2) });
             fill = new ScaleTransform(0, 1);

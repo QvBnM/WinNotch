@@ -586,3 +586,20 @@ Comutatorul `bulina-de-stare` (Setări → Funcții noi, Experimental, oprit imp
 | P73.11 | Oprit curat | Debifează comutatorul cât cântă ceva. | Bulina dispare pe loc. În `log.txt` nu apare nicio eroare, iar la bifare din nou revine. |
 | P73.12 | Fără motorul de context | Oprește „Motorul de context”, lasă bulina pornită, pornește o piesă. | Nicio bulină (snapshot gol). Descrierea din Setări spune de ce. |
 | P73.13 | Mod sigur | Pornește cu `--safe-mode`. | Nicio bulină (funcția e Experimental). |
+
+### P74 — Pagini redesenate
+
+Comutatorul `pagini-redesenate` (Setări → Funcții noi, Experimental, oprit implicit).
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| P74.1 | Oprit, nimic nu se schimbă | Lasă comutatorul oprit, deschide notch-ul pe fiecare dintre cele patru pagini. | Arată exact ca până acum. |
+| P74.2 | Etichetele gravate | Pornește comutatorul, deschide Sistem. | „CONSUMĂ ACUM”, „INTERNET”, „MEMORIE” sunt cu majuscule mici, în fontul de etichete, discrete. |
+| P74.3 | Numerele nu mai tremură | Uită-te la procentul de procesor câteva secunde, apoi la memorie. | Cifrele au aceeași lățime: rândul stă pe loc, nu se mișcă la fiecare schimbare. Coloanele de numere se aliniază. |
+| P74.4 | Textul rămâne text | Pe Dispozitive, uită-te la „Microsoft Teams · de 12 min” și la numele dispozitivelor. | Numele rămân în fontul normal; doar valorile („72%”, „4K · 60 Hz”) sunt monospațiate. |
+| P74.5 | Barele | Compară barele de la Memorie și Baterie cu o captură de dinainte. | Sunt vizibil mai subțiri, dar se citesc la fel de bine. |
+| P74.6 | Firul | Pornește o piesă și deschide notch-ul. | Pe muchia de jos, un fir subțire care crește odată cu piesa. Oprește piesa: firul dispare, nu rămâne gol. |
+| P74.7 | Firul doar deschis | Cu piesa pornită, închide notch-ul și uită-te la pastilă. | Pastila mică are linia ei ca înainte; firul de jos e al notch-ului deschis, nu se dublează. |
+| P74.8 | Se aplică fără repornire | Bifează și debifează comutatorul cu notch-ul deschis. | Paginile se reconstruiesc la fiecare apăsare, fără erori în `log.txt`, fără să se piardă pagina pe care erai. |
+| P74.9 | Temele | Schimbă pe o temă luminoasă. | Etichetele și numerele iau culorile temei; nicio culoare rămasă din tema dinainte. |
+| P74.10 | Mod sigur | Pornește cu `--safe-mode`. | Paginile arată ca înainte (funcția e Experimental). |

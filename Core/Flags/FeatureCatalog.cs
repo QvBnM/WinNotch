@@ -67,6 +67,8 @@ namespace WinNotch.Core.Flags
         public const string SmoothCorners = "colturi-continue";
         /// <summary>Features/StatusDot: same id as StatusDotRules.FeatureId (the tests check they match).</summary>
         public const string StatusDot = "bulina-de-stare";
+        /// <summary>Features/PagesV2: same id as PageStyle.FeatureId (the tests check they match).</summary>
+        public const string NewPages = "pagini-redesenate";
         /// <summary>Core/Perf + Features/Performance: same id as PerfRules.FeatureId (the tests check they match).</summary>
         public const string PerfMonitor = "perf-monitor";
         /// <summary>Core/Perf + Features/GameMode: same id as GameDetect.FeatureId (the tests check they match).</summary>
@@ -132,6 +134,10 @@ namespace WinNotch.Core.Flags
 
             // P73: off by default until it is announced; off = nothing beside the pill, nothing subscribed
             new FeatureInfo(StatusDot, "Bulina de stare", "Lângă notch apare o bulină cu o singură pictogramă pentru ce e pornit acum: microfonul care te ascultă, piesa care cântă, încărcătorul, o treabă în lucru. Un inel în jurul ei arată progresul, iar la hover le vezi pe toate. Se vede în standby și pe pastila mică, doar când chiar se întâmplă ceva; cu notch-ul deschis sau peste o alertă dispare. Merge doar cu „Motorul de context” pornit — de acolo vin toate stările.",
+                            FeatureStage.Experimental, false),
+
+            // P74: off by default until it is announced; off = every builder in Ui returns exactly what it used to
+            new FeatureInfo(NewPages, "Pagini redesenate", "Paginile standard din notch (Acasă, Sistem, Dispozitive, Unelte) capătă limbajul notch-ului: numele grupurilor gravate cu majuscule mici, toate măsurătorile în fontul cu cifre de aceeași lățime (deci rândul nu mai tremură când se schimbă o valoare), bare mai subțiri și un fir pe muchia de jos pentru lucrul care rulează. Se vede deschizând notch-ul pe oricare dintre cele patru pagini.",
                             FeatureStage.Experimental, false),
 
             new FeatureInfo(PerfMonitor, "Performanță", "Fila „Performanță”: cât se folosește din procesor, memorie și placă video, cine consumă acum și ce crește pe nesimțite în timp (scurgeri de memorie), cu numere de dinainte și de după la fiecare schimbare. Se vede în fereastra WinNotch, fila „Performanță”, și doar cu „Fereastra WinNotch v2” pornită; măsoară numai cât o ai deschisă, nu în fundal.",

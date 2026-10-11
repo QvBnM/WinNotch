@@ -917,3 +917,20 @@ crescut la 20 și e din aceeași culoare ca notch-ul, cu glifa în culoarea stă
 - **Rămas de legat:** starea „lucrează” are regulile și testele, dar încă niciun apelant — `StatusDotWork` așteaptă
   primul (actualizarea sau testul de viteză). Scris în ROADMAP, ca să nu se piardă.
 - **Teste:** SD1–SD20 (20). **Nerulate:** containerul nu are .NET SDK.
+
+### P74 — Paginile standard, redesenate (0.6.29)
+
+Autorul, după ce a primit 0.6.28: „ai uitat să pui design-ul și la ecranele alea standard. Nu s-a implementat tot”.
+Avea dreptate: din planșe intraseră sertarul, colțurile și bulina, iar cele patru pagini rămăseseră neatinse.
+
+- **O singură pârghie:** toate cele patru pagini se construiesc prin `Ui.T`, `Ui.Cap`, `Ui.Bar`, `Ui.Card`. Comutatorul
+  se citește acolo, deci niciun fișier de pagină nu e rescris și niciunul nu știe de funcție (PV9 refuză asta).
+- **Numerele:** decizia „e măsurătoare?” nu se poate lua la construirea paginii, fiindcă aproape fiecare valoare se
+  scrie într-un rând care există deja („—” la pornire, „28%” o secundă mai târziu). De aceea `MeasureText` reevaluează
+  la fiecare schimbare de text. Regula e pură, scrisă de mână (fără expresii regulate, ca la Smart Clipboard) și
+  refuză un text cu un cuvânt înaintea cifrei: „CPU 28%” rămâne propoziție.
+- **Firul** merge pe tick-ul de o secundă care există deja și doar cât notch-ul e deschis: niciun cronometru nou.
+- **Bulina**, reparată în aceeași rundă: regula „contopită cât e lipit de ramă” era scrisă și testată din 0.6.28, dar
+  desenul n-o folosea niciodată — exact genul de regulă care trece testele și nu ajunge pe ecran. Acum e desenată, iar
+  discul își urmează pastila la mărime.
+- **Teste:** PV1–PV12 și SD21–SD23 (15). **Nerulate:** containerul nu are .NET SDK.

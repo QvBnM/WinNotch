@@ -168,6 +168,7 @@ namespace WinNotch
             StartAlertInterrupt();          // P51b hook (Features/AlertInterrupt): the switch's copy and the primary mouse button
             StartAnchored();                // P50 hook (Features/NotchAnchored): the look; a no-op with the switch off
             StartStatusDot();               // P73 hook (Features/StatusDot): the dot beside the pill; a no-op with the switch off
+            StartPagesV2();                 // P74 hook (Features/PagesV2): the standard pages' new look; a no-op with the switch off
             // Per-frame work and the 400 ms per-app audio scan only run while the notch is open (see Expand/Collapse).
 
             ApplySettings();
@@ -201,6 +202,7 @@ namespace WinNotch
             StopAlertInterrupt();           // P51b hook (Features/AlertInterrupt)
             StopAnchored();                 // P50 hook (Features/NotchAnchored)
             StopStatusDot();                // P73 hook (Features/StatusDot)
+            StopPagesV2();                  // P74 hook (Features/PagesV2)
             StopActivities();
             StopCommandBar();
             StopQuickActions();
@@ -1278,6 +1280,7 @@ namespace WinNotch
             bool tempsShown = _mode == Mode.Expanded || S.Standby.Any(x => x is "ctemp" or "gtemp" or "stemp");
             if (S.Temperatures && _tick % (tempsShown ? 2 : 15) == 0) Temps.RefreshAsync();     // 15 s is still enough for the heat alert
             GameModeTick();                        // P61: the game session (one line; idle with its switch off)
+            PagesV2Tick();                         // P74: the thread under the open panel (one line; idle with its switch off)
             if (_tick % 3 == 0) Media.Poll();       // safety net: some apps don't announce pause/next
             if (_tick % 3 == 1) Audio.CheckDevice(); // headphones / Bluetooth became the default output
             if (_tick % 5 == 2 && S.ThemeMode == "auto" && ThemeManager.IsLight(S) != _themeLight) ApplySettings();   // Windows switched light/dark
