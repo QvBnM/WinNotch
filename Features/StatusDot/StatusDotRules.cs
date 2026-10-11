@@ -122,6 +122,18 @@ namespace WinNotch.Features.StatusDot
         /// </summary>
         public const double FusedInset = 12;
 
+        /// <summary>The slack around the glyph inside its box: the hairline on the left and the air on the right.</summary>
+        public const double GlyphPad = 12;
+
+        /// <summary>
+        /// How much room the pill has to leave empty at its right end while the glyph is fused into it. Without this
+        /// the glyph is simply painted over whatever the pill already shows there (reported by the author: the
+        /// microphone landed on top of the weather). Zero when the dot stands beside the pill as a satellite, and zero
+        /// when there is nothing to show — otherwise the pill would keep a wide empty strip for no reason.
+        /// </summary>
+        public static double FusedRoom(bool fused, bool visible, double pillHeight) =>
+            fused && visible ? Size(pillHeight) + GlyphPad + FusedInset : 0;
+
         /// <summary>The glyph for a state, from the icon font the app already uses.</summary>
         public static string Glyph(DotKind kind) => kind switch
         {

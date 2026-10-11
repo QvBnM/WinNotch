@@ -103,6 +103,12 @@ namespace WinNotch
                   StatusDotRules.Size(60) == StatusDotRules.Diameter && StatusDotRules.Size(0) == StatusDotRules.Diameter &&
                   StatusDotRules.MinDiameter < StatusDotRules.Diameter);
 
+            Check("SD28", "Fâșia cerută de pastilă: zero plutitoare și zero când n-are ce arăta; contopită, cât discul plus marginile",
+                  StatusDotRules.FusedRoom(false, true, 34) == 0 && StatusDotRules.FusedRoom(true, false, 34) == 0 &&
+                  StatusDotRules.FusedRoom(true, true, 34) == StatusDotRules.Size(34) + StatusDotRules.GlyphPad + StatusDotRules.FusedInset &&
+                  StatusDotRules.FusedRoom(true, true, 22) < StatusDotRules.FusedRoom(true, true, 34) &&
+                  StatusDotRules.FusedRoom(true, true, 34) > StatusDotRules.Diameter);
+
             Check("SD12", "Fiecare stare are glifa ei din fontul existent și o pensulă din temă, nu o culoare scrisă în cod",
                   new[] { DotKind.Listening, DotKind.Working, DotKind.Playing, DotKind.Charging }
                       .All(k => StatusDotRules.Glyph(k).Length == 1 && StatusDotRules.BrushKey(k).EndsWith("Brush", StringComparison.Ordinal) &&
@@ -146,7 +152,7 @@ namespace WinNotch
 
             Check("SD18", "Legăturile din notch sunt trei rânduri: pornire, oprire și poziția din ApplyMode",
                   notch.Contains("StartStatusDot();") && notch.Contains("StopStatusDot();") &&
-                  notch.Contains("StatusDotLayout(w, h, top, dur);"));
+                  notch.Contains("StatusDotLayout(w, h, top, dur, dotRoom);"));
 
             Check("SD19", "Bulina pleacă de pe ecran odată cu pastila (aceeași deplasare), nu rămâne singură peste un joc",
                   part.Contains("new TransformGroup { Children = { PillShift, _dotShift } }") &&
@@ -161,6 +167,24 @@ namespace WinNotch
                   part.Contains("_dotHost.SetBinding(OpacityProperty, new System.Windows.Data.Binding(\"Opacity\") { Source = Pill });") &&
                   part.Contains("FadeLayer(_dotFade, visible, 140);") && !part.Contains("FadeLayer(_dotHost") &&
                   part.Contains("_dotHost.Children.Add(_dotFade);"));
+
+            // Raportat de autor (0.6.31, cu două capturi): glifa de microfon cădea peste vremea de pe pastilă, iar
+            // pastila mică scria și „· mic” pe lângă ea. Cauza: contopită, glifa se desenează înăuntrul pastilei, dar
+            // pastila nu-și lărgea deloc locul pentru ea, iar rândul de standby e lipit de marginea din dreapta.
+            Check("SD25", "Contopită, pastila lasă loc gol pentru glifă: lățimea și fâșia se măsoară o dată și se trimit împreună",
+                  notch.Contains("dotRoom = StatusDotPillRoom(mini);") &&
+                  notch.Contains("Core.Ui.PillSize.Width(MiniWidth() + dotRoom, UiScale)") &&
+                  notch.Contains("AnchoredIdleWidth(IdleWidth() + dotRoom)") &&
+                  part.Contains("StatusDotReserve(room, scale);") &&
+                  part.Contains("IdleLayer.Margin = new Thickness(11, 0, 11 + room * scale, 0);") &&
+                  part.Contains("MiniRow.Margin = new Thickness(0, 0, room, 2);"));
+
+            Check("SD26", "Pastila mică nu mai spune „mic” cât bulina arată microfonul (același fapt de două ori)",
+                  notch.Contains("PrivacyService.Microphone().InUse && !StatusDotOwnsPrivacy()") &&
+                  part.Contains("internal bool StatusDotOwnsPrivacy() => _dotOn && _dotKind == DotKind.Listening;"));
+
+            Check("SD27", "Lățimea animată la fiecare secundă o compune la fel ca ApplyMode (scara și fâșia), altfel se bat între ele",
+                  notch.Contains("double w = Core.Ui.PillSize.Width(AnchoredIdleWidth(IdleWidth() + StatusDotPillRoom(false)), UiScale);"));
 
             Check("SD22", "Lipit de ramă chiar se contopește: fără disc, fără inel, glifa intră în pastilă după o linie",
                   part.Contains("if (StatusDotRules.Fused(Anchored))") &&
