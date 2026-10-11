@@ -185,7 +185,9 @@ namespace WinNotch.Features.PagesFormat
             Refresh();
         }
 
-        public override void Refresh()
+        public override void Refresh() => NotchWindow.GuardFormat(RefreshCore);
+
+        private void RefreshCore()
         {
             var now = DateTime.Now;
             _clock.Text = now.ToString("HH:mm");
@@ -233,7 +235,9 @@ namespace WinNotch.Features.PagesFormat
             }
         }
 
-        public override void Fast()
+        public override void Fast() => NotchWindow.GuardFormat(FastCore);
+
+        private void FastCore()
         {
             var m = W.Now.Info;
             if (!m.HasSession || m.Duration <= TimeSpan.Zero) return;
@@ -265,7 +269,9 @@ namespace WinNotch.Features.PagesFormat
         /// The track changed: the cover, the title, and the tint the whole card takes from it. The colour is read with
         /// the same routine the old page uses (<see cref="HomePane.Dominant"/>) — one cover reader, not two.
         /// </summary>
-        public void OnMediaChanged()
+        public void OnMediaChanged() => NotchWindow.GuardFormat(OnMediaChangedCore);
+
+        private void OnMediaChangedCore()
         {
             var m = W.Now.Info;
             if (!m.HasSession)

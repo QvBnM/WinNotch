@@ -264,7 +264,9 @@ namespace WinNotch.Features.PagesFormat
 
         public override void Shown() => Refresh();
 
-        public override void Refresh()
+        public override void Refresh() => NotchWindow.GuardFormat(RefreshCore);
+
+        private void RefreshCore()
         {
             var h = W.LastForeground;
             string name = h != IntPtr.Zero ? WindowTools.AppName(h) : "";

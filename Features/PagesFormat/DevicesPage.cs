@@ -150,7 +150,9 @@ namespace WinNotch.Features.PagesFormat
             Refresh();
         }
 
-        public override void Refresh()
+        public override void Refresh() => NotchWindow.GuardFormat(RefreshCore);
+
+        private void RefreshCore()
         {
             var mic = PrivacyService.Microphone();
             var cam = PrivacyService.Camera();

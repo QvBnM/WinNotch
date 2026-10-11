@@ -16,6 +16,12 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.33
+
+- **Cele patru pagini din notch au forma din planșe**, nu doar fontul: două coloane de carduri în loc de o listă de rânduri. Muzica mare pe Acasă, cu cardul colorat de copertă; procesorul cu graficul lui pe Sistem; confidențialitatea prima pe Dispozitive; căutarea și clipboard-ul pe Unelte.
+- **Două culori, fiecare cu un sens:** chihlimbar = ce se mișcă acum, albastru-rece = date reci. Restul numerelor rămân albe.
+- Pornită implicit; se oprește din Setări → „Funcții noi” → „Forma paginilor”.
+
 ## Noutăți în 0.6.30
 
 - **Design-ul nou e pornit, nu ascuns.** Tot ce s-a desenat în 0.6.27 → 0.6.29 era experimental și oprit, așa că după actualizare aplicația arăta exact ca înainte. De acum pornesc singure, deodată, fiindcă împreună sunt un singur design: **notch-ul lipit de ramă**, **colțurile continue**, **bulina de stare** și **paginile redesenate**. Oricare se oprește din Setări → „Funcții noi”; `--safe-mode` le oprește pe toate.

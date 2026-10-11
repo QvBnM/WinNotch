@@ -92,9 +92,18 @@ namespace WinNotch
         static void PageFormatSourcePins()
         {
             var info = FeatureCatalog.Find(PageFormat.FeatureId);
-            Check("PF12", "Comutatorul din catalog are id-ul regulilor, e Experimental și oprit implicit (se anunță mai târziu)",
+            Check("PF12", "Comutatorul din catalog are id-ul regulilor, e Beta și pornit implicit (anunțat în 0.6.33)",
                   info != null && FeatureCatalog.PageFormat == PageFormat.FeatureId &&
-                  info.Stage == FeatureStage.Experimental && !info.DefaultOn);
+                  info.Stage == FeatureStage.Beta && info.DefaultOn);
+
+            // Plasa: nici constructorul, nici treaba lor repetată nu pot dărâma notch-ul — a treia eroare în zece
+            // minute oprește forma singură și paginile vechi revin.
+            Check("PF21", "Fiecare pagină nouă are plasa funcției sub ea, nu doar constructorul",
+                  Src("Features/PagesFormat/NotchWindow.PagesFormat.cs").Contains("internal static void GuardFormat(Action body)") &&
+                  new[] { "SystemPage", "DevicesPage", "ToolsPage", "HomePage" }
+                      .All(n => Src("Features/PagesFormat/" + n + ".cs").Contains("Refresh() => NotchWindow.GuardFormat(RefreshCore);")) &&
+                  Src("Features/PagesFormat/HomePage.cs").Contains("Fast() => NotchWindow.GuardFormat(FastCore);") &&
+                  Src("Features/PagesFormat/HomePage.cs").Contains("OnMediaChanged() => NotchWindow.GuardFormat(OnMediaChangedCore);"));
 
             string hook = Src("Features/PagesFormat/NotchWindow.PagesFormat.cs"), pages = Src("NotchWindow.Pages.cs"),
                    notch = Src("NotchWindow.xaml.cs");

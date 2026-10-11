@@ -43,6 +43,17 @@ namespace WinNotch
             _fmtFlagHandler = null;
         }
 
+        /// <summary>
+        /// Runs a new page's own work with the feature's net under it. A page that throws must not take the notch with
+        /// it: the error is counted, three of them in ten minutes switch the form off by itself, and the pages fall
+        /// back to the ones that were there before. The constructor has the same net, in <see cref="FormatPane"/>.
+        /// </summary>
+        internal static void GuardFormat(Action body)
+        {
+            try { body(); }
+            catch (Exception ex) { FeatureFlags.Current?.ReportError(PageFormat.FeatureId, ex); }
+        }
+
         /// <summary>Drops the built pages, so the next one is built in whatever form is on now.</summary>
         internal void ForgetFormatPanes() { _fmtHome = null; _fmtSystem = null; _fmtDevices = null; _fmtTools = null; }
 

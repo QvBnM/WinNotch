@@ -145,9 +145,10 @@ namespace WinNotch.Core.Flags
             new FeatureInfo(NewPages, "Pagini redesenate", "Paginile din notch capătă limbajul lui: numele grupurilor gravate cu majuscule mici, toate măsurătorile în fontul cu cifre de aceeași lățime (deci rândul nu mai tremură când se schimbă o valoare), bare mai subțiri și un fir pe muchia de jos pentru lucrul care rulează. Pornită implicit; se vede deschizând notch-ul, pe orice pagină, și în widget-uri.",
                             FeatureStage.Beta, true),
 
-            // P75: off by default until it is announced; off = the pages are the ones P74 gave their typography to
-            new FeatureInfo(PageFormat, "Forma paginilor", "Cele patru pagini din notch capătă forma din planșele de design: două coloane de carduri în loc de o listă de rânduri — muzica mare în stânga pe Acasă, graficul procesorului pe Sistem, confidențialitatea și lista de dispozitive pe Dispozitive, căutarea și clipboard-ul pe Unelte. Se vede deschizând notch-ul; cuprinde și tipografia, deci o înlocuiește pe „Pagini redesenate”.",
-                            FeatureStage.Experimental, false),
+            // P75: announced in 0.6.33, so Beta and on (--safe-mode turns it off). A page that throws, in its
+            // constructor or in its own work, switches the form off by itself and the old pages come back.
+            new FeatureInfo(PageFormat, "Forma paginilor", "Cele patru pagini din notch capătă forma din planșele de design: două coloane de carduri în loc de o listă de rânduri — muzica mare în stânga pe Acasă, graficul procesorului pe Sistem, confidențialitatea pe Dispozitive, căutarea și clipboard-ul pe Unelte. Pornită implicit; se vede deschizând notch-ul. Oprește-o dacă vrei paginile de până la 0.6.32.",
+                            FeatureStage.Beta, true),
 
             new FeatureInfo(PerfMonitor, "Performanță", "Fila „Performanță”: cât se folosește din procesor, memorie și placă video, cine consumă acum și ce crește pe nesimțite în timp (scurgeri de memorie), cu numere de dinainte și de după la fiecare schimbare. Se vede în fereastra WinNotch, fila „Performanță”, și doar cu „Fereastra WinNotch v2” pornită; măsoară numai cât o ai deschisă, nu în fundal.",
                             FeatureStage.Experimental, false),

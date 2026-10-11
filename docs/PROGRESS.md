@@ -1030,3 +1030,17 @@ citește din ele e scris în `docs/BRIEF-PAGINI.md`: nu se mai pot pierde odată
 - **Prins de CI:** proporțiile coloanelor se raportează la ce împart cele două (conținutul **fără** șanț), nu la tot
   conținutul — altfel fiecare coloană ieșea cu câțiva pixeli mai scurtă decât în planșă (394 → 388).
 - **Teste:** PF1–PF20. **Nerulate local:** containerul nu are .NET SDK; rulate în CI pe ramură.
+
+### 0.6.33 — P75 anunțat, cu plasă
+
+Forma trece la Beta și pornită implicit. Spre deosebire de 0.6.27 → 0.6.29, nu mai aștept trei versiuni ca să se vadă.
+
+Ce face asta sigur e că întoarcerea există deja în proiectare: paginile vechi n-au fost atinse, iar fabrica de pagini
+alege între cele două forme. Lipsea doar jumătate din plasă — constructorul era prins, treaba repetată nu. Acum
+`Refresh`, `Fast` și schimbarea piesei trec prin `GuardFormat`, deci o pagină nouă care crapă numără eroarea, iar a
+treia în zece minute oprește forma singură și aduce înapoi paginile vechi, fără ca utilizatorul să facă nimic (PF21).
+
+**Prins de CI, și nu era al nostru:** pasul „Quick Actions” pica intermitent doar în rularea cu `activity-manager`
+oprit — inclusiv pe un commit care schimba numai fișiere `.md`. Cauza: `CloseNotchByHotkey` trimitea o scurtătură
+**globală** o singură dată; după o serie de clickuri sintetice Windows o mai înghite. Acum se mai încearcă o dată.
+Nu e un test sărit și nici o așteptare mărită: a doua apăsare care tot nu închide notch-ul rămâne eșec.

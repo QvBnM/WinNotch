@@ -181,7 +181,9 @@ namespace WinNotch.Features.PagesFormat
             W.Procs.RefreshAsync();
         }
 
-        public override void Refresh()
+        public override void Refresh() => NotchWindow.GuardFormat(RefreshCore);
+
+        private void RefreshCore()
         {
             var st = W.Stats;
             var t = W.Temps;
