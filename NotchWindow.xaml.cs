@@ -169,6 +169,7 @@ namespace WinNotch
             StartAnchored();                // P50 hook (Features/NotchAnchored): the look; a no-op with the switch off
             StartStatusDot();               // P73 hook (Features/StatusDot): the dot beside the pill; a no-op with the switch off
             StartPagesV2();                 // P74 hook (Features/PagesV2): the standard pages' new look; a no-op with the switch off
+            StartPagesFormat();             // P75 hook (Features/PagesFormat): their form; a no-op with the switch off
             // Per-frame work and the 400 ms per-app audio scan only run while the notch is open (see Expand/Collapse).
 
             ApplySettings();
@@ -203,6 +204,7 @@ namespace WinNotch
             StopAnchored();                 // P50 hook (Features/NotchAnchored)
             StopStatusDot();                // P73 hook (Features/StatusDot)
             StopPagesV2();                  // P74 hook (Features/PagesV2)
+            StopPagesFormat();              // P75 hook (Features/PagesFormat)
             StopActivities();
             StopCommandBar();
             StopQuickActions();
