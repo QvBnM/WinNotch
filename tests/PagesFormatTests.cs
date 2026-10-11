@@ -99,15 +99,27 @@ namespace WinNotch
             string hook = Src("Features/PagesFormat/NotchWindow.PagesFormat.cs"), pages = Src("NotchWindow.Pages.cs"),
                    notch = Src("NotchWindow.xaml.cs");
 
-            Check("PF13", "Pagina veche nu e atinsă: forma nouă se alege la fabrica de pagini, cu întoarcere la cea veche",
+            Check("PF13", "Toate patru au forma nouă, aleasă la fabrica de pagini, cu întoarcere la cea veche",
                   pages.Contains("FormatPane(id) ?? id switch") &&
+                  hook.Contains("\"home\" => _fmtHome ??= new HomePage(this),") &&
                   hook.Contains("\"system\" => _fmtSystem ??= new SystemPage(this),") &&
-                  hook.Contains("if (!PageFormatEnabled()) return null;") &&
-                  !Src("Panes/SystemPane.cs").Contains("PageFormat"));
+                  hook.Contains("\"devices\" => _fmtDevices ??= new DevicesPage(this),") &&
+                  hook.Contains("\"tools\" => _fmtTools ??= new ToolsPage(this),") &&
+                  hook.Contains("if (!PageFormatEnabled()) return null;"));
+
+            // Paginile vechi nu știu de funcție: dacă ar ști, n-ar mai fi o întoarcere, ci o a doua cale de întreținut.
+            Check("PF14a", "Niciuna dintre cele patru pagini vechi nu citește comutatorul",
+                  new[] { "HomePane", "SystemPane", "DevicesPane", "ToolsPane" }
+                      .All(n => !Src("Panes/" + n + ".cs").Contains("PageFormat") &&
+                                !Src("Panes/" + n + ".cs").Contains("pagini-format")));
 
             Check("PF14", "Amândouă formele aceleiași pagini răspund la același id (altfel reconstruirea uită pe care erai)",
-                  pages.Contains("p == _system || (p != null && p == _fmtSystem) ? \"system\"") &&
-                  pages.Contains("_fmtSystem = null;"));
+                  pages.Contains("p == _home || p == _sources || p == _fmtHome ? \"home\"") &&
+                  pages.Contains("p == _system || p == _fmtSystem ? \"system\"") &&
+                  pages.Contains("p == _devices || p == _fmtDevices ? \"devices\"") &&
+                  pages.Contains("p == _tools || p == _fmtTools ? \"tools\"") &&
+                  pages.Contains("ForgetFormatPanes();") &&
+                  hook.Contains("internal void ForgetFormatPanes()"));
 
             Check("PF15", "Protocolul comutatorului: pornire, oprire, dezabonare, UI pe Dispatcher, erorile prin ReportError",
                   notch.Contains("StartPagesFormat();") && notch.Contains("StopPagesFormat();") &&
@@ -116,14 +128,30 @@ namespace WinNotch
                   hook.Contains("Dispatcher.InvokeAsync(") &&
                   hook.Contains("ReportError(PageFormat.FeatureId, ex)"));
 
-            string deck = Src("Features/PagesFormat/Deck.cs"), sys = Src("Features/PagesFormat/SystemPage.cs");
+            string deck = Src("Features/PagesFormat/Deck.cs"), sys = Src("Features/PagesFormat/SystemPage.cs"),
+                   home = Src("Features/PagesFormat/HomePage.cs"), dev = Src("Features/PagesFormat/DevicesPage.cs"),
+                   tools = Src("Features/PagesFormat/ToolsPage.cs");
+            // Culoarea copertei e singura care intră în pagină din afara temei, și vine din aceeași citire ca pe pagina
+            // veche (HomePane.Dominant), deci nu e o culoare scrisă în cod.
             Check("PF16", "Nicio culoare scrisă în cod în forma nouă: totul prin jetoanele temei",
-                  !System.Text.RegularExpressions.Regex.IsMatch(deck + sys, @"Color\.From|#[0-9A-Fa-f]{6}|new SolidColorBrush") &&
-                  deck.Contains("SetResourceReference"));
+                  !System.Text.RegularExpressions.Regex.IsMatch(deck + sys + dev + tools, @"Color\.From|#[0-9A-Fa-f]{6}|new SolidColorBrush") &&
+                  !System.Text.RegularExpressions.Regex.IsMatch(home, @"#[0-9A-Fa-f]{6}|new SolidColorBrush") &&
+                  home.Contains("HomePane.Dominant(m.Art)") && deck.Contains("SetResourceReference"));
 
-            Check("PF17", "Niciun cronometru nou: paginile merg pe Refresh-ul care există deja",
-                  !deck.Contains("DispatcherTimer") && !sys.Contains("DispatcherTimer") &&
-                  !sys.Contains("CompositionTarget.Rendering") && sys.Contains("public override void Refresh()"));
+            Check("PF17", "Niciun cronometru nou pe paginile care doar citesc; notița își păstrează salvarea amânată",
+                  new[] { deck, sys, home, dev }.All(f => !f.Contains("DispatcherTimer") && !f.Contains("CompositionTarget.Rendering")) &&
+                  new[] { sys, home, dev, tools }.All(f => f.Contains("public override void Refresh()")) &&
+                  tools.Contains("if (_noteSave.IsEnabled) { _noteSave.Stop(); W.S.Save(); }"));
+
+            Check("PF19", "Niciun sistem dublat: versurile, culoarea copertei și scanarea dispozitivelor vin din serviciile care există",
+                  home.Contains("LyricsService.GetAsync(") && home.Contains("LyricsService.IndexAt(") &&
+                  dev.Contains("DeviceService.ScanAsync()") && dev.Contains("PrivacyService.Microphone()") &&
+                  tools.Contains("Launcher.Search(") && tools.Contains("Launcher.Calculate(") &&
+                  tools.Contains("MemoryTools.Status()"));
+
+            Check("PF20", "Nimic nu pornește un proces altfel decât prin Shell.Open (regula de securitate)",
+                  new[] { sys, home, dev, tools }.All(f => !f.Contains("Process.Start")) &&
+                  dev.Contains("Shell.Open(\"ms-settings:sound\")"));
 
             Check("PF18", "Cele două fețe ale planșelor vin din temă, nu scrise în cod, și sunt înglobate în exe",
                   deck.Contains("\"PageMono\" : \"PageFont\"") &&

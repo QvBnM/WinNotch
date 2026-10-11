@@ -12,7 +12,10 @@ namespace WinNotch
     /// </summary>
     public partial class NotchWindow
     {
+        private HomePage _fmtHome;
         private SystemPage _fmtSystem;
+        private DevicesPage _fmtDevices;
+        private ToolsPage _fmtTools;
         private Action<string> _fmtFlagHandler;
 
         private static bool PageFormatEnabled() => FeatureFlags.Current?.IsEnabled(PageFormat.FeatureId) ?? false;
@@ -27,7 +30,7 @@ namespace WinNotch
                 // thread, and only once there is something to rebuild (at startup this arrives before the first page).
                 Dispatcher.InvokeAsync(() =>
                 {
-                    try { _fmtSystem = null; if (_home != null) RebuildUi(); }
+                    try { ForgetFormatPanes(); if (_home != null) RebuildUi(); }
                     catch (Exception ex) { FeatureFlags.Current?.ReportError(PageFormat.FeatureId, ex); }
                 });
             };
@@ -39,6 +42,9 @@ namespace WinNotch
             if (_fmtFlagHandler != null && FeatureFlags.Current != null) FeatureFlags.Current.Changed -= _fmtFlagHandler;
             _fmtFlagHandler = null;
         }
+
+        /// <summary>Drops the built pages, so the next one is built in whatever form is on now.</summary>
+        internal void ForgetFormatPanes() { _fmtHome = null; _fmtSystem = null; _fmtDevices = null; _fmtTools = null; }
 
         /// <summary>
         /// The page in the new form, or null when the switch is off or that page has not been redrawn yet — the
@@ -52,7 +58,10 @@ namespace WinNotch
             {
                 return id switch
                 {
+                    "home" => _fmtHome ??= new HomePage(this),
                     "system" => _fmtSystem ??= new SystemPage(this),
+                    "devices" => _fmtDevices ??= new DevicesPage(this),
+                    "tools" => _fmtTools ??= new ToolsPage(this),
                     _ => null,
                 };
             }
