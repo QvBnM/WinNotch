@@ -627,3 +627,12 @@ pornite implicit. Verificările P50.x, P72.x, P73.x și P74.x rămân valabile �
 | 31.1 | Hover | Cu o piesă pornită, du mouse-ul încet spre pastilă și oprește-te pe ea, fără să aștepți deschiderea. | Pastila se estompează, iar bulina (sau glifa din capătul ei, dacă e lipită de ramă) se estompează odată cu ea. Nicio pictogramă rămasă aprinsă. |
 | 31.2 | Peste o fereastră maximizată | Maximizează un browser, cu muzica pornită, și plimbă mouse-ul peste notch fără să-l duci până la marginea de sus. | Notch-ul se dă la o parte complet: **nimic** nu rămâne pe ecran, nici glifa de muzică. Trage mouse-ul în jos: revin amândouă deodată. |
 | 31.3 | Nu s-a stricat aprinderea | Oprește piesa, apoi pornește-o din nou. | Bulina se stinge și se aprinde ca înainte, lin, fără să clipească. |
+
+### 0.6.32 — Bulina contopită nu mai calcă pe pastilă
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| 32.1 | Loc pentru glifă | Cu „Notch lipit de ramă” pornită, pune vremea și bateria în standby, apoi pornește o piesă. | Pastila se lărgește puțin, glifa de muzică stă singură la capătul din dreapta, după o linie subțire. Nimic nu se suprapune. |
+| 32.2 | Se strânge la loc | Oprește piesa și scoate încărcătorul, cu microfonul închis. | Pastila revine la lățimea dinainte: nu rămâne o fâșie goală în dreapta. |
+| 32.3 | Fără „mic” dublat | Intră într-un apel și lasă pastila să treacă la forma mică. | Lângă ceas apare doar glifa de microfon a bulinei, **nu** și textul „· mic”. Oprește bulina din Setări: textul „· mic” revine. |
+| 32.4 | Ecran mare | Pe un monitor 1440p sau 4K (sau cu mărirea pusă manual pe 135%), lasă notch-ul în standby un minut, cu procentul de procesor între lucrurile afișate. | Pastila își păstrează lățimea; nu se strâmtează după o secundă și nu taie ultimul lucru din rând. |

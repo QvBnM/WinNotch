@@ -503,7 +503,7 @@ namespace WinNotch
         private void ApplyMode()
         {
             if (CommandBarApplyMode()) return;      // P14 hook (Features/CommandBar): its own layout while open; otherwise a no-op
-            double w, h, r, top;
+            double w, h, r, top, dotRoom = 0;
             bool mini = _mode == Mode.Idle && MiniNow();
             switch (_mode)
             {
@@ -513,8 +513,11 @@ namespace WinNotch
                     // The pill follows the window's scale like everything else (Core/Ui/PillSize): on a 1440p or 4K
                     // monitor it used to stay 34 px tall with 11 px text, which is why the time and the date were
                     // barely readable there. The widths are measured unscaled, because the scale is a transform.
-                    if (mini) { w = Core.Ui.PillSize.Width(MiniWidth(), UiScale); top = 0; }
-                    else { w = Core.Ui.PillSize.Width(AnchoredIdleWidth(IdleWidth()), UiScale); top = 8; }   // P50 hook: 240–520 while anchored
+                    // P73 hook: while the dot's glyph is fused into the pill it needs a strip of its own at the right
+                    // end — measured once here, so the width and the strip can never disagree. 0 with the dot off.
+                    dotRoom = StatusDotPillRoom(mini);
+                    if (mini) { w = Core.Ui.PillSize.Width(MiniWidth() + dotRoom, UiScale); top = 0; }
+                    else { w = Core.Ui.PillSize.Width(AnchoredIdleWidth(IdleWidth() + dotRoom), UiScale); top = 8; }   // P50 hook: 240–520 while anchored
                     h = Core.Ui.PillSize.Height(UiScale, mini);
                     r = Core.Ui.PillSize.Radius(UiScale, mini);
                     break;
@@ -538,7 +541,7 @@ namespace WinNotch
             Pill.BeginAnimation(HeightProperty, new DoubleAnimation(h, dur) { EasingFunction = Spring });
             BeginAnimation(RadiusProperty, new DoubleAnimation(r, TimeSpan.FromMilliseconds(380)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
             Pill.BeginAnimation(MarginProperty, new ThicknessAnimation(new Thickness(0, top, 0, 0), TimeSpan.FromMilliseconds(300)));
-            StatusDotLayout(w, h, top, dur);      // P73 hook (Features/StatusDot): the dot follows the pill, same animation
+            StatusDotLayout(w, h, top, dur, dotRoom);   // P73 hook (Features/StatusDot): the dot follows the pill, same animation
 
             FadeLayer(IdleLayer, _mode == Mode.Idle && !mini, 120);
             FadeLayer(MiniLayer, mini, 140);
@@ -881,7 +884,9 @@ namespace WinNotch
             bool prog = S.MiniProgress && mi.HasSession && mi.Playing && mi.Duration > TimeSpan.Zero;
             MiniProgress.Visibility = prog ? Visibility.Visible : Visibility.Collapsed;
             if (prog) MiniProgScale.ScaleX = Math.Clamp(mi.LivePosition.TotalSeconds / mi.Duration.TotalSeconds, 0, 1);
-            bool micOn = PrivacyService.Microphone().InUse;
+            // P73: with the dot carrying the microphone as a glyph, in the privacy colour, the small pill saying
+            // „· mic” as well is the same fact twice on one pill.
+            bool micOn = PrivacyService.Microphone().InUse && !StatusDotOwnsPrivacy();
             if (micOn != (MiniExtra.Children.Count > 0))
             {
                 MiniExtra.Children.Clear();
@@ -897,7 +902,10 @@ namespace WinNotch
             if (_mode == Mode.Idle && MiniNow() != _miniApplied) ApplyMode();
             else if (_mode == Mode.Idle && !_miniApplied)
             {
-                double w = IdleWidth();
+                // Exactly what ApplyMode computes, including the scale and the dot's strip: measuring it any other way
+                // makes this animation fight the layout (on a 1440p or 4K monitor it set the pill to the unscaled
+                // width a second after ApplyMode had scaled it, so the standby row ended up clipped).
+                double w = Core.Ui.PillSize.Width(AnchoredIdleWidth(IdleWidth() + StatusDotPillRoom(false)), UiScale);
                 // Values like CPU % change width every second: only animate the width, and only for a real change.
                 if (Math.Abs(w - _lastIdleW) > 6)
                 {

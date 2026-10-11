@@ -18,6 +18,8 @@ namespace WinNotch
     public partial class NotchWindow
     {
         private bool _dotOn, _dotWorking;
+        /// <summary>What the pill's width was last measured for, and the guard against re-entering ApplyMode.</summary>
+        private bool _dotVisibleNow, _dotRelayout;
         private double _dotWorkProgress = -1;
         private DotKind _dotKind;
         private Action<string> _dotFlagHandler;
@@ -102,6 +104,26 @@ namespace WinNotch
             catch (Exception ex) { FeatureFlags.Current?.ReportError(StatusDotRules.FeatureId, ex); }
         }
 
+        /// <summary>
+        /// P73 hook in ApplyMode: how much room the pill leaves empty at its right end for the fused glyph. The rule is
+        /// in <see cref="StatusDotRules.FusedRoom"/> (pure, tested); the height is the one the pill is about to get, so
+        /// the room follows the small form exactly as the disc does. Unscaled, like every other width in ApplyMode.
+        /// </summary>
+        private double StatusDotPillRoom(bool mini)
+        {
+            if (!_dotOn) return 0;
+            double scale = Math.Max(0.01, UiScale);
+            return StatusDotRules.FusedRoom(StatusDotRules.Fused(Anchored), _dotVisibleNow,
+                                            Core.Ui.PillSize.Height(UiScale, mini) / scale);
+        }
+
+        /// <summary>
+        /// True while the dot is the one saying the microphone (or the camera) is live. The small pill has had its own
+        /// „· mic” marker since before the dot existed; with the dot carrying the same fact as a glyph, in the privacy
+        /// colour, the pill saying it again in words is the same thing twice.
+        /// </summary>
+        internal bool StatusDotOwnsPrivacy() => _dotOn && _dotKind == DotKind.Listening;
+
         private void BuildStatusDot()
         {
             if (_dotHost != null || !(Pill.Parent is Panel root)) return;
@@ -170,6 +192,14 @@ namespace WinNotch
                 }
                 DrawStatusDotRing(StatusDotRules.Ring(kind, snap, MediaProgress(), _dotWorkProgress));
                 FadeLayer(_dotFade, visible, 140);     // the host carries the pill's opacity; this is the dot's own
+                // The fused glyph lives inside the pill, so the pill has to be measured again when it comes or goes.
+                // ApplyMode calls back into StatusDotLayout, which calls this — the guard is what stops the circle.
+                if (visible != _dotVisibleNow && !_dotRelayout)
+                {
+                    _dotVisibleNow = visible;
+                    _dotRelayout = true;
+                    try { ApplyMode(); } finally { _dotRelayout = false; }
+                }
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(StatusDotRules.FeatureId, ex); }
         }
@@ -215,9 +245,13 @@ namespace WinNotch
         /// P73 hook in ApplyMode: the dot sits to the right of the pill, on its middle line, and moves with the same
         /// animation — so it never lags behind while the pill grows or shrinks.
         /// </summary>
-        private void StatusDotLayout(double pillWidth, double pillHeight, double top, TimeSpan dur)
+        /// <param name="room">
+        /// The unscaled strip ApplyMode has just added to the pill's width for the fused glyph (0 when the dot is a
+        /// satellite or has nothing to show). The same number widened the pill, so the two can never disagree.
+        /// </param>
+        private void StatusDotLayout(double pillWidth, double pillHeight, double top, TimeSpan dur, double room)
         {
-            if (!_dotOn || _dotHost == null) return;
+            if (!_dotOn || _dotHost == null) { StatusDotReserve(0, 1); return; }
             try
             {
                 double scale = Math.Max(0.01, UiScale);
@@ -232,7 +266,7 @@ namespace WinNotch
                     // out of the edge is the only thing in the scene not touching it, and the strip of wallpaper
                     // between them reads as a second notch. The glyph moves inside the pill's right end instead, after
                     // a hairline — the pill itself is the surface, so the disc paints nothing and the ring is gone.
-                    box = d + 12 * scale;
+                    box = d + StatusDotRules.GlyphPad * scale;
                     _dotDisc.Visibility = Visibility.Collapsed;
                     _dotDivider.Visibility = Visibility.Visible;
                     _dotDivider.Height = Math.Max(8, pillHeight - 18 * scale);
@@ -250,6 +284,7 @@ namespace WinNotch
                     x = pillWidth / 2 + gap + box / 2;
                 }
 
+                StatusDotReserve(room, scale);
                 _dotHost.Width = box; _dotHost.Height = box;
                 _dotDisc.Width = d; _dotDisc.Height = d;
                 _dotDisc.HorizontalAlignment = HorizontalAlignment.Center;
@@ -262,6 +297,21 @@ namespace WinNotch
                 UpdateStatusDot();
             }
             catch (Exception ex) { FeatureFlags.Current?.ReportError(StatusDotRules.FeatureId, ex); }
+        }
+
+        /// <summary>
+        /// Keeps the pill's own content out of the strip the glyph sits in. The width was already widened by the same
+        /// amount in ApplyMode; without this the content still ends at the pill's right edge (the standby row is
+        /// pinned there, the small row is centred) and the glyph would be painted on top of it.
+        /// <para>The two rows do not live in the same space: <c>IdleLayer</c> carries its own LayoutTransform, so its
+        /// margin is in the pill's real pixels, while <c>MiniRow</c> sits inside <c>MiniLayer</c>'s transform and its
+        /// margin is already scaled by it. Hence the one number, applied once scaled and once not.</para>
+        /// </summary>
+        private void StatusDotReserve(double room, double scale)
+        {
+            room = Math.Max(0, room);
+            IdleLayer.Margin = new Thickness(11, 0, 11 + room * scale, 0);
+            MiniRow.Margin = new Thickness(0, 0, room, 2);
         }
 
         /// <summary>
