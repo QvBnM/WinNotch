@@ -85,7 +85,9 @@ namespace WinNotch
             Check("PV10", "Alegerea fontului se reface la fiecare schimbare de text, nu o dată la construirea paginii",
                   meas.Contains("TextProperty.OverrideMetadata(typeof(MeasureText)") &&
                   meas.Contains("PageStyle.IsMeasurement(Text)") &&
-                  !meas.Contains("DependencyPropertyDescriptor") && !meas.Contains("override void OnPropertyChanged"));
+                  // interzis e apelul, nu cuvântul: explicația din comentariu are voie să-l numească
+                  !meas.Contains("DependencyPropertyDescriptor.FromProperty") && !meas.Contains(".AddValueChanged(") &&
+                  !meas.Contains("override void OnPropertyChanged"));
 
             Check("PV11", "Firul: niciun cronometru nou (merge pe tick-ul existent), doar cu notch-ul deschis, fără culori în cod",
                   part.Contains("_mode == Mode.Expanded ? MediaProgress() : -1") &&
