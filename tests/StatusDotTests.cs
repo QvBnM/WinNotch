@@ -95,6 +95,14 @@ namespace WinNotch
             Check("SD11", "Lipită de ramă se contopește în sertar: un cerc plutitor ar fi singurul lucru care nu atinge marginea",
                   StatusDotRules.Fused(true) && !StatusDotRules.Fused(false));
 
+            // Raportat de autor pe prima versiune: „bulina nu împrumută din comportamentul notch-ului și nu s-a lipit
+            // de ecran, pare cam dezechilibrată”. Discul urmează acum înălțimea pastilei, iar lipit de ramă nu mai
+            // plutește deloc.
+            Check("SD21", "Discul se micșorează odată cu pastila: standby 34 → 20, forma mică 22 → 14, niciodată mai mic",
+                  StatusDotRules.Size(34) == 20 && StatusDotRules.Size(22) == StatusDotRules.MinDiameter &&
+                  StatusDotRules.Size(60) == StatusDotRules.Diameter && StatusDotRules.Size(0) == StatusDotRules.Diameter &&
+                  StatusDotRules.MinDiameter < StatusDotRules.Diameter);
+
             Check("SD12", "Fiecare stare are glifa ei din fontul existent și o pensulă din temă, nu o culoare scrisă în cod",
                   new[] { DotKind.Listening, DotKind.Working, DotKind.Playing, DotKind.Charging }
                       .All(k => StatusDotRules.Glyph(k).Length == 1 && StatusDotRules.BrushKey(k).EndsWith("Brush", StringComparison.Ordinal) &&
@@ -143,6 +151,17 @@ namespace WinNotch
             Check("SD19", "Bulina pleacă de pe ecran odată cu pastila (aceeași deplasare), nu rămâne singură peste un joc",
                   part.Contains("new TransformGroup { Children = { PillShift, _dotShift } }") &&
                   part.Contains("IsHitTestVisible = false"));
+
+            Check("SD22", "Lipit de ramă chiar se contopește: fără disc, fără inel, glifa intră în pastilă după o linie",
+                  part.Contains("if (StatusDotRules.Fused(Anchored))") &&
+                  part.Contains("_dotDisc.Visibility = Visibility.Collapsed;") &&
+                  part.Contains("_dotDivider.Visibility = Visibility.Visible;") &&
+                  part.Contains("StatusDotRules.Fused(Anchored)") &&
+                  part.Contains("StatusDotRules.FusedInset"));
+
+            Check("SD23", "Plutitoare, împrumută forma pastilei: capsulă cu raza jumătate din înălțime, aceeași umbră",
+                  part.Contains("new CornerRadius(d / 2)") && part.Contains("_dotHost.Effect = Pill.Effect;") &&
+                  part.Contains("StatusDotRules.Size(pillHeight / scale)"));
 
             Check("SD20", "Progresul piesei e citit din aceeași sursă ca linia de pe pastila mică, nu calculat a doua oară",
                   part.Contains("mi.LivePosition.TotalSeconds / mi.Duration.TotalSeconds"));

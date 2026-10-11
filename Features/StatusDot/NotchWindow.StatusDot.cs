@@ -25,7 +25,7 @@ namespace WinNotch
 
         /// <summary>The disc, its glyph and its ring, in the window's root grid. Null while the switch is off.</summary>
         private Grid _dotHost;
-        private Ellipse _dotDisc;
+        private Border _dotDisc, _dotDivider;
         private TextBlock _dotGlyph;
         private Path _dotRing;
         private TranslateTransform _dotShift;
@@ -87,7 +87,7 @@ namespace WinNotch
                 {
                     UnsubscribeStatusDotContext();
                     if (_dotHost != null && Pill.Parent is Panel root) root.Children.Remove(_dotHost);
-                    _dotHost = null; _dotDisc = null; _dotGlyph = null; _dotRing = null; _dotShift = null;
+                    _dotHost = null; _dotDisc = null; _dotDivider = null; _dotGlyph = null; _dotRing = null; _dotShift = null;
                     _dotKind = DotKind.None;
                 }
                 UpdateStatusDot();
@@ -100,8 +100,13 @@ namespace WinNotch
         {
             if (_dotHost != null || !(Pill.Parent is Panel root)) return;
             _dotShift = new TranslateTransform();
-            _dotDisc = new Ellipse();
-            _dotDisc.SetResourceReference(Shape.FillProperty, "NotchBrush");
+            // A capsule, like the pill: same brush, same corner rule (radius is half the height), same shadow. Fused
+            // into the drawer it paints nothing at all — the pill behind it is the surface.
+            _dotDisc = new Border();
+            _dotDisc.SetResourceReference(Border.BackgroundProperty, "NotchBrush");
+            _dotDivider = new Border { Width = 1, Height = 14, HorizontalAlignment = HorizontalAlignment.Left,
+                                       VerticalAlignment = VerticalAlignment.Center, Visibility = Visibility.Collapsed };
+            _dotDivider.SetResourceReference(Border.BackgroundProperty, "TrackBrush");
             _dotRing = new Path { StrokeThickness = StatusDotRules.RingThickness, StrokeStartLineCap = PenLineCap.Round,
                                   StrokeEndLineCap = PenLineCap.Round, Visibility = Visibility.Collapsed };
             _dotGlyph = new TextBlock
@@ -120,6 +125,7 @@ namespace WinNotch
             };
             _dotHost.Children.Add(_dotRing);
             _dotHost.Children.Add(_dotDisc);
+            _dotHost.Children.Add(_dotDivider);
             _dotHost.Children.Add(_dotGlyph);
             _dotHost.SetBinding(VisibilityProperty, new System.Windows.Data.Binding("Visibility") { Source = Pill });
             root.Children.Add(_dotHost);
@@ -169,13 +175,16 @@ namespace WinNotch
         private void DrawStatusDotRing(double fraction)
         {
             if (_dotRing == null) return;
-            if (fraction < 0 || fraction > 1)
+            // Fused into the drawer the thread along the pill's bottom edge already carries the progress: a ring over
+            // it would be the same thing said twice.
+            if (fraction < 0 || fraction > 1 || StatusDotRules.Fused(Anchored))
             {
                 _dotRing.Visibility = Visibility.Collapsed;
                 return;
             }
             double scale = Math.Max(0.01, UiScale);
-            double r = (StatusDotRules.Diameter / 2 + StatusDotRules.RingGap) * scale;
+            double r = (_dotDisc != null && _dotDisc.Width > 0 ? _dotDisc.Width / 2 : StatusDotRules.Diameter / 2 * scale)
+                       + StatusDotRules.RingGap * scale;
             var (x, y, large) = StatusDotRules.RingEnd(fraction, r);
             var g = new StreamGeometry();
             using (var c = g.Open())
@@ -198,14 +207,41 @@ namespace WinNotch
             try
             {
                 double scale = Math.Max(0.01, UiScale);
-                double d = StatusDotRules.Diameter * scale, gap = StatusDotRules.Gap * scale;
-                double ring = (StatusDotRules.Diameter / 2 + StatusDotRules.RingGap + StatusDotRules.RingThickness) * 2 * scale;
-                _dotHost.Width = ring; _dotHost.Height = ring;
+                // The disc borrows the pill's own size: when the pill shrinks to the small form, so does it.
+                double d = StatusDotRules.Size(pillHeight / scale) * scale;
+                double gap = StatusDotRules.Gap * scale;
+                double x, y, box;
+
+                if (StatusDotRules.Fused(Anchored))
+                {
+                    // Stuck to the bezel there is no room for a satellite: a circle floating beside a shape that grows
+                    // out of the edge is the only thing in the scene not touching it, and the strip of wallpaper
+                    // between them reads as a second notch. The glyph moves inside the pill's right end instead, after
+                    // a hairline — the pill itself is the surface, so the disc paints nothing and the ring is gone.
+                    box = d + 12 * scale;
+                    _dotDisc.Visibility = Visibility.Collapsed;
+                    _dotDivider.Visibility = Visibility.Visible;
+                    _dotDivider.Height = Math.Max(8, pillHeight - 18 * scale);
+                    _dotHost.Effect = null;
+                    x = pillWidth / 2 - StatusDotRules.FusedInset * scale - box / 2;
+                }
+                else
+                {
+                    box = d + 2 * (StatusDotRules.RingGap + StatusDotRules.RingThickness) * scale;
+                    _dotDisc.Visibility = Visibility.Visible;
+                    _dotDivider.Visibility = Visibility.Collapsed;
+                    _dotHost.Effect = Pill.Effect;
+                    // the same corner rule as the pill: the radius is half the height, so it is a capsule, not a box
+                    _dotDisc.CornerRadius = new CornerRadius(d / 2);
+                    x = pillWidth / 2 + gap + box / 2;
+                }
+
+                _dotHost.Width = box; _dotHost.Height = box;
                 _dotDisc.Width = d; _dotDisc.Height = d;
                 _dotDisc.HorizontalAlignment = HorizontalAlignment.Center;
                 _dotDisc.VerticalAlignment = VerticalAlignment.Center;
-                double x = pillWidth / 2 + gap + ring / 2;
-                double y = top + (pillHeight - ring) / 2;
+                _dotGlyph.FontSize = Math.Max(9, StatusDotRules.GlyphSize * (d / Math.Max(1, StatusDotRules.Diameter * scale)) * scale);
+                y = top + (pillHeight - box) / 2;
                 _dotShift.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(x, dur) { EasingFunction = Spring });
                 _dotHost.BeginAnimation(MarginProperty,
                     new ThicknessAnimation(new Thickness(0, Math.Max(0, y), 0, 0), TimeSpan.FromMilliseconds(300)));

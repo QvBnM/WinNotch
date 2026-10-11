@@ -101,9 +101,26 @@ namespace WinNotch.Features.StatusDot
         /// <summary>
         /// Anchored, the dot is not a floating disc beside the pill but a glyph inside the drawer's right end: with the
         /// shape growing out of the bezel, a circle hovering next to it is the only thing in the scene not touching the
-        /// edge, and the strip of wallpaper between the two reads as a notch of its own.
+        /// edge, and the strip of wallpaper between the two reads as a notch of its own. Reported by the author on the
+        /// first build: the dot "does not borrow the notch's behaviour and is not stuck to the screen".
         /// </summary>
         public static bool Fused(bool anchored) => anchored;
+
+        /// <summary>
+        /// How wide the disc is beside a pill of this height. It borrows the pill's own behaviour instead of keeping
+        /// one size: the pill shrinks to the small form, so the disc shrinks with it, and the pair keeps its balance.
+        /// </summary>
+        public static double Size(double pillHeight) =>
+            pillHeight <= 0 ? Diameter : Math.Clamp(pillHeight - 14, MinDiameter, Diameter);
+
+        /// <summary>The disc never goes under this, or the glyph inside it stops being a glyph.</summary>
+        public const double MinDiameter = 14;
+
+        /// <summary>
+        /// Fused, the glyph sits this far inside the pill's right edge, with a hairline before it — the same spacing
+        /// the pill already keeps between its own items.
+        /// </summary>
+        public const double FusedInset = 12;
 
         /// <summary>The glyph for a state, from the icon font the app already uses.</summary>
         public static string Glyph(DotKind kind) => kind switch
