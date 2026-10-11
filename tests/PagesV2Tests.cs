@@ -60,10 +60,10 @@ namespace WinNotch
                   PageStyle.Eyebrow("Consumă acum") == "CONSUMĂ ACUM" && PageStyle.Eyebrow(null) == "" &&
                   PageStyle.Eyebrow("CPU") == "CPU");
 
-            Check("PV7", "Id-ul comutatorului e cel din catalog, funcția e experimentală și oprită implicit",
+            Check("PV7", "Id-ul comutatorului e cel din catalog, funcția e Beta și pornită implicit (anunțată în 0.6.30)",
                   PageStyle.FeatureId == FeatureCatalog.NewPages &&
                   FeatureCatalog.Find(PageStyle.FeatureId) is FeatureInfo f &&
-                  f.Stage == FeatureStage.Experimental && !f.DefaultOn);
+                  f.Stage == FeatureStage.Beta && f.DefaultOn);
         }
 
         static void PagesV2SourcePins()

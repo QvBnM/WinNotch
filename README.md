@@ -16,6 +16,19 @@ Un notch tip Dynamic Island pentru Windows 10 și 11, făcut după prototipul di
 
 Dacă build-ul afișează erori, copiază tot textul din fereastră și trimite-l în conversație.
 
+## Noutăți în 0.6.30
+
+- **Design-ul nou e pornit, nu ascuns.** Tot ce s-a desenat în 0.6.27 → 0.6.29 era experimental și oprit, așa că după actualizare aplicația arăta exact ca înainte. De acum pornesc singure, deodată, fiindcă împreună sunt un singur design: **notch-ul lipit de ramă**, **colțurile continue**, **bulina de stare** și **paginile redesenate**. Oricare se oprește din Setări → „Funcții noi”; `--safe-mode` le oprește pe toate.
+- **Reparat:** notch-ul nu se mai deschide singur când tragi o fereastră spre marginea de sus. Orice buton de mouse ținut apăsat și plimbat peste pastilă (fereastră trasă ca să se lipească, bară de derulare, selecție de text) era luat drept tragere de fișiere: notch-ul se deschidea peste ce trăgeai și alerta de pe pastilă dispărea. Acum presupunerea aceea contează doar cât „Raft” e pornit.
+
+## Noutăți în 0.6.29
+
+- **Paginile din notch, redesenate:** nume de grup gravate, toate măsurătorile în fontul cu cifre de aceeași lățime (rândul nu mai tremură când se schimbă o valoare), bare mai subțiri și un fir pe muchia de jos pentru lucrul care rulează.
+
+## Noutăți în 0.6.28
+
+- **Bulina de stare** se poartă ca notch-ul: lipită de ramă se contopește în pastilă, iar discul îi urmează mărimea.
+
 ## Noutăți în 0.6.27
 
 - **Bulina de stare** (experimentală, oprită): un disc mic lângă notch, cu o pictogramă pentru ce e pornit acum — microfon, muzică, încărcare, o treabă în lucru — și un inel de progres în jurul ei.

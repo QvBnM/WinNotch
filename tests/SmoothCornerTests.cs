@@ -33,10 +33,11 @@ namespace WinNotch
                   Math.Abs(cx) < 0.001 && Math.Abs(cy - 23.34) < 0.001 &&
                   SmoothCorner.Pull > 0.5 && SmoothCorner.Pull < 0.75 && SmoothCorner.Reach > 1);
 
-            Check("SC3", "Id-ul comutatorului e cel din catalog, funcția e experimentală și oprită implicit",
+            Check("SC3", "Id-ul comutatorului e cel din catalog, funcția e Beta și pornită implicit (anunțată în 0.6.30), și spune că are nevoie de notch-ul lipit de ramă",
                   SmoothCorner.FeatureId == FeatureCatalog.SmoothCorners &&
                   FeatureCatalog.Find(SmoothCorner.FeatureId) is FeatureInfo f &&
-                  f.Stage == FeatureStage.Experimental && !f.DefaultOn);
+                  f.Stage == FeatureStage.Beta && f.DefaultOn &&
+                  f.Description.Contains("Notch lipit de ramă"));
         }
 
         static void SmoothOutline()

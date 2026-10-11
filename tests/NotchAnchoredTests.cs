@@ -118,10 +118,11 @@ namespace WinNotch
                   AnchoredGeometry.ShadowDirection == 270 && AnchoredGeometry.ShadowDepth == 6 &&
                   AnchoredGeometry.ShadowBlur == 24 && AnchoredGeometry.ShadowOpacity == 0.5);
 
-            Check("NA10", "Comutatorul din catalog are id-ul geometriei, e Experimental și oprit implicit (se anunță mai târziu)",
+            // Anunțată în 0.6.30: Beta (deci --safe-mode o oprește) și pornită implicit.
+            Check("NA10", "Comutatorul din catalog are id-ul geometriei, e Beta și pornit implicit (anunțat în 0.6.30)",
                   AnchoredGeometry.FeatureId == FeatureCatalog.NotchAnchored &&
                   FeatureCatalog.Find(AnchoredGeometry.FeatureId) is FeatureInfo fi &&
-                  fi.Stage == FeatureStage.Experimental && !fi.DefaultOn);
+                  fi.Stage == FeatureStage.Beta && fi.DefaultOn);
         }
 
         /// <summary>The hooks in the old files: a few lines, and the hover area stays the pill's rectangle (without the fillets).</summary>

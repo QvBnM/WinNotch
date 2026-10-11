@@ -139,6 +139,15 @@ namespace WinNotch
                   part.Contains("new ShelfDragHover()") && !part.Contains("DispatcherTimer") &&
                   !part.Contains("bool _downOutside"));
 
+            // Raportat de autor (0.6.29): notch-ul se deschidea singur peste o fereastră trasă spre marginea de sus
+            // (snap), iar alertele dispăreau. Cauza: detectorul e o presupunere (buton ținut apăsat în afară, apoi adus
+            // pe pastilă) și nu poate deosebi fișierele de o fereastră trasă, de o bară de derulare sau de o selecție
+            // de text. Deci contează doar cât raftul e pornit — singurul loc unde o tragere peste notch are unde să
+            // cadă. Cu raftul oprit, un buton ținut apăsat peste pastilă rămâne click spre fereastra de dedesubt.
+            Check("IR21", "Tragerea contează doar cât raftul poate primi fișierele; cu el oprit, butonul ținut apăsat peste pastilă nu deschide notch-ul și nu dă alerta la o parte",
+                  part.Contains("_aiOn && _shOn && _aiDrag.CarriedIn") &&
+                  part.Contains("if (!_aiOn || !_shOn) { _aiDrag.Reset(); return; }"));
+
             var logs = part.Split('\n').Where(l => l.Contains("App.Log(", StringComparison.Ordinal)).ToList();
             Check("IR18", "În log doar id-ul alertei și motivul, din cuvinte fixe: niciun titlu, nicio cale, niciun mesaj de excepție",
                   logs.Count == 1 && logs[0].Contains("Alertă întreruptă: ") && !logs.Any(l => l.Contains("Title") || l.Contains("ex.Message")));

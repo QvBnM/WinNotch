@@ -27,8 +27,16 @@ namespace WinNotch
 
         private static bool AlertInterruptEnabled() => FeatureFlags.Current?.IsEnabled(InterruptRules.FeatureId) ?? false;
 
-        /// <summary>True while a drag carried in from outside is over the pill (one detector for the shelf and for here).</summary>
-        internal bool AlertInterruptDragging => _aiOn && _aiDrag.CarriedIn;
+        /// <summary>
+        /// True while a drag carried in from outside is over the pill (one detector for the shelf and for here).
+        /// <para>The detector is a heuristic — the primary button was already down outside the pill and the cursor is on
+        /// it now — because a click-through pill cannot receive a real drop (see the shelf's spike). That heuristic
+        /// cannot tell files from a window dragged to the top edge to be snapped, a scrollbar, or a text selection
+        /// swept upwards, so it only counts while the shelf is on: that is the one case where a drag over the notch has
+        /// somewhere to land. With the shelf off, a held button over the pill is a click meant for the window below and
+        /// keeps behaving exactly as it did before P51b (reported: the notch opened on top of a window being snapped).</para>
+        /// </summary>
+        internal bool AlertInterruptDragging => _aiOn && _shOn && _aiDrag.CarriedIn;
 
         private void StartAlertInterrupt()
         {
@@ -84,7 +92,8 @@ namespace WinNotch
             {
                 if (_mode == Mode.Live) { if (_aiPendingId != null) { _aiCurrentId = _aiPendingId; _aiPendingId = null; } }
                 else { _aiCurrentId = _aiPendingId = null; }
-                if (!_aiOn) { _aiDrag.Reset(); return; }
+                // _shOn: only a drag that has somewhere to land counts (see AlertInterruptDragging).
+                if (!_aiOn || !_shOn) { _aiDrag.Reset(); return; }
                 bool dragging = _aiDrag.Update(inside, Native.GetAsyncKeyState(_shPrimaryButton) < 0);
                 if (dragging && _mode == Mode.Live) AlertInterrupt(UserIntent.FileDrag);
             }

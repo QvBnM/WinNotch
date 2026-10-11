@@ -116,10 +116,10 @@ namespace WinNotch
                   StatusDotRules.Diameter == 20 && StatusDotRules.Gap == 8 && StatusDotRules.GlyphSize == 11 &&
                   StatusDotRules.RingThickness < 3 && StatusDotRules.GlyphSize < StatusDotRules.Diameter);
 
-            Check("SD14", "Id-ul comutatorului e cel din catalog, funcția e experimentală și oprită implicit",
+            Check("SD14", "Id-ul comutatorului e cel din catalog, funcția e Beta și pornită implicit (anunțată în 0.6.30)",
                   StatusDotRules.FeatureId == FeatureCatalog.StatusDot &&
                   FeatureCatalog.Find(StatusDotRules.FeatureId) is FeatureInfo f &&
-                  f.Stage == FeatureStage.Experimental && !f.DefaultOn &&
+                  f.Stage == FeatureStage.Beta && f.DefaultOn &&
                   f.Description.Contains("Motorul de context"));
         }
 

@@ -603,3 +603,19 @@ Comutatorul `pagini-redesenate` (Setări → Funcții noi, Experimental, oprit i
 | P74.8 | Se aplică fără repornire | Bifează și debifează comutatorul cu notch-ul deschis. | Paginile se reconstruiesc la fiecare apăsare, fără erori în `log.txt`, fără să se piardă pagina pe care erai. |
 | P74.9 | Temele | Schimbă pe o temă luminoasă. | Etichetele și numerele iau culorile temei; nicio culoare rămasă din tema dinainte. |
 | P74.10 | Mod sigur | Pornește cu `--safe-mode`. | Paginile arată ca înainte (funcția e Experimental). |
+
+### 0.6.30 — Design-ul pornit implicit și tragerea
+
+Nimic de bifat înainte: `notch-anchored`, `colturi-continue`, `bulina-de-stare` și `pagini-redesenate` sunt Beta și
+pornite implicit. Verificările P50.x, P72.x, P73.x și P74.x rămân valabile — doar că acum se fac **fără** să bifezi ceva.
+
+| # | Verificare | Pași | Rezultat așteptat |
+|---|---|---|---|
+| 30.1 | Prima pornire arată design-ul | Șterge `settings.json` (sau pornește pe un cont curat) și pornește WinNotch. | Pastila crește din marginea de sus (sertar, umeri drepți, dungă de lumină), colțurile de jos se rotunjesc treptat, paginile au etichete gravate și numere monospațiate. Nimic de bifat. |
+| 30.2 | Setările spun că sunt pornite | Setări → „Funcții noi”. | Cele patru rânduri scriu „pornită implicit” și marcajul **Beta**. |
+| 30.3 | Se pot opri | Debifează „Notch lipit de ramă”, Salvează. | Pastila revine plutitoare, cu margine și colțuri întregi. „Colțuri continue” rămâne bifată, dar nu se mai vede (silueta nu mai e desenată de noi) — exact ce scrie descrierea ei. |
+| 30.4 | Mod sigur | Pornește cu `--safe-mode`. | Toate patru sunt oprite (sunt Beta): aplicația arată ca la 0.6.26. `log.txt` are rândul „Pornit în mod sigur”. |
+| 30.5 | Actualizarea nu pierde alegerile | Dacă aveai vreuna dintre ele bifată manual înainte de 0.6.30, actualizează. | Alegerea ta rămâne (în `settings.json` se păstrează doar ce diferă de implicit). |
+| 30.6 | **Fereastra trasă sus nu mai deschide notch-ul** | Cu „Raft” **oprit** (implicit), trage o fereastră de bara ei de titlu până la marginea de sus a ecranului, peste notch, și ține-o acolo 2–3 secunde. | Notch-ul **nu** se deschide, iar peste o fereastră maximizată se dă la o parte ca înainte. Dă drumul: fereastra se lipește normal. |
+| 30.7 | Selecția de text nu dă alerta la o parte | Cu „Raft” oprit, schimbă volumul ca să apară alerta, apoi ține butonul stâng apăsat într-o aplicație și plimbă cursorul peste pastilă. | Alerta rămâne pe ecran până își termină timpul. În `log.txt` niciun rând „Alertă întreruptă”. |
+| 30.8 | Cu raftul pornit, tragerea merge ca înainte | Bifează „Raft”, Salvează. Trage un fișier din Explorer peste notch. | Notch-ul se deschide cât tragi, apare overlay-ul „Raft”, iar o alertă de pe pastilă se dă la o parte (rândul „Alertă întreruptă: … (tragere de fișiere)” în `log.txt`). |

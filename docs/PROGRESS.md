@@ -934,3 +934,44 @@ Avea dreptate: din planșe intraseră sertarul, colțurile și bulina, iar cele 
   desenul n-o folosea niciodată — exact genul de regulă care trece testele și nu ajunge pe ecran. Acum e desenată, iar
   discul își urmează pastila la mărime.
 - **Teste:** PV1–PV12 și SD21–SD23 (15). **Nerulate:** containerul nu are .NET SDK.
+
+### 0.6.30 — Design-ul pornit, și tragerea care nu era tragere
+
+Autorul: „simt că ceva nu e bine în ea. De la design, funcționalități. Pare că ceva nu merge bine în ea.” Căutarea a dat
+două cauze, una de proces și un bug adevărat.
+
+**1. Design-ul era scris, dar nu era pornit.** 0.6.27, 0.6.28 și 0.6.29 au livrat sertarul, colțurile continue, bulina
+și paginile redesenate — toate `Experimental, false`. Trei actualizări la rând în care aplicația arăta neschimbată, iar
+ca să vezi ceva trebuia să nimerești o combinație de patru comutatoare (colțurile continue nu se văd fără notch-ul
+lipit de ramă, bulina nu merge fără motorul de context). Auditul FA1–FA9 prinde un comutator rămas fără cititor în cod
+și unul care nu-și spune condiția, dar nu prinde **non-evenimentul**: o funcție terminată, revizuită și invizibilă.
+Deci pasul 5 din regula comutatoarelor („la anunț: schimbă Stage și DefaultOn”), aplicat la toate patru deodată,
+fiindcă împreună sunt un singur design și separat n-ar fi arătat niciuna întreg. Beta, nu Stabil: `--safe-mode` le
+oprește, iar fiecare are comutatorul ei în Setări. Testele NA10, SC3, SD14 și PV7 au fost mutate pe noua stare (SC3
+cere în plus ca descrierea să spună că are nevoie de notch-ul lipit de ramă).
+
+Rămân oprite, intenționat: `window-v2` (o fereastră întreagă, netestată pe Windows, de care atârnă `perf-monitor`),
+`perf-monitor`, `game-session` și funcțiile de 0.7 (`activity-manager`, `command-bar`, `shelf`, `quick-actions`,
+`smart-clipboard`, `context-pages`, `audio-switch`).
+
+**2. Bug: tragerea care nu era tragere.** Pastila e click-through, deci nu poate primi un drop adevărat (spike-ul P23),
+iar tragerea e recunoscută după o presupunere: butonul principal era deja apăsat în afara pastilei și cursorul a ajuns
+pe ea (`ShelfDragHover`). Raftul o citește doar cât e pornit (`if (!_shOn) return false;`), dar P51b a luat același
+detector **fără** acea poartă, iar `alert-interrupt` e pornită implicit. Deci, în configurația implicită, orice buton
+ținut apăsat și plimbat peste pastilă — o fereastră trasă spre marginea de sus ca să se lipească (cel mai frecvent gest
+de acolo), o bară de derulare, o selecție de text — trecea drept tragere de fișiere și:
+
+- `AlertInterruptDragging` ocolea `_clickedThrough`, deci după `DwellMs` **notch-ul se deschidea peste ce trăgeai**;
+- ocolea și ieșirea din cale peste o fereastră maximizată (rândul `!atEdge && !AlertInterruptDragging`);
+- alerta de pe pastilă era încheiată și pusă în `InterruptMemory` 2 secunde.
+
+Reparația e poarta care lipsea: presupunerea contează doar cât raftul poate primi fișierele (`_aiOn && _shOn`). Cu
+raftul oprit nu se mai citește deloc (`_aiDrag.Reset()`), deci butonul ținut apăsat peste pastilă rămâne ce era: un
+click spre fereastra de dedesubt. Cu raftul pornit, comportamentul P51b e neschimbat. Nu s-a căutat un detector mai bun
+(un drag OLE adevărat s-ar putea deosebi după fereastra `SysDragImage`): ar fi o presupunere nouă, de verificat pe
+Windows, pentru un caz care acum se poartă corect.
+
+- **Teste:** IR21 (nou, pica înainte de reparație), plus NA10, SC3, SD14, PV7 mutate pe noua stare.
+  **Nerulate local:** containerul nu are .NET SDK (`dot.net` și `builds.dotnet.microsoft.com` sunt blocate de proxy);
+  prima rulare reală e în CI.
+- **Verificări manuale noi:** 30.1–30.8 în `docs/TESTE-MANUALE.md`.

@@ -121,24 +121,27 @@ namespace WinNotch.Core.Flags
             // pill until it ends by itself, as before
             new FeatureInfo(AlertInterrupt, "Alertele nu stau în cale", "O alertă se dă la o parte imediat ce faci ceva: tragi fișiere peste notch, apeși scurtătura sau deschizi Command Bar-ul. Pornită implicit; se vede doar cât e o alertă pe ecran.",
                             FeatureStage.Beta, true),
-            // P50: off by default until it is announced; off = the floating pill exactly as before (margin 8, full corners)
-            new FeatureInfo(NotchAnchored, "Notch lipit de ramă", "Notch-ul crește din marginea de sus: lipit de ea, rotunjit doar jos, cu umeri drepți și o dungă subțire de lumină pe muchie — un sertar agățat de ramă. Se vede în standby și cu notch-ul deschis; peste o fereastră maximizată pastila trece oricum la forma mică.",
-                            FeatureStage.Experimental, false),
+            // P50: announced in 0.6.30, so Beta and on (--safe-mode turns it off); off = the floating pill exactly as
+            // before (margin 8, full corners)
+            new FeatureInfo(NotchAnchored, "Notch lipit de ramă", "Notch-ul crește din marginea de sus: lipit de ea, rotunjit doar jos, cu umeri drepți și o dungă subțire de lumină pe muchie — un sertar agățat de ramă. Pornită implicit; se vede în standby și cu notch-ul deschis. Oprește-o dacă vrei pastila plutitoare de până la 0.6.29.",
+                            FeatureStage.Beta, true),
             // P52: off by default until it is finished; off = the window you know opens, untouched
             new FeatureInfo(WindowV2, "Fereastra WinNotch v2", "Fereastra nouă: antetul e notch-ul desfăcut, o coloană cu categorii, carduri pentru acțiunile care există și o coloană cu clipboard și confidențialitate. Se vede la următoarea deschidere a ferestrei WinNotch (din notch sau din meniul iconiței).",
                             FeatureStage.Experimental, false),
 
-            // P72: off by default until it is announced; off = the bottom corners are arcs, exactly as before
-            new FeatureInfo(SmoothCorners, "Colțuri continue", "Colțurile de jos ale notch-ului se rotunjesc treptat, ca pictogramele de pe telefon, în loc să intre dintr-odată în arc de cerc. Se vede doar cu „Notch lipit de ramă” pornită (acolo silueta e desenată de noi) și în antetul ferestrei v2; pastila plutitoare rămâne cu colțurile ei.",
-                            FeatureStage.Experimental, false),
+            // P72: announced in 0.6.30, so Beta and on (--safe-mode turns it off); off = the bottom corners are arcs
+            new FeatureInfo(SmoothCorners, "Colțuri continue", "Colțurile de jos ale notch-ului se rotunjesc treptat, ca pictogramele de pe telefon, în loc să intre dintr-odată în arc de cerc. Pornită implicit; se vede doar cu „Notch lipit de ramă” pornită, fiindcă doar acolo silueta e desenată de noi. Pastila plutitoare rămâne cu colțurile ei.",
+                            FeatureStage.Beta, true),
 
-            // P73: off by default until it is announced; off = nothing beside the pill, nothing subscribed
-            new FeatureInfo(StatusDot, "Bulina de stare", "Lângă notch apare o bulină cu o singură pictogramă pentru ce e pornit acum: microfonul care te ascultă, piesa care cântă, încărcătorul, o treabă în lucru. Un inel în jurul ei arată progresul, iar la hover le vezi pe toate. Se vede în standby și pe pastila mică, doar când chiar se întâmplă ceva; cu notch-ul deschis sau peste o alertă dispare. Merge doar cu „Motorul de context” pornit — de acolo vin toate stările.",
-                            FeatureStage.Experimental, false),
+            // P73: announced in 0.6.30, so Beta and on (--safe-mode turns it off); off = nothing beside the pill
+            new FeatureInfo(StatusDot, "Bulina de stare", "Lângă notch apare o bulină cu o singură pictogramă pentru ce e pornit acum: microfonul care te ascultă, piesa care cântă, încărcătorul. Un inel arată progresul, iar la hover le vezi pe toate. Pornită implicit; apare doar când chiar se întâmplă ceva, iar cu notch-ul deschis sau peste o alertă dispare. Merge doar cu „Motorul de context” pornit.",
+                            FeatureStage.Beta, true),
 
-            // P74: off by default until it is announced; off = every builder in Ui returns exactly what it used to
-            new FeatureInfo(NewPages, "Pagini redesenate", "Paginile standard din notch (Acasă, Sistem, Dispozitive, Unelte) capătă limbajul notch-ului: numele grupurilor gravate cu majuscule mici, toate măsurătorile în fontul cu cifre de aceeași lățime (deci rândul nu mai tremură când se schimbă o valoare), bare mai subțiri și un fir pe muchia de jos pentru lucrul care rulează. Se vede deschizând notch-ul pe oricare dintre cele patru pagini.",
-                            FeatureStage.Experimental, false),
+            // P74: announced in 0.6.30, so Beta and on (--safe-mode turns it off); off = every builder in Ui returns
+            // exactly what it used to. The builders live in Ui, so the same language reaches the widgets and the
+            // WinNotch window too — see DOCUMENTATIE.md: that is the point, not a leak.
+            new FeatureInfo(NewPages, "Pagini redesenate", "Paginile din notch capătă limbajul lui: numele grupurilor gravate cu majuscule mici, toate măsurătorile în fontul cu cifre de aceeași lățime (deci rândul nu mai tremură când se schimbă o valoare), bare mai subțiri și un fir pe muchia de jos pentru lucrul care rulează. Pornită implicit; se vede deschizând notch-ul, pe orice pagină, și în widget-uri.",
+                            FeatureStage.Beta, true),
 
             new FeatureInfo(PerfMonitor, "Performanță", "Fila „Performanță”: cât se folosește din procesor, memorie și placă video, cine consumă acum și ce crește pe nesimțite în timp (scurgeri de memorie), cu numere de dinainte și de după la fiecare schimbare. Se vede în fereastra WinNotch, fila „Performanță”, și doar cu „Fereastra WinNotch v2” pornită; măsoară numai cât o ai deschisă, nu în fundal.",
                             FeatureStage.Experimental, false),
