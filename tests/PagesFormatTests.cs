@@ -62,12 +62,14 @@ namespace WinNotch
         {
             var (l, r) = PageFormat.Columns(684, PageFormat.SystemSplit);
             Check("PF7", "Coloanele paginii Sistem ies ca în planșă (394 / 280, cu șanț de 10)",
-                  Math.Abs(l - 394) <= 1 && Math.Abs(r - 280) <= 1 && Math.Abs(l + r + PageFormat.Gutter - 684) < 0.001);
+                  l == 394 && r == 280 && Math.Abs(l + r + PageFormat.Gutter - 684) < 0.001);
 
             var (hl, hr) = PageFormat.Columns(684, PageFormat.HomeSplit);
             var (dl, dr) = PageFormat.Columns(684, PageFormat.DevicesSplit);
-            Check("PF8", "Și celelalte: Acasă 440 / 232, Dispozitive 374 / 300",
-                  Math.Abs(hl - 440) <= 1 && Math.Abs(hr - 234) <= 2 && Math.Abs(dl - 374) <= 1 && Math.Abs(dr - 300) <= 1);
+            // Proporțiile sunt raportate la ce împart cele două coloane (conținutul fără șanț), fiindcă șanțul e fix:
+            // altfel fiecare coloană ieșea cu câțiva pixeli mai scurtă decât în planșă.
+            Check("PF8", "Și celelalte: Acasă 440 / 234, Dispozitive 374 / 300",
+                  hl == 440 && hr == 234 && dl == 374 && dr == 300);
 
             // Notch-ul are lățimea aleasă de utilizator, deci împărțirea e o proporție, nu pixelii din planșă.
             Check("PF9", "La orice lățime, cele două coloane plus șanțul dau exact conținutul, și niciuna nu e negativă",

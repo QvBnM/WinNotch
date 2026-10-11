@@ -51,9 +51,14 @@ namespace WinNotch.Features.PagesFormat
         /// <summary>A reading bar: thin, because a bar is a reading and not a block of colour.</summary>
         public const double BarHeight = 3;
 
-        /// <summary>How much of the content width the left column takes on each page, measured on the plates.</summary>
-        public const double HomeSplit = 440.0 / 684, SystemSplit = 394.0 / 684,
-                            DevicesSplit = 374.0 / 684, ToolsSplit = 394.0 / 684;
+        /// <summary>
+        /// How much of the room the left column takes on each page, measured on the plates. The proportion is of the
+        /// space the two columns share — the content **minus** the gutter — because the gutter is a fixed width that
+        /// does not grow with the window; dividing by the whole content would make every column a few pixels short.
+        /// </summary>
+        public const double Shared = 684 - Gutter;
+        public const double HomeSplit = 440.0 / Shared, SystemSplit = 394.0 / Shared,
+                            DevicesSplit = 374.0 / Shared, ToolsSplit = 394.0 / Shared;
 
         /// <summary>How tall the open notch is on each page, at the plates' width.</summary>
         public const double HomeHeight = 310, SystemHeight = 320, DevicesHeight = 330, ToolsHeight = 360;
