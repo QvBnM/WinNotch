@@ -187,8 +187,10 @@ namespace WinNotch
                   !part.Contains("DispatcherTimer") && !part.Contains("CompositionTarget.Rendering") &&
                   !System.Text.RegularExpressions.Regex.IsMatch(part, @"Color\.From|#[0-9A-Fa-f]{6}|new SolidColorBrush"));
 
-            Check("NA26", "Sertarul: urechile nu se mai desenează nici în notch, nici în antetul ferestrei v2, iar înălțimea e un singur rând în ApplyMode",
-                  part.Contains("AnchoredGeometry.DrawEars") && Src("Features/WindowV2/WindowV2.cs").Contains("AnchoredGeometry.DrawEars") &&
+            // Forma din fereastră e previzualizarea de pe „monitorul” din ramă (P70), nu un antet: acolo se verifică.
+            Check("NA26", "Sertarul: urechile nu se mai desenează nici în notch, nici în fereastră, iar înălțimea e un singur rând în ApplyMode",
+                  part.Contains("AnchoredGeometry.DrawEars") &&
+                  Src("Features/WindowV2/NotchPreview.cs").Contains("AnchoredGeometry.DrawEars") &&
                   notch.Contains("h = AnchoredHeight(h, _mode == Mode.Idle && !mini);"));
 
             Check("NA27", "Dunga stă în conținutul pastilei (deci o taie decupajul ei, fără legături noi) și se scoate la oprire",

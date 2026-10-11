@@ -83,7 +83,7 @@ namespace WinNotch
         {
             string shape = Src("Features/NotchAnchored/AnchoredShape.cs"),
                    part = Src("Features/NotchAnchored/NotchWindow.Anchored.cs"),
-                   v2 = Src("Features/WindowV2/WindowV2.cs");
+                   prev = Src("Features/WindowV2/NotchPreview.cs");
 
             Check("SC10", "Traducătorul spre WPF știe să deseneze curba, nu doar linii și arce",
                   shape.Contains("if (seg.IsCurve)") && shape.Contains("c.BezierTo("));
@@ -92,8 +92,9 @@ namespace WinNotch
                   part.Contains("IsEnabled(SmoothCorner.FeatureId)") && part.Contains("smooth == _shapeSmooth") &&
                   part.Contains("_shapeSmooth = smooth;") && part.Contains("ReportError(SmoothCorner.FeatureId, ex)"));
 
-            Check("SC12", "Antetul ferestrei v2 urmează același comutator: silueta din margine și cea din fereastră nu se despart",
-                  v2.Contains("SmoothCorner.FeatureId"));
+            // Forma din fereastră e previzualizarea de pe „monitorul” din ramă (P70), nu un antet: acolo se verifică.
+            Check("SC12", "Previzualizarea din fereastră urmează același comutator: silueta din margine și cea din fereastră nu se despart",
+                  prev.Contains("SmoothCorner.FeatureId"));
         }
     }
 }
