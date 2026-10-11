@@ -80,9 +80,12 @@ namespace WinNotch
                   new[] { "Panes/HomePane.cs", "Panes/SystemPane.cs", "Panes/DevicesPane.cs", "Panes/ToolsPane.cs" }
                       .All(f => !Src(f).Contains("PageStyle") && !Src(f).Contains("pagini-redesenate")));
 
+            // TextBlock.OnPropertyChanged e sealed (prins de CI la 0.6.29), iar un DependencyPropertyDescriptor ar
+            // ține fiecare rând în viață pentru totdeauna: cârligul e metadata lui Text, suprascrisă pentru tipul ăsta.
             Check("PV10", "Alegerea fontului se reface la fiecare schimbare de text, nu o dată la construirea paginii",
-                  meas.Contains("OnPropertyChanged") && meas.Contains("e.Property != TextProperty") &&
-                  meas.Contains("PageStyle.IsMeasurement(Text)"));
+                  meas.Contains("TextProperty.OverrideMetadata(typeof(MeasureText)") &&
+                  meas.Contains("PageStyle.IsMeasurement(Text)") &&
+                  !meas.Contains("DependencyPropertyDescriptor") && !meas.Contains("override void OnPropertyChanged"));
 
             Check("PV11", "Firul: niciun cronometru nou (merge pe tick-ul existent), doar cu notch-ul deschis, fără culori în cod",
                   part.Contains("_mode == Mode.Expanded ? MediaProgress() : -1") &&
