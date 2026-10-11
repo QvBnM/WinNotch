@@ -92,9 +92,11 @@ namespace WinNotch
         static void PageFormatSourcePins()
         {
             var info = FeatureCatalog.Find(PageFormat.FeatureId);
-            Check("PF12", "Comutatorul din catalog are id-ul regulilor, e Beta și pornit implicit (anunțat în 0.6.33)",
+            // Livrată în 0.6.33, dar oprită: prima rulare cu ea pornită a raportat notch-ul închizându-se singur după
+            // un click pe Quick Actions. Până se lămurește, nu devine implicită.
+            Check("PF12", "Comutatorul din catalog are id-ul regulilor, e Experimental și oprit implicit",
                   info != null && FeatureCatalog.PageFormat == PageFormat.FeatureId &&
-                  info.Stage == FeatureStage.Beta && info.DefaultOn);
+                  info.Stage == FeatureStage.Experimental && !info.DefaultOn);
 
             // Plasa: nici constructorul, nici treaba lor repetată nu pot dărâma notch-ul — a treia eroare în zece
             // minute oprește forma singură și paginile vechi revin.

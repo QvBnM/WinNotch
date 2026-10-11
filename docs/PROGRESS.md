@@ -1044,3 +1044,17 @@ treia în zece minute oprește forma singură și aduce înapoi paginile vechi, 
 oprit — inclusiv pe un commit care schimba numai fișiere `.md`. Cauza: `CloseNotchByHotkey` trimitea o scurtătură
 **globală** o singură dată; după o serie de clickuri sintetice Windows o mai înghite. Acum se mai încearcă o dată.
 Nu e un test sărit și nici o așteptare mărită: a doua apăsare care tot nu închide notch-ul rămâne eșec.
+
+**Adăugat înainte de livrare:** prima rulare cu forma **pornită** a picat la pasul Quick Actions cu „notch-ul s-a
+închis după un click”, cu `b1=2176` — adică `WrongLayer | IdleEmpty`, care e starea de mijloc a animației de închidere,
+nu o pagină stricată. Deci simptomul e închiderea, nu conținutul. Cauza n-am prins-o: artefactele CI (unde e `log.txt`
+cu rândul „B1 recover” și motivul lui) stau pe un blob Azure pe care proxy-ul containerului îl refuză, iar același pas
+picase intermitent și cu forma **oprită**, deci nu pot pune eșecul pe seama paginilor noi cu certitudine.
+
+Ce s-a reparat sigur pe drum: pe Dispozitive, lista celor conectate era un `ScrollViewer` într-un `StackPanel`. Acolo
+înălțimea disponibilă e infinită, deci nu primește niciodată o limită, nu derulează, iar cardul crește cu lista. Acum
+stă pe un rând „stea” al unui `Grid`, deci are o margine.
+
+Concluzia: funcția se livrează, dar **nu implicită**. Nu pornesc de la sine o formă despre care verificarea automată
+spune că închide notch-ul; se bifează din Setări, iar paginile vechi rămân la o debifare distanță. Următorul pas e
+reproducerea pe Windows, unde `log.txt` se poate citi direct.

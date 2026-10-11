@@ -71,14 +71,22 @@ namespace WinNotch.Features.PagesFormat
             // ---------- right: one tall card with everything that is plugged in ----------
             _count = Deck.T(Ink.Unit, "0");
             _list = new StackPanel { Margin = new Thickness(0, 4, 0, 0) };
-            var listCard = Deck.Card(Deck.Stack(0, Deck.Head("Conectate", _count),
-                                                new ScrollViewer
-                                                {
-                                                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                                                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                                                    Content = _list,
-                                                }));
-            right.Children.Add(listCard);
+            // A Grid with a star row, not a StackPanel: inside a StackPanel the available height is infinite, so a
+            // ScrollViewer never gets a bound, never scrolls, and the card keeps growing with the list — the content
+            // never settles and the notch's own safety net (B1) sees a broken panel and rebuilds it, over and over.
+            var listGrid = new Grid();
+            listGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            listGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            listGrid.Children.Add(Deck.Head("Conectate", _count));
+            var scroll = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Content = _list,
+            };
+            Grid.SetRow(scroll, 1);
+            listGrid.Children.Add(scroll);
+            right.Children.Add(Deck.Card(listGrid));
         }
 
         private static FrameworkElement Pad(FrameworkElement e, double top)
