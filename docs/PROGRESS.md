@@ -995,3 +995,38 @@ fără un al doilea loc de ținut în pas.
 - **Teste:** SD24 (nou, pica înainte de reparație). Ancorele SD19, SD22 și SD23 au rămas neatinse.
   **Nerulate local:** containerul nu are .NET SDK; prima rulare e în CI.
 - **Verificări manuale noi:** 31.1–31.3.
+
+### P75 — Forma celor patru pagini (planșele recuperate)
+
+Autorul: „mai e o funcție de resign la paginile principale, nu mi se pare că se aplică… într-o sesiune vb să schimbe
+formatul lor, îmi dăduse niște exemple, dar pare că s-au pierdut”. Avea dreptate de două ori.
+
+**P74 chiar se aplică, dar nu asta ceruse.** Comutatorul e pornit, constructorii din `Ui.cs` îl citesc, firul e legat în
+`SecondTick`. Numai că P74 a schimbat **tipografia**, iar aproape toate numerele din pagini erau deja monospațiate
+înainte de el, deci ce rămânea vizibil era puțin: ceasul mare, procentele mari, etichetele în Bahnschrift, barele de
+3 px. **Forma** paginilor n-a fost atinsă niciodată și nu exista nicio sarcină pentru ea.
+
+**Planșele se pierduseră într-adevăr.** Autorul a trimis artefactul („Notch WinNotch — toate stările”), din care au
+ieșit 11 planșe, printre ele exact cele patru pagini. Restul (repausul, alertele, modul editare, bulina, sertarul)
+ajunseseră deja în aplicație — doar paginile rămăseseră. Acum planșele stau ca imagini în `docs/design`, iar ce se
+citește din ele e scris în `docs/BRIEF-PAGINI.md`: nu se mai pot pierde odată cu o sesiune.
+
+- **Două accente, fiecare cu un singur sens** (din subsolurile planșelor): chihlimbar = ce se mișcă acum, ger = date
+  reci. Un număr care nu e niciuna rămâne alb — asta le ține pe amândouă citibile. În cod sunt `AccentBrush` și
+  `InfoBrush`, care existau deja: nicio pensulă nouă.
+- **Fețele** sunt Archivo și Chivo Mono, din planșe (SIL OFL). Niciuna nu vine cu Windows, iar planșele sunt
+  specificația, deci se înglobează în exe (565 KB, `Fonts/`).
+- **Paginile vechi nu sunt atinse.** `Pane` e o clasă mică, deci forma nouă e patru clase noi lângă cele vechi, iar
+  fabrica de pagini alege între ele. Asta a permis și livrarea pe bucăți: Sistem prima, singură și verde, apoi
+  celelalte trei. Testul PF14a refuză ca vreuna dintre cele patru pagini vechi să citească comutatorul.
+- **Niciun sistem dublat:** versurile prin `LyricsService`, culoarea copertei prin `HomePane.Dominant`, dispozitivele
+  prin `DeviceService`, căutarea prin `Launcher`, memoria prin `MemoryTools`. Singurul cronometru e salvarea amânată a
+  notiței, care se încheie și la părăsirea paginii.
+- **Tracking-ul din planșe (0,085 em) nu se desenează:** sub un pixel la 9,5 px, iar WPF n-are letter-spacing pe un
+  `TextBlock`; falsificat cu spații subțiri ar fi de trei ori prea lat și ar strica tăierea textului. Numărul rămâne în
+  `PageFormat.Tracking`, fiindcă așa scrie în planșe, dar desenul se bazează pe majuscule, față și culoare.
+- **Rămas de legat:** pornirea testului de viteză de pe pagina nouă trece azi prin `OpenSpeedTest`, care arată pagina
+  veche; chip-ul arată deocamdată doar ultimul rezultat.
+- **Prins de CI:** proporțiile coloanelor se raportează la ce împart cele două (conținutul **fără** șanț), nu la tot
+  conținutul — altfel fiecare coloană ieșea cu câțiva pixeli mai scurtă decât în planșă (394 → 388).
+- **Teste:** PF1–PF20. **Nerulate local:** containerul nu are .NET SDK; rulate în CI pe ramură.

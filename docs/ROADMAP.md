@@ -59,6 +59,8 @@ au acum sensul din plan. Fiecare sarcină se face într-o rulare de pilot automa
 
 | P74 | Paginile standard în limbajul notch-ului: etichete gravate, toate măsurătorile în fontul monospațiat (regulă pură, scrisă de mână, reevaluată la fiecare schimbare de text printr-un `TextBlock` care-și alege singur fața), bare de 3 px și firul de pe muchia de jos a notch-ului deschis. Totul prin constructorii din `Ui.cs`, deci niciuna dintre cele patru pagini nu e rescrisă și niciuna nu citește comutatorul | `pagini-redesenate` (Beta, pornit din 0.6.30) | Gata |
 
+| P75 | Forma celor patru pagini standard, după planșele din `docs/design` (brief: `docs/BRIEF-PAGINI.md`): două coloane de carduri în loc de o listă de rânduri. Regulile pure în `Features/PagesFormat/PageFormat.cs` (scara de text pe roluri, cele două accente cu câte un singur sens — chihlimbar = ce se mișcă acum, ger = date reci — proporțiile coloanelor și înălțimile, toate măsurate pe planșe); `Deck.cs` ține cele câteva piese comune. Cele patru pagini noi stau lângă cele vechi, iar fabrica de pagini alege între ele, deci `Panes/` rămâne neatins. Fonturile planșelor (Archivo + Chivo Mono, SIL OFL) înglobate în exe. Rămas de legat: pornirea testului de viteză de pe pagina nouă | `pagini-format` (Experimental, oprit) | Gata (de testat pe Windows) |
+
 După P46: oprire. Autorul folosește aplicația 2 săptămâni, apoi alegem din „Idei pentru mai târziu”.
 
 ## Secțiunea de performanță (cerută 10 oct 2026)
