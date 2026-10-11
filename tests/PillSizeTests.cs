@@ -37,7 +37,8 @@ namespace WinNotch
             Check("PS6", "Notch-ul folosește regula, iar straturile de standby au scara lor (ca panoul deschis și alertele)",
                   notch.Contains("Core.Ui.PillSize.Height(UiScale, mini)") &&
                   notch.Contains("Core.Ui.PillSize.Radius(UiScale, mini)") &&
-                  notch.Contains("Core.Ui.PillSize.Width(MiniWidth(), UiScale)") &&
+                  // 0.6.32: forma mică își compune lățimea cu fâșia bulinei contopite (0 cât bulina e oprită).
+                  notch.Contains("Core.Ui.PillSize.Width(MiniWidth() + dotRoom, UiScale)") &&
                   notch.Contains("IdleScale.ScaleX = IdleScale.ScaleY = k;") &&
                   notch.Contains("MiniScale.ScaleX = MiniScale.ScaleY = k;") &&
                   xaml.Contains("x:Name=\"IdleScale\"") && xaml.Contains("x:Name=\"MiniScale\""));
